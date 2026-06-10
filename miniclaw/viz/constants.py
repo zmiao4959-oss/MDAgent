@@ -4,10 +4,10 @@ from pathlib import Path
 # 浏览器可加载 / 自动检测的扩展名
 VISUAL_EXT = frozenset({
     ".gif", ".png", ".jpg", ".jpeg",
-    ".xyz", ".dump", ".lammpstrj", ".lmp", ".data",
+    ".xyz", ".dump", ".lammpstrj", ".lmp", ".data", ".xsf",
     ".csv",
 })
-STRUCTURE_EXT = frozenset({".xyz", ".dump", ".lammpstrj", ".lmp", ".data"})
+STRUCTURE_EXT = frozenset({".xyz", ".dump", ".lammpstrj", ".lmp", ".data", ".xsf"})
 # LAMMPS dump 轨迹（按内容 ITEM: 或扩展名识别）
 DUMP_LIKE_EXT = frozenset({".dump", ".lammpstrj"})
 MEDIA_IMAGE_EXT = frozenset({".gif", ".png", ".jpg", ".jpeg"})

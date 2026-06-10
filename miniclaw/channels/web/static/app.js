@@ -35,7 +35,7 @@
   const savedStructures = [];
 
   let SKIP_BROWSE_DIRS = new Set([".idea", "__pycache__", ".git", "web", "node_modules", ".venv", "sessions"]);
-  const STRUCTURE_EXTS = new Set(["xyz", "dump", "lammpstrj", "lmp", "data"]);
+  const STRUCTURE_EXTS = new Set(["xyz", "dump", "lammpstrj", "lmp", "data", "xsf"]);
   let VISUAL_FILE_EXTS = new Set([
     "gif", "png", "jpg", "jpeg", "xyz", "dump", "lammpstrj", "lmp", "data", "csv",
   ]);
@@ -335,6 +335,10 @@
     if (head.startsWith("ITEM:")) {
       return parseDumpFirstFrame(text);
     }
+    // XSF（XCrySDen）格式
+    if (ext === "xsf" || text.includes("PRIMCOORD")) {
+      return parseXsf(text);
+    }
     // LAMMPS data（.lmp / .data / 含 Atoms 段的 .xyz）
     if (text.includes("Atoms")) {
       return parseLammpsData(text);
@@ -378,17 +382,43 @@
     const lines = text.split(/\r?\n/);
     const atoms = [];
     let inAtoms = false;
+    // column indices: will be set from header or inferred from column count
+    let xIdx = 2, yIdx = 3, zIdx = 4, typeIdx = 1;  // default: atomic style (ID type x y z)
     for (const line of lines) {
       const t = line.trim();
-      if (t.startsWith("Atoms")) { inAtoms = true; continue; }
+      if (t.startsWith("Atoms")) {
+        inAtoms = true;
+        // Try to parse column layout from header: "Atoms # full style (ID mol type q x y z)"
+        const parenMatch = t.match(/\(([^)]+)\)/);
+        if (parenMatch) {
+          const colNames = parenMatch[1].trim().split(/\s+/);
+          const map = {};
+          for (let i = 0; i < colNames.length; i++) {
+            map[colNames[i].toLowerCase()] = i;
+          }
+          if (map.x !== undefined) xIdx = map.x;
+          else if (map.xs !== undefined) xIdx = map.xs;  // scaled coordinates
+          if (map.y !== undefined) yIdx = map.y;
+          else if (map.ys !== undefined) yIdx = map.ys;
+          if (map.z !== undefined) zIdx = map.z;
+          else if (map.zs !== undefined) zIdx = map.zs;
+          if (map.type !== undefined) typeIdx = map.type;
+        }
+        continue;
+      }
       if (!inAtoms || !t || t.startsWith("#")) continue;
       const parts = t.split(/\s+/);
-      if (parts.length < 5) continue;
-      const x = parseFloat(parts[2]);
-      const y = parseFloat(parts[3]);
-      const z = parseFloat(parts[4]);
-      const type = parseInt(parts[1], 10);
-      if (Number.isFinite(x)) atoms.push({ x, y, z, type });
+      // Infer style from column count if no header info was parsed
+      if (xIdx === 2 && yIdx === 3 && zIdx === 4 && typeIdx === 1 && parts.length >= 7) {
+        // looks like full style without header: ID mol type q x y z
+        xIdx = 4; yIdx = 5; zIdx = 6; typeIdx = 2;
+      }
+      if (parts.length <= Math.max(xIdx, yIdx, zIdx, typeIdx)) continue;
+      const x = parseFloat(parts[xIdx]);
+      const y = parseFloat(parts[yIdx]);
+      const z = parseFloat(parts[zIdx]);
+      const type = parseInt(parts[typeIdx], 10);
+      if (Number.isFinite(x)) atoms.push({ x, y, z, type: type || 1 });
     }
     return atoms;
   }
@@ -449,6 +479,61 @@
       const type = col.type !== undefined ? parseInt(parts[col.type], 10) || 1 : 1;
       atoms.push({ x, y, z, type });
     }
+    return atoms;
+  }
+
+  function parseXsf(text) {
+    // XCrySDen Structure File (.xsf)
+    // Supports CRYSTAL + PRIMCOORD blocks; for animations (ANIMSTEPS) only the first frame is read.
+    const lines = text.split(/\r?\n/);
+    const atoms = [];
+    const elemTypes = new Map();
+    let nextType = 1;
+    let inPrimCoord = false;
+    let atomsToRead = 0;
+    let atomsRead = 0;
+
+    for (const line of lines) {
+      const t = line.trim();
+      if (!t || t.startsWith("#")) continue;
+
+      // Match PRIMCOORD or PRIMCOORD <n> (animation frame)
+      if (/^PRIMCOORD/i.test(t)) {
+        inPrimCoord = true;
+        atomsToRead = 0;
+        atomsRead = 0;
+        continue;
+      }
+
+      if (!inPrimCoord) continue;
+
+      // First non-empty line after PRIMCOORD: "natoms flag"
+      if (atomsToRead === 0) {
+        const parts = t.split(/\s+/);
+        atomsToRead = parseInt(parts[0], 10);
+        if (!Number.isFinite(atomsToRead) || atomsToRead <= 0) break;
+        continue;
+      }
+
+      // Atom line: "elem x y z [fx fy fz]"
+      const parts = t.split(/\s+/);
+      if (parts.length < 4) continue;
+      // Skip if first token is a number (could be next PRIMCOORD header line)
+      if (/^\d+$/.test(parts[0]) && parts.length <= 2) {
+        // This is a new PRIMCOORD header for animation - stop
+        break;
+      }
+      const x = parseFloat(parts[1]);
+      const y = parseFloat(parts[2]);
+      const z = parseFloat(parts[3]);
+      if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) continue;
+      const elem = parts[0];
+      if (!elemTypes.has(elem)) elemTypes.set(elem, nextType++);
+      atoms.push({ x, y, z, type: elemTypes.get(elem) });
+      atomsRead++;
+      if (atomsRead >= atomsToRead) break;
+    }
+
     return atoms;
   }
 
@@ -543,14 +628,59 @@
     };
   }
 
+  function removeStructureCard(card) {
+    const scene = card._scene;
+    if (scene) {
+      scene.dispose();
+      const idx = structureScenes.indexOf(scene);
+      if (idx >= 0) structureScenes.splice(idx, 1);
+    }
+    // 用 path 匹配删除 savedStructures 中的条目（兼容 restoreVizState 恢复的卡片无 _savedEntry 引用的情况）
+    const label = card._label;
+    if (label) {
+      for (let i = savedStructures.length - 1; i >= 0; i--) {
+        if (savedStructures[i].path === label) {
+          savedStructures.splice(i, 1);
+          break;
+        }
+      }
+    }
+    card.remove();
+    structureCount = Math.max(0, structureCount - 1);
+    updateBadge(structureCountEl, structureCount);
+    saveVizState();
+    if (!structureGallery.querySelector(".structure-card")) {
+      structureGallery.innerHTML = '<p class="placeholder">手动加载或 Agent 输出的结构将保留在此</p>';
+    }
+  }
+
   function appendStructure(atoms, label, persist = true) {
     removePlaceholder(structureGallery);
     const card = document.createElement("article");
     card.className = "structure-card";
     const time = new Date().toLocaleTimeString();
-    card.innerHTML = `
-      <div class="structure-card-head"><span>结构预览</span><time>${time}</time></div>
-      <p class="structure-caption">${label} · ${atoms.length ? atoms.length + " 原子" : "未能解析坐标"}</p>`;
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "structure-card-close";
+    closeBtn.textContent = "✕";
+    closeBtn.title = "移除此结构";
+    closeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      removeStructureCard(card);
+    });
+    const head = document.createElement("div");
+    head.className = "structure-card-head";
+    const labelSpan = document.createElement("span");
+    labelSpan.textContent = "结构预览";
+    const timeEl = document.createElement("time");
+    timeEl.textContent = time;
+    head.appendChild(labelSpan);
+    head.appendChild(timeEl);
+    head.appendChild(closeBtn);
+    card.appendChild(head);
+    const caption = document.createElement("p");
+    caption.className = "structure-caption";
+    caption.textContent = `${label} · ${atoms.length ? atoms.length + " 原子" : "未能解析坐标"}`;
+    card.appendChild(caption);
     const canvasWrap = document.createElement("div");
     canvasWrap.className = "structure-canvas-wrap";
     card.appendChild(canvasWrap);
@@ -558,10 +688,18 @@
     structureGallery.scrollTop = structureGallery.scrollHeight;
     structureCount += 1;
     updateBadge(structureCountEl, structureCount);
-    if (atoms.length) structureScenes.push(createStructureScene(canvasWrap, atoms));
+    let scene = null;
+    if (atoms.length) {
+      scene = createStructureScene(canvasWrap, atoms);
+      structureScenes.push(scene);
+    }
+    card._label = label;
+    card._scene = scene;
     if (persist) {
       const ext = label.split(".").pop().toLowerCase();
-      savedStructures.push({ path: label, ext });
+      const entry = { path: label, ext };
+      savedStructures.push(entry);
+      card._savedEntry = entry;
       saveVizState();
     }
   }
@@ -584,16 +722,16 @@
     if (!path || path === "__up__" || path.startsWith("__dir__:")) return;
     const lower = path.toLowerCase();
     if (lower.endsWith(".csv")) {
-      await appendCsvChart(path);
+      await appendCsvChart(path, false);
       return;
     }
     const ext = path.split(".").pop().toLowerCase();
     if (["gif", "png", "jpg", "jpeg"].includes(ext)) {
-      appendMedia(ext === "gif" ? "gif" : "image", path);
+      appendMedia(ext === "gif" ? "gif" : "image", path, false);
       return;
     }
     if (STRUCTURE_EXTS.has(ext)) {
-      await loadStructureFromPath(path, ext);
+      await loadStructureFromPath(path, ext, false);
     }
   }
 

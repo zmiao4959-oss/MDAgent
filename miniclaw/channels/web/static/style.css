@@ -320,9 +320,40 @@ html, body {
 .media-card-head, .structure-card-head {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   font-size: 12px;
   color: var(--accent);
   margin-bottom: 4px;
+  position: relative;
+}
+
+.structure-card-close {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: #e74c3c;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.structure-card:hover .structure-card-close,
+.structure-card:focus-within .structure-card-close {
+  opacity: 1;
+}
+
+.structure-card-close:hover {
+  background: #c0392b;
 }
 
 .media-caption, .structure-caption {
