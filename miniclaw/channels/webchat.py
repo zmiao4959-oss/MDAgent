@@ -1,0 +1,183 @@
+"""
+channels/webchat.py — Web 聊天界面（可折叠历史 + 左对话右可视化）
+基于 FastAPI + SSE；静态资源见 channels/web/static/
+"""
+import asyncio
+import json
+import uuid
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, Optional
+
+from ..agent import AgentContext
+from ..config import WORKSPACE_DIR
+from ..logger import get_logger
+from ..viz.constants import SKIP_DIR_NAMES, VISUAL_EXT
+from .base import BaseChannelAdapter
+from .web.files import get_workspace_asset, list_workspace_files
+
+if TYPE_CHECKING:
+    from ..memory.session import SessionManager
+
+logger = get_logger(__name__)
+
+WEB_DIR = Path(__file__).resolve().parent / "web" / "static"
+
+
+class WebChatAdapter(BaseChannelAdapter):
+    def __init__(
+        self,
+        host: str = "127.0.0.1",
+        port: int = 8000,
+        session_manager: Optional["SessionManager"] = None,
+    ):
+        super().__init__("webchat")
+        self.host = host
+        self.port = port
+        self.session_manager = session_manager
+        self._uvicorn_server = None
+
+    async def start(self):
+        try:
+            from fastapi import FastAPI, Request
+            from fastapi.responses import FileResponse, StreamingResponse
+            from fastapi.staticfiles import StaticFiles
+            import uvicorn
+        except ImportError:
+            logger.error("fastapi/uvicorn not installed")
+            return
+
+        app = FastAPI(title="MiniClaw")
+        adapter = self
+
+        if WEB_DIR.is_dir():
+            app.mount("/static", StaticFiles(directory=str(WEB_DIR)), name="static")
+
+        @app.get("/")
+        async def index():
+            index_path = WEB_DIR / "index.html"
+            if index_path.is_file():
+                return FileResponse(index_path)
+            return FileResponse(__file__)  # fallback，不应发生
+
+        @app.get("/api/config")
+        async def get_config():
+            return {
+                "workspace_root": str(WORKSPACE_DIR.resolve()),
+                "visual_ext": sorted(VISUAL_EXT),
+                "skip_dir_names": sorted(SKIP_DIR_NAMES),
+            }
+
+        @app.get("/api/files")
+        async def list_files(work_dir: str = ""):
+            return list_workspace_files(work_dir)
+
+        @app.get("/api/asset")
+        async def get_asset(path: str):
+            return get_workspace_asset(path)
+
+        @app.get("/api/conversations")
+        async def list_conversations():
+            if not adapter.session_manager:
+                return {"conversations": []}
+            rows = adapter.session_manager.list_conversations_by_channel("webchat")
+            return {"conversations": rows}
+
+        @app.post("/api/conversations")
+        async def new_conversation():
+            if not adapter.session_manager:
+                chat_id = f"webchat:{uuid.uuid4().hex[:10]}"
+                return {"chat_id": chat_id}
+            chat_id = f"webchat:{uuid.uuid4().hex[:10]}"
+            session = adapter.session_manager.get_or_create(chat_id, "webchat", "local")
+            await adapter.session_manager.save(session)
+            return {"chat_id": chat_id}
+
+        @app.get("/api/history")
+        async def history(chat_id: str):
+            if not adapter.session_manager:
+                return {"messages": [], "chat_id": chat_id}
+            session = await adapter.session_manager.resolve_session(chat_id)
+            if not session:
+                return {"messages": [], "chat_id": chat_id}
+            out = []
+            for m in session.messages:
+                if m.role == "system":
+                    continue
+                if m.role == "tool":
+                    name = m.name or "tool"
+                    snippet = (m.content or "")[:600]
+                    out.append({"role": "tool", "content": f"[{name}] {snippet}"})
+                    continue
+                out.append({"role": m.role, "content": m.content or ""})
+            return {"messages": out, "chat_id": chat_id}
+
+        @app.post("/api/chat")
+        async def chat(request: Request):
+            body = await request.json()
+            user_message = body.get("message", "")
+            chat_id = body.get("chat_id") or "webchat:default"
+
+            async def event_stream():
+                ctx = AgentContext(
+                    chat_id=chat_id,
+                    channel="webchat",
+                    account_id="local",
+                    user_message=user_message,
+                )
+                out_q: asyncio.Queue = asyncio.Queue()
+                result: Dict[str, Any] = {"response": None}
+
+                async def collect_delta(chunk: str) -> None:
+                    await out_q.put({"kind": "delta", "text": chunk})
+
+                async def on_viz(event: Dict[str, Any]) -> None:
+                    payload = dict(event)
+                    payload["viz"] = True
+                    await out_q.put(payload)
+
+                async def run_agent() -> None:
+                    try:
+                        if adapter._message_handler:
+                            result["response"] = await adapter._message_handler(
+                                ctx,
+                                on_stream_chunk=collect_delta,
+                                on_viz_event=on_viz,
+                            )
+                    finally:
+                        pending = ctx.metadata.get("viz_tasks") or []
+                        if pending:
+                            await asyncio.gather(*pending, return_exceptions=True)
+                        await out_q.put(None)
+
+                task = asyncio.create_task(run_agent())
+                try:
+                    while True:
+                        item = await out_q.get()
+                        if item is None:
+                            break
+                        if item.get("viz"):
+                            yield f"data: {json.dumps(item, ensure_ascii=False)}\n\n"
+                        elif item.get("kind") == "delta":
+                            yield f"data: {json.dumps({'delta': item['text']}, ensure_ascii=False)}\n\n"
+                finally:
+                    await task
+
+                yield f"data: {json.dumps({'done': True, 'full': result['response'] or ''}, ensure_ascii=False)}\n\n"
+
+            return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+        config = uvicorn.Config(app, host=self.host, port=self.port, log_level="warning")
+        self._uvicorn_server = uvicorn.Server(config)
+        logger.info(f"WebChat at http://{self.host}:{self.port}")
+        try:
+            await self._uvicorn_server.serve()
+        finally:
+            self._uvicorn_server = None
+            logger.info("WebChat stopped")
+
+    async def stop(self):
+        if self._uvicorn_server is not None:
+            self._uvicorn_server.should_exit = True
+
+    async def send_message(self, chat_id: str, text: str, **kwargs):
+        pass

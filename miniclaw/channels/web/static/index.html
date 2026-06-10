@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MiniClaw</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-head">
+        <h3>历史对话</h3>
+        <button type="button" id="sidebar-toggle" class="icon-btn" title="折叠/展开">◀</button>
+      </div>
+      <button type="button" id="new-chat" class="primary-btn">+ 新对话</button>
+      <div id="conv-list" class="conv-list"></div>
+    </aside>
+
+    <div id="main-row" class="main-row">
+      <section id="chat-panel" class="panel chat-panel">
+        <div class="panel-head">
+          <h2>MiniClaw</h2>
+        </div>
+        <div id="messages" class="messages"></div>
+        <div class="panel-status chat-status">
+          <div class="progress-track"><div id="chat-progress" class="progress-bar"></div></div>
+          <span id="chat-status-text" class="status-text">就绪</span>
+        </div>
+        <div class="input-row">
+          <input id="input" type="text" placeholder="输入消息..." autofocus />
+          <button type="button" id="btn-send" class="primary-btn">发送</button>
+        </div>
+      </section>
+
+      <section id="viz-panel" class="panel viz-panel">
+        <div class="panel-head">
+          <h2>可视化</h2>
+          <div class="file-browser">
+            <div class="file-browser-nav">
+              <button id="browse-up" type="button" class="icon-btn" title="上级目录" disabled>↑</button>
+              <span id="browse-path" class="browse-path" title="">工作区</span>
+              <button id="refresh-files" type="button" class="ghost-btn">刷新</button>
+            </div>
+            <div class="file-browser-row">
+              <select id="file-select">
+                <option value="">— 进入子文件夹或选择文件 —</option>
+              </select>
+              <button id="load-viz" type="button" class="ghost-btn">加载</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel-status viz-status">
+          <div class="progress-track"><div id="viz-progress" class="progress-bar"></div></div>
+          <span id="viz-status-text" class="status-text">无渲染任务</span>
+        </div>
+        <div class="viz-tabs">
+          <button class="tab active" data-tab="media">媒体 <span id="media-count" class="tab-badge">0</span></button>
+          <button class="tab" data-tab="structure">结构 3D <span id="structure-count" class="tab-badge">0</span></button>
+        </div>
+        <div id="tab-media" class="tab-pane active">
+          <div id="media-gallery" class="media-gallery">
+            <p class="placeholder">Agent 生成的 GIF / 曲线图将显示在这里</p>
+          </div>
+        </div>
+        <div id="tab-structure" class="tab-pane">
+          <div class="structure-controls">
+            <span class="structure-controls-label">原子半径</span>
+            <button id="atom-radius-dec" type="button" class="icon-btn">−</button>
+            <input type="range" id="atom-radius-slider" min="0.05" max="6" step="0.05" value="0.30" />
+            <button id="atom-radius-inc" type="button" class="icon-btn">+</button>
+            <button id="atom-radius-reset" type="button" class="ghost-btn">重置</button>
+            <span id="atom-radius-value" class="atom-radius-value">0.30</span>
+          </div>
+          <div id="structure-gallery" class="structure-gallery">
+            <p class="placeholder">手动加载或 Agent 输出的结构将保留在此</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

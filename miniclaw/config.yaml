@@ -1,0 +1,28 @@
+llm:
+  provider: deepseek
+  model: deepseek-chat
+  # api_key 优先从环境变量 MINICLAW_API_KEY 读取
+  base_url: https://api.deepseek.com/v1
+  temperature: 0.7
+  max_tokens: 8192
+  fallback_providers:
+    - provider: openai
+      model: gpt-4o-mini
+      base_url: https://api.openai.com/v1
+      api_key: 66666666666666
+
+gateway:
+  host: 127.0.0.1
+  port: 18789
+
+agent:
+  max_tool_rounds: 15
+  max_context_tokens: 80000
+  heartbeat_interval_min: 30
+  thinking: adaptive
+
+channels:
+  enabled:
+    webchat: true
+    telegram: false
+    wechat: false
