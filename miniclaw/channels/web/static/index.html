@@ -6,28 +6,59 @@
   <title>MiniClaw</title>
   <link rel="stylesheet" href="/static/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/atom-one-dark.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"></script>
 </head>
 <body>
   <div id="app">
     <aside id="sidebar" class="sidebar">
+      <div class="brand-block">
+        <div class="brand-mark" aria-hidden="true">M</div>
+        <div class="brand-copy">
+          <strong>MINICLAW</strong>
+          <span>AGENT WORKBENCH</span>
+        </div>
+      </div>
       <div class="sidebar-head">
         <h3>历史对话</h3>
         <button type="button" id="sidebar-toggle" class="icon-btn" title="折叠/展开">◀</button>
       </div>
       <button type="button" id="new-chat" class="primary-btn">+ 新对话</button>
+      <div class="sidebar-caption">CONVERSATIONS</div>
       <div id="conv-list" class="conv-list"></div>
+      <div class="sidebar-footer">
+        <span class="live-dot"></span>
+        <span>本地 Agent 已连接</span>
+      </div>
     </aside>
 
     <div id="main-row" class="main-row">
       <section id="chat-panel" class="panel chat-panel">
-        <div class="panel-head">
-          <h2>MiniClaw</h2>
+        <div class="panel-head chat-head">
+          <div class="section-title">
+            <span class="eyebrow">ACTIVE WORKSPACE</span>
+            <h2>工作会话</h2>
+            <span id="current-chat-label" class="current-chat-label">webchat:default</span>
+          </div>
+          <div class="runtime-status" title="运行统计每 30 秒更新一次">
+            <span id="runtime-dot" class="runtime-dot"></span>
+            <span id="runtime-summary">系统就绪，等待任务</span>
+          </div>
           <div class="chat-actions">
+            <button type="button" id="btn-fork" class="ghost-btn" title="分叉当前对话">🔀 分叉</button>
             <button type="button" id="btn-export" class="ghost-btn" title="导出当前对话">📥 导出</button>
             <button type="button" id="btn-delete-chat" class="ghost-btn" title="删除当前对话">🗑</button>
           </div>
         </div>
         <div id="messages" class="messages"></div>
+        <section id="quick-actions" class="quick-actions" aria-label="常用任务">
+          <div class="quick-actions-label">快速开始</div>
+          <button class="quick-action" type="button" data-prompt="分析当前工作区的项目结构，并告诉我下一步最值得做什么。"><span>◈</span> 分析工作区</button>
+          <button class="quick-action" type="button" data-prompt="检查当前模拟或计算任务的状态，并简洁汇报异常和下一步建议。"><span>↗</span> 检查任务状态</button>
+          <button class="quick-action" type="button" data-prompt="浏览工作区中最新的结果文件，建议最适合生成的可视化。"><span>◌</span> 生成可视化</button>
+          <button class="quick-action" type="button" data-prompt="为我整理一个今天的工作摘要：已完成、进行中和待办事项。"><span>▤</span> 整理工作摘要</button>
+        </section>
         <div class="panel-status chat-status">
           <div class="progress-track"><div id="chat-progress" class="progress-bar"></div></div>
           <span id="chat-status-text" class="status-text">就绪</span>

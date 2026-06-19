@@ -21,6 +21,9 @@
   const browseUpBtn = document.getElementById("browse-up");
   const atomRadiusSlider = document.getElementById("atom-radius-slider");
   const atomRadiusValue = document.getElementById("atom-radius-value");
+  const currentChatLabel = document.getElementById("current-chat-label");
+  const runtimeDot = document.getElementById("runtime-dot");
+  const runtimeSummary = document.getElementById("runtime-summary");
 
   let currentChatId = localStorage.getItem(CHAT_STORAGE_KEY) || "webchat:default";
   let chatRunning = false;
@@ -39,6 +42,27 @@
   let VISUAL_FILE_EXTS = new Set([
     "gif", "png", "jpg", "jpeg", "xyz", "dump", "lammpstrj", "lmp", "data", "csv",
   ]);
+
+  // ── Configure marked.js ──
+  if (typeof marked !== "undefined") {
+    marked.setOptions({
+      breaks: true,
+      gfm: true,
+      highlight: function (code, lang) {
+        if (lang && typeof hljs !== "undefined" && hljs.getLanguage(lang)) {
+          try {
+            return hljs.highlight(code, { language: lang }).value;
+          } catch (_) {}
+        }
+        if (typeof hljs !== "undefined") {
+          try {
+            return hljs.highlightAuto(code).value;
+          } catch (_) {}
+        }
+        return code;
+      },
+    });
+  }
 
   function vizStorageKey() {
     return VIZ_STORAGE_PREFIX + currentChatId;
@@ -61,24 +85,119 @@
   const _mediaCardsByPath = new Map();
   const _structureCardsByPath = new Map();
 
-  // 简单 Markdown 渲染（加粗、代码块、行内代码、斜体）
+  // 增强版 Markdown 渲染（使用 marked.js + highlight.js）
   function renderMarkdown(text) {
     if (!text) return "";
+    if (typeof marked !== "undefined") {
+      try {
+        let html = marked.parse(text);
+        // 为代码块添加复制按钮
+        html = html.replace(
+          /(<pre><code(?:\s[^>]*)?>)([\s\S]*?)(<\/code><\/pre>)/g,
+          function (_, open, code, close) {
+            const escaped = code
+              .replace(/&lt;/g, "<")
+              .replace(/&gt;/g, ">")
+              .replace(/&amp;/g, "&")
+              .replace(/&quot;/g, '"');
+            return (
+              '<div class="code-block-wrapper">' +
+              '<button class="copy-btn" title="复制代码" onclick="navigator.clipboard.writeText(this.dataset.code);this.textContent=\'✓\';setTimeout(()=>this.textContent=\'📋\',1500)" data-code="' +
+              escaped.replace(/"/g, "&quot;") +
+              '">📋</button>' +
+              open +
+              code +
+              close +
+              "</div>"
+            );
+          }
+        );
+        return html;
+      } catch (e) {
+        console.error("marked parse error:", e);
+      }
+    }
+    // Fallback: 简易渲染
     let html = text
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
-    // 代码块 ```
     html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>');
-    // 行内代码 `...`
     html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-    // 加粗 **...**
     html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    // 斜体 *...*
     html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-    // 换行
     html = html.replace(/\n/g, '<br>');
     return html;
+  }
+
+  // ── 工具调用卡片 ──
+  function createToolCallCard(toolName, toolArgs, resultPreview) {
+    const card = document.createElement("details");
+    card.className = "tool-call-card";
+    const summary = document.createElement("summary");
+    summary.className = "tool-call-summary";
+    summary.innerHTML = `<span class="tool-icon">🔧</span> <strong>${toolName}</strong>`;
+    card.appendChild(summary);
+
+    const body = document.createElement("div");
+    body.className = "tool-call-body";
+
+    // 参数区
+    if (toolArgs && Object.keys(toolArgs).length > 0) {
+      const argsDiv = document.createElement("div");
+      argsDiv.className = "tool-call-section";
+      argsDiv.innerHTML = '<div class="tool-call-label">📥 参数</div>';
+      const argsPre = document.createElement("pre");
+      argsPre.className = "tool-call-json";
+      try {
+        argsPre.textContent = JSON.stringify(toolArgs, null, 2);
+      } catch (_) {
+        argsPre.textContent = String(toolArgs);
+      }
+      argsDiv.appendChild(argsPre);
+      body.appendChild(argsDiv);
+    }
+
+    // 结果区
+    if (resultPreview !== undefined && resultPreview !== null) {
+      const resultDiv = document.createElement("div");
+      resultDiv.className = "tool-call-section";
+      resultDiv.innerHTML = '<div class="tool-call-label">📤 结果</div>';
+      const resultPre = document.createElement("pre");
+      resultPre.className = "tool-call-result";
+      const resultText = String(resultPreview);
+      resultPre.textContent = resultText.length > 2000
+        ? resultText.slice(0, 2000) + `\n... [truncated ${resultText.length - 2000} chars]`
+        : resultText;
+      resultDiv.appendChild(resultPre);
+      body.appendChild(resultDiv);
+    }
+
+    card.appendChild(body);
+    return card;
+  }
+
+  // ── 解析消息中的工具调用标记 ──
+  function parseToolCallsFromMessage(text) {
+    const calls = [];
+    // 匹配 [tool:name] 格式
+    const toolRegex = /\[(?:tool|🔧):([^\]]+)\]\s*([\s\S]*?)(?=\[(?:tool|🔧):|$)/g;
+    let match;
+    while ((match = toolRegex.exec(text)) !== null) {
+      const name = match[1].trim();
+      const body = match[2].trim();
+      if (body && body.length < 5000) {
+        calls.push({ name, args: null, result: body });
+      }
+    }
+    return calls;
+  }
+
+  function addToolCallCardsAfterMsg(container, text) {
+    const calls = parseToolCallsFromMessage(text);
+    calls.forEach((c) => {
+      container.appendChild(createToolCallCard(c.name, null, c.result));
+    });
   }
 
   function addMsg(role, text) {
@@ -86,6 +205,9 @@
     d.className = role;
     if (role === "agent" || role === "system") {
       d.innerHTML = renderMarkdown(text);
+      if (role === "agent") {
+        addToolCallCardsAfterMsg(d, text);
+      }
     } else {
       d.textContent = text;
     }
@@ -841,6 +963,38 @@
     });
   }
 
+  function updateCurrentChatLabel() {
+    if (!currentChatLabel) return;
+    currentChatLabel.textContent = currentChatId.replace(/^webchat:/, "");
+  }
+
+  function compactNumber(value) {
+    const n = Number(value || 0);
+    if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+    return String(n);
+  }
+
+  async function refreshRuntimeStats() {
+    if (!runtimeSummary || !runtimeDot) return;
+    try {
+      const response = await fetch("/api/stats");
+      if (!response.ok) throw new Error("stats unavailable");
+      const data = await response.json();
+      const stats = data.agent || {};
+      const runs = Number(stats.total_runs || 0);
+      const tokens = Number(stats.total_tokens || 0);
+      const errorRate = Number(stats.error_rate || 0);
+      runtimeDot.classList.toggle("degraded", errorRate > 0.1);
+      runtimeSummary.textContent = runs
+        ? `${compactNumber(runs)} 次运行 · ${compactNumber(tokens)} tokens`
+        : "系统就绪，等待任务";
+    } catch (_) {
+      runtimeDot.classList.add("offline");
+      runtimeSummary.textContent = "运行状态暂不可用";
+    }
+  }
+
   async function loadSidebar() {
     const r = await fetch("/api/conversations");
     const data = await r.json();
@@ -881,7 +1035,14 @@
       if (m.role === "system") return;
       if (m.role === "tool") { addMsg("system", m.content || ""); return; }
       if (m.role === "user") addMsg("user", m.content || "");
-      else if (m.role === "assistant") addMsg("agent", m.content || "");
+      else if (m.role === "assistant") {
+        const d = document.createElement("div");
+        d.className = "agent";
+        const content = m.content || "";
+        d.innerHTML = renderMarkdown(content);
+        addToolCallCardsAfterMsg(d, content);
+        msgs.appendChild(d);
+      }
     });
     msgs.scrollTop = msgs.scrollHeight;
   }
@@ -889,6 +1050,7 @@
   async function selectChat(chatId) {
     currentChatId = chatId;
     localStorage.setItem(CHAT_STORAGE_KEY, currentChatId);
+    updateCurrentChatLabel();
     setActiveInSidebar();
     await loadHistory();
     await restoreVizState();
@@ -919,11 +1081,21 @@
     if (!text || chatRunning) return;
     addMsg("user", text);
     inp.value = "";
-    inp.style.height = "auto";  // 重置 textarea 高度
+    inp.style.height = "auto";
     const agDiv = document.createElement("div");
     agDiv.className = "agent";
+    // 思考动画
+    const thinkingEl = document.createElement("div");
+    thinkingEl.className = "agent-thinking";
+    thinkingEl.innerHTML = '<span>思考中</span><span class="thinking-dot"></span><span class="thinking-dot"></span><span class="thinking-dot"></span>';
+    agDiv.appendChild(thinkingEl);
     msgs.appendChild(agDiv);
+    msgs.scrollTop = msgs.scrollHeight;
     setChatProgress(true, "等待响应…");
+
+    let rawContent = "";
+    let firstContent = false;
+
     try {
       const resp = await fetch("/api/chat", {
         method: "POST",
@@ -946,30 +1118,63 @@
             } else {
               setChatProgress(true, `Step ${p.current}`);
             }
-          } else if (payload.viz) handleVizEvent(payload);
-          else if (payload.delta) agDiv.textContent += payload.delta;
-          else if (payload.done) {
+          } else if (payload.viz) {
+            handleVizEvent(payload);
+          } else if (payload.delta) {
+            if (!firstContent) {
+              if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
+              firstContent = true;
+            }
+            rawContent += payload.delta;
+            // 流式渲染：使用 marked 增量渲染
+            if (typeof marked !== "undefined") {
+              agDiv.innerHTML = renderMarkdown(rawContent) +
+                '<span class="streaming-cursor">▊</span>';
+            } else {
+              agDiv.textContent = rawContent;
+            }
+            msgs.scrollTop = msgs.scrollHeight;
+          } else if (payload.done) {
+            if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
             setChatProgress(false);
+            // 最终渲染（去掉光标）
+            if (rawContent.trim() && typeof marked !== "undefined") {
+              agDiv.innerHTML = renderMarkdown(rawContent);
+              addToolCallCardsAfterMsg(agDiv, rawContent);
+            } else {
+              agDiv.textContent = rawContent;
+            }
             msgs.scrollTop = msgs.scrollHeight;
             refreshFileList();
           }
         });
       }
+      // 兜底：处理 buffer 剩余数据
       if (buffer.trim()) {
         parseSseBuffer(buffer + "\n", (payload) => {
           if (payload.progress) {
             const p = payload.progress;
-            if (p.total) {
-              const pct = Math.round((p.current / p.total) * 100);
-              setChatProgress(true, `Step ${p.current} / ${p.total} (${pct}%)`, pct);
-            } else {
-              setChatProgress(true, `Step ${p.current}`);
-            }
+            if (p.total) setChatProgress(true, `Step ${p.current} / ${p.total}`, Math.round((p.current / p.total) * 100));
+            else setChatProgress(true, `Step ${p.current}`);
           } else if (payload.viz) handleVizEvent(payload);
-          else if (payload.delta) agDiv.textContent += payload.delta;
+          else if (payload.delta) {
+            if (!firstContent) { if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove(); firstContent = true; }
+            rawContent += payload.delta;
+          }
         });
       }
+      // 最终渲染
+      if (!firstContent && thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
+      if (rawContent.trim()) {
+        if (typeof marked !== "undefined") {
+          agDiv.innerHTML = renderMarkdown(rawContent);
+          addToolCallCardsAfterMsg(agDiv, rawContent);
+        } else {
+          agDiv.textContent = rawContent;
+        }
+      }
     } catch (e) {
+      if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
       agDiv.textContent = "Error: " + e.message;
       setChatProgress(false);
     }
@@ -978,6 +1183,35 @@
   }
 
   document.getElementById("new-chat").addEventListener("click", createNewChat);
+
+  document.querySelectorAll(".quick-action").forEach((button) => {
+    button.addEventListener("click", () => {
+      inp.value = button.dataset.prompt || "";
+      inp.dispatchEvent(new Event("input"));
+      inp.focus();
+    });
+  });
+
+  // 分叉对话
+  document.getElementById("btn-fork").addEventListener("click", async () => {
+    if (!confirm("从当前对话末尾分叉（创建分支）？新对话将保留当前所有消息。")) return;
+    try {
+      const resp = await fetch(`/api/conversations/${encodeURIComponent(currentChatId)}/fork`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ at_index: -1 }),
+      });
+      const data = await resp.json();
+      if (data.ok && data.chat_id) {
+        await selectChat(data.chat_id);
+        await loadSidebar();
+      } else {
+        alert("分叉失败: " + (data.error || "未知错误"));
+      }
+    } catch (e) {
+      alert("分叉失败: " + e.message);
+    }
+  });
 
   // 导出对话
   document.getElementById("btn-export").addEventListener("click", () => {
@@ -1057,10 +1291,14 @@
       currentChatId = list[0].chat_id;
       localStorage.setItem(CHAT_STORAGE_KEY, currentChatId);
     }
+    updateCurrentChatLabel();
+    await refreshRuntimeStats();
     setActiveInSidebar();
     await loadHistory();
     await restoreVizState();
   }
 
   init();
+  refreshRuntimeStats();
+  window.setInterval(refreshRuntimeStats, 30000);
 })();

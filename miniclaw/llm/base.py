@@ -11,6 +11,7 @@ class LLMMessage:
     tool_call_id: Optional[str] = None       # tool 消息的 call_id
     tool_calls: Optional[List[Dict]] = None  # assistant 消息中的 tool_calls
     name: Optional[str] = None               # 工具名
+    reasoning_content: Optional[str] = None  # DeepSeek thinking mode 的推理内容（必须回传）
 
 
 @dataclass
@@ -21,6 +22,7 @@ class LLMResponse:
     finish_reason: str = "stop"         # stop | tool_calls | length
     usage: Dict[str, int] = field(default_factory=dict)  # {"prompt_tokens": N, "completion_tokens": M}
     raw_response: Any = None            # 原始 API 响应（调试用）
+    reasoning_content: Optional[str] = None  # DeepSeek thinking mode 推理过程（需回传）
 
 
 @dataclass
@@ -30,6 +32,7 @@ class LLMStreamChunk:
     delta_tool_calls: List[Dict] = field(default_factory=list)
     finish_reason: Optional[str] = None
     usage: Dict[str, int] = field(default_factory=dict)
+    reasoning_content: Optional[str] = None  # DeepSeek thinking mode
 
 
 class BaseLLMProvider(ABC):

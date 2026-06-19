@@ -69,6 +69,16 @@ class WebChatAdapter(BaseChannelAdapter):
                 "skip_dir_names": sorted(SKIP_DIR_NAMES),
             }
 
+        @app.get("/api/stats")
+        async def get_stats():
+            """返回 Agent 运行统计"""
+            from ..stats import agent_stats as stats_tracker
+            from ..hooks import hook_system as hs
+            return {
+                "agent": stats_tracker.summary(),
+                "hooks": hs.list_hooks(),
+            }
+
         @app.get("/api/files")
         async def list_files(work_dir: str = ""):
             return list_workspace_files(work_dir)
@@ -93,6 +103,57 @@ class WebChatAdapter(BaseChannelAdapter):
             session = adapter.session_manager.get_or_create(chat_id, "webchat", "local")
             await adapter.session_manager.save(session)
             return {"chat_id": chat_id}
+
+        @app.post("/api/conversations/{chat_id}/fork")
+        async def fork_conversation(chat_id: str, request: Request):
+            """
+            从指定消息索引处分叉对话。
+
+            Body (JSON):
+              - at_index (int, optional): 从此索引处截断并分叉。
+                0 = fork 只保留 system prompt.
+                -1 (默认) = fork 整个对话.
+
+            返回新的 chat_id，新会话包含原会话到 at_index 为止的所有消息。
+            """
+            if not adapter.session_manager:
+                return {"ok": False, "error": "session_manager not available"}
+
+            body = {}
+            try:
+                body = await request.json()
+            except Exception:
+                pass
+            at_index = body.get("at_index", -1)
+
+            src = await adapter.session_manager.resolve_session(chat_id)
+            if not src:
+                return {"ok": False, "error": f"Source conversation not found: {chat_id}"}
+
+            # 创建新会话
+            new_chat_id = f"webchat:{uuid.uuid4().hex[:10]}"
+            new_session = adapter.session_manager.get_or_create(new_chat_id, "webchat", "local")
+
+            # 复制消息
+            if at_index >= 0:
+                new_session.messages = list(src.messages[:at_index])
+            else:
+                new_session.messages = list(src.messages)
+
+            # 复制 metadata
+            new_session.metadata = dict(src.metadata)
+            new_session.metadata["forked_from"] = chat_id
+            new_session.metadata["forked_at_index"] = at_index
+            new_session.metadata["total_tokens"] = 0  # 重置 token 计数
+
+            await adapter.session_manager.save(new_session)
+            logger.info("Forked conversation %s → %s (at index %s)", chat_id, new_chat_id, at_index)
+            return {
+                "ok": True,
+                "chat_id": new_chat_id,
+                "forked_from": chat_id,
+                "message_count": len(new_session.messages),
+            }
 
         @app.delete("/api/conversations/{chat_id}")
         async def delete_conversation(chat_id: str):

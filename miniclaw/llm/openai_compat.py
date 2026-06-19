@@ -11,7 +11,7 @@ class OpenAICompatProvider(BaseLLMProvider):
         self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
     
     def _to_openai_messages(self, messages: List[LLMMessage]) -> List[Dict]:
-        """将内部的 LLMMessage 转为 OpenAI API 格式"""
+        """将内部的 LLMMessage 转为 OpenAI API 格式（包含 reasoning_content 回传）"""
         result = []
         for m in messages:
             msg = {"role": m.role, "content": m.content}
@@ -21,6 +21,9 @@ class OpenAICompatProvider(BaseLLMProvider):
                 msg["tool_call_id"] = m.tool_call_id
             if m.name:
                 msg["name"] = m.name
+            # DeepSeek thinking mode: 必须把 reasoning_content 回传给 API
+            if m.reasoning_content:
+                msg["reasoning_content"] = m.reasoning_content
             result.append(msg)
         return result
     
@@ -43,7 +46,10 @@ class OpenAICompatProvider(BaseLLMProvider):
         
         resp = await self.client.chat.completions.create(**kwargs_req)
         choice = resp.choices[0]
-        
+
+        # 捕获 DeepSeek thinking mode 的 reasoning_content
+        reasoning = getattr(choice.message, "reasoning_content", None) or None
+
         return LLMResponse(
             content=choice.message.content or "",
             tool_calls=[
@@ -60,6 +66,7 @@ class OpenAICompatProvider(BaseLLMProvider):
                 "completion_tokens": resp.usage.completion_tokens if resp.usage else 0,
             },
             raw_response=resp,
+            reasoning_content=reasoning,
         )
     
     async def chat_stream(
@@ -88,14 +95,20 @@ class OpenAICompatProvider(BaseLLMProvider):
             kwargs_req.pop("stream_options", None)
             stream = await self.client.chat.completions.create(**kwargs_req)
         
-        # 流式 tool_calls 需要累积 delta（OpenAI 的 tool_calls 是增量返回的）
+        # 流式 tool_calls + reasoning_content 需要累积 delta
         accumulated_tool_calls = {}
-        
+        accumulated_reasoning = ""
+
         async for chunk in stream:
             delta = chunk.choices[0].delta if chunk.choices else None
             if not delta:
                 continue
-            
+
+            # 捕获 reasoning_content (DeepSeek thinking mode 流式)
+            reasoning_delta = getattr(delta, "reasoning_content", None) or ""
+            if reasoning_delta:
+                accumulated_reasoning += reasoning_delta
+
             tool_calls_delta = []
             if delta.tool_calls:
                 for tc_delta in delta.tool_calls:
@@ -113,7 +126,7 @@ class OpenAICompatProvider(BaseLLMProvider):
                             accumulated_tool_calls[idx]["function"]["name"] += tc_delta.function.name
                         if tc_delta.function.arguments:
                             accumulated_tool_calls[idx]["function"]["arguments"] += tc_delta.function.arguments
-            
+
             usage = {}
             if getattr(chunk, "usage", None):
                 usage = {
@@ -124,6 +137,7 @@ class OpenAICompatProvider(BaseLLMProvider):
                 delta_content=delta.content or "",
                 finish_reason=chunk.choices[0].finish_reason,
                 usage=usage,
+                reasoning_content=accumulated_reasoning if accumulated_reasoning else None,
             )
         # 流式结束后，若有工具调用，一次性抛出
         if accumulated_tool_calls:
@@ -132,6 +146,7 @@ class OpenAICompatProvider(BaseLLMProvider):
                 delta_content="",
                 delta_tool_calls=final_tool_calls,
                 finish_reason="tool_calls",
+                reasoning_content=accumulated_reasoning if accumulated_reasoning else None,
             )
     
     def supports_tools(self) -> bool:

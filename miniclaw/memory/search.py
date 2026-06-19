@@ -1,37 +1,24 @@
 """
-memory/search.py — 记忆检索（关键词 + 语义向量 + TTL 缓存）
+memory/search.py — 记忆检索（关键词 + 语义向量 + LRU 缓存）
 """
 import re
 import time
-import threading
 from pathlib import Path
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, List, Tuple, Optional
 from ..config import WORKSPACE_DIR
 from ..logger import get_logger
+from .lru_cache import LRUCache
 
 logger = get_logger(__name__)
 
-# ── TTL 缓存 ────────────────────────────────────────────
-_CACHE_TTL_SEC = 30.0  # 30 秒缓存
-
-@dataclass
-class _CacheEntry:
-    results: List[Tuple[Path, float, str]]
-    timestamp: float = field(default_factory=time.time)
-    fingerprint: Tuple[Any, ...] = ()
-
-    def is_fresh(self) -> bool:
-        return (time.time() - self.timestamp) < _CACHE_TTL_SEC
-
-_cache: Dict[str, _CacheEntry] = {}
-_cache_lock = threading.Lock()
+# ── LRU 缓存（替代旧 dict 实现）─────────────────────────
+_search_cache = LRUCache[List[Tuple[str, float, str]]](max_size=256, ttl_sec=30.0)
 
 
-def _memory_fingerprint() -> Tuple[Any, ...]:
+def _memory_fingerprint() -> tuple:
     """基于记忆文件 mtime/size 生成指纹，变更时缓存失效。"""
     memory_dir = WORKSPACE_DIR / "memory"
-    parts: List[Any] = []
+    parts: list = []
     mem = WORKSPACE_DIR / "MEMORY.md"
     if mem.exists():
         st = mem.stat()
@@ -44,22 +31,19 @@ def _memory_fingerprint() -> Tuple[Any, ...]:
 
 
 def _get_cached(query: str) -> Optional[List[Tuple[Path, float, str]]]:
+    """从 LRU 缓存中获取，自动处理 TTL 和指纹失效。"""
     fp = _memory_fingerprint()
-    with _cache_lock:
-        entry = _cache.get(query)
-        if entry and entry.is_fresh() and entry.fingerprint == fp:
-            return entry.results
+    cached = _search_cache.get(query, fingerprint=fp)
+    if cached is not None:
+        return [(Path(p), s, t) for p, s, t in cached]
     return None
 
 
 def _set_cache(query: str, results: List[Tuple[Path, float, str]]) -> None:
+    """存入 LRU 缓存（自动淘汰旧项）。"""
     fp = _memory_fingerprint()
-    with _cache_lock:
-        _cache[query] = _CacheEntry(results=results, fingerprint=fp)
-        # 防止缓存无限增长：保留最近 256 条
-        while len(_cache) > 256:
-            oldest = min(_cache, key=lambda k: _cache[k].timestamp)
-            del _cache[oldest]
+    serializable = [(str(p), s, t) for p, s, t in results]
+    _search_cache.set(query, serializable, fingerprint=fp)
 
 
 def keyword_search(query: str, max_results: int = 10) -> List[Tuple[Path, float, str]]:

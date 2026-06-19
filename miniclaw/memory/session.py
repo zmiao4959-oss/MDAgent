@@ -50,6 +50,7 @@ class Session:
                     "tool_call_id": m.tool_call_id,
                     "tool_calls": m.tool_calls,
                     "name": m.name,
+                    "reasoning_content": m.reasoning_content,
                 }
                 for m in self.messages
             ],
@@ -75,6 +76,7 @@ class Session:
                 tool_call_id=md.get("tool_call_id"),
                 tool_calls=md.get("tool_calls"),
                 name=md.get("name"),
+                reasoning_content=md.get("reasoning_content"),
             ))
         return s
 
@@ -243,19 +245,90 @@ class SessionManager:
 
     async def compact(self, session: Session, llm_router: LLMRouter) -> None:
         """
-        上下文压缩：用 LLM 总结旧消息，保留最近 N 条完整消息
-        
-        这是 OpenClaw 的 compaction 机制的精髓：
-        当 token 数接近限制时，将早期消息压缩为摘要，避免丢失关键信息
+        多层上下文压缩（inspired by Claude Code's 5-layer compaction pipeline）:
+          Layer 1 — Budget Reduction: 每条消息截断到合理长度
+          Layer 2 — Snip: 裁剪旧历史（非 LLM，最便宜）
+          Layer 3 — Full Compact: LLM 总结（最贵，最后手段）
+
+        只在 token 估算超过阈值时才触发，逐步升级。
         """
-        keep = config.agent.compaction_keep_messages
-        if len(session.messages) <= keep:
+        if len(session.messages) <= config.agent.compaction_keep_messages:
             return
-        
-        # 取要压缩的消息 + 最新几条消息
+
+        keep = config.agent.compaction_keep_messages
+        threshold = config.agent.max_context_tokens
+
+        # ── Layer 1: Budget Reduction ──
+        # 对每条旧消息做长度裁剪，避免单条消息占据过多 token
+        budget_cut = 0
+        for i, m in enumerate(session.messages[:-keep]):
+            if m.role == "tool":
+                max_len = 2000  # 工具结果最多保留 2000 字符
+            elif m.role == "assistant":
+                max_len = 4000  # assistant 消息最多 4000 字符
+            else:
+                max_len = 2000  # user 消息最多 2000 字符
+            if len(m.content or "") > max_len:
+                truncated = (m.content or "")[:max_len] + f"\n...[truncated {len(m.content) - max_len} chars]..."
+                session.messages[i] = LLMMessage(
+                    role=m.role,
+                    content=truncated,
+                    tool_call_id=m.tool_call_id,
+                    tool_calls=m.tool_calls,
+                    name=m.name,
+                )
+                budget_cut += 1
+
+        if budget_cut:
+            logger.debug("Layer 1 Budget Reduction: truncated %s messages", budget_cut)
+
+        # 预算削减后重新估算
+        if session.estimate_tokens() < threshold * 0.85:
+            return  # 削减后 token 够用，无需进一步压缩
+
+        # ── Layer 2: Snip ──
+        # 去掉最老的消息（保留 keep 条最新 + system 摘要前缀）
+        total = len(session.messages)
+        if total > keep * 3:
+            # 只保留中间关键消息 + 最新 keep 条
+            snip_count = total - keep * 2
+            snipped = session.messages[:snip_count]
+            recent = session.messages[snip_count:]
+
+            # 从被裁剪的消息中提取关键信息（非 LLM，仅规则）
+            key_info: list[str] = []
+            for m in snipped:
+                if m.role == "tool" and m.name:
+                    result_preview = (m.content or "")[:200]
+                    if "Error" in result_preview or "error" in result_preview:
+                        key_info.append(f"⚠️ 工具 '{m.name}' 执行出错: {result_preview[:100]}")
+                elif m.role == "assistant" and m.tool_calls:
+                    tool_names = [
+                        tc.get("function", {}).get("name", "?")
+                        for tc in (m.tool_calls or [])
+                    ]
+                    key_info.append(f"🔧 调用了: {', '.join(tool_names)}")
+                elif m.role == "user" and m.content:
+                    key_info.append(f"👤 用户: {(m.content or '')[:100]}")
+
+            # 裁剪后的摘要头
+            snipped_summary = (
+                f"[上下文裁剪: 省略了 {len(snipped)} 条早期消息]\n"
+                + "\n".join(key_info[-20:])  # 最多保留 20 条关键信息
+            )
+            session.messages = [
+                LLMMessage(role="system", content=snipped_summary)
+            ] + recent
+            logger.info("Layer 2 Snip: removed %s messages, kept %s", len(snipped), len(recent))
+
+        if session.estimate_tokens() < threshold * 0.85:
+            return
+
+        # ── Layer 3: Full LLM Compact ──
+        # 最昂贵的手段：调用 LLM 生成摘要
         to_compress = session.messages[:-keep]
         recent = session.messages[-keep:]
-        
+
         def _line_for_summary(m: LLMMessage) -> str:
             if m.role == "tool":
                 name = m.name or "tool"
@@ -271,7 +344,6 @@ class SessionManager:
             body = (m.content or "")[:400]
             return f"[{m.role}] {body}"
 
-        # 调用 LLM 生成摘要
         summary_prompt = LLMMessage(
             role="user",
             content=(
@@ -284,13 +356,15 @@ class SessionManager:
             LLMMessage(role="system", content="你是一个对话摘要器。只需输出摘要，不要添加额外评论。"),
             summary_prompt,
         ]
-        
+
         try:
             resp = await llm_router.chat(summary_messages, temperature=0.3, max_tokens=1000)
             # 替换旧消息为一条摘要
             session.messages = [
                 LLMMessage(role="system", content=f"[对话历史摘要]\n{resp.content}")
             ] + recent
-            logger.info(f"Compacted session {session.session_id}: {len(to_compress)}→1 summary")
+            logger.info("Layer 3 Full Compact: %s→1 summary (session %s)", len(to_compress), session.session_id)
         except Exception as e:
-            logger.warning(f"Compaction failed: {e}")
+            logger.warning("Compaction failed: %s — falling back to snip", e)
+            # 兜底：直接裁剪
+            session.messages = session.messages[-keep * 2:]

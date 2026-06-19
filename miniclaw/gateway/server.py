@@ -3,6 +3,7 @@ gateway/server.py — WebSocket Gateway 服务器
 """
 import json
 import asyncio
+import uuid
 import websockets
 from typing import Dict, Set
 from ..config import config
@@ -57,8 +58,8 @@ class GatewayServer:
                         "type": "res", "id": msg.get("id"),
                         "ok": True, "payload": {
                             "status": "connected",
-                            "version": "0.1.0",
-                            "features": {"methods": ["agent", "send", "status"]},
+                            "version": "0.2.0",
+                            "features": {"methods": ["agent", "send", "status", "fork"]},
                         },
                     }))
                 else:
@@ -116,6 +117,8 @@ class GatewayServer:
                 except Exception:
                     pass
 
+                from ..stats import agent_stats as stats_tracker
+
                 await ws.send(json.dumps({
                     "type": "res", "id": req_id, "ok": True,
                     "payload": {
@@ -125,9 +128,38 @@ class GatewayServer:
                         "memory_mb": round(mem_mb, 1),
                         "cpu_percent": cpu,
                         "timestamp": time.time(),
+                        "stats": stats_tracker.summary(),
                     },
                 }))
             
+            elif method == "fork":
+                # 分叉对话
+                src_chat_id = params.get("chat_id", "")
+                at_index = params.get("at_index", -1)
+                src = await self.agent.sessions.resolve_session(src_chat_id)
+                if not src:
+                    await ws.send(json.dumps({
+                        "type": "res", "id": req_id, "ok": False,
+                        "error": f"Source conversation not found: {src_chat_id}",
+                    }))
+                    return
+                new_chat_id = f"{src.metadata.get('channel', 'ws')}:fork:{uuid.uuid4().hex[:10]}"
+                new_session = self.agent.sessions.get_or_create(new_chat_id,
+                    src.metadata.get("channel", "websocket"),
+                    src.metadata.get("account_id", ""))
+                if at_index >= 0:
+                    new_session.messages = list(src.messages[:at_index])
+                else:
+                    new_session.messages = list(src.messages)
+                new_session.metadata = dict(src.metadata)
+                new_session.metadata["forked_from"] = src_chat_id
+                new_session.metadata["total_tokens"] = 0
+                await self.agent.sessions.save(new_session)
+                await ws.send(json.dumps({
+                    "type": "res", "id": req_id, "ok": True,
+                    "payload": {"chat_id": new_chat_id, "forked_from": src_chat_id},
+                }))
+
             elif method == "send":
                 # 发送消息到指定 chat_id 的会话
                 from ..agent import AgentContext

@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 from .config import config, WORKSPACE_DIR
 from .logger import get_logger
-from .llm.base import LLMMessage, LLMResponse
+from .llm.base import LLMMessage, LLMResponse, LLMStreamChunk
 from .llm.router import LLMRouter
 from .tools import ensure_tools_loaded
 from .tools.registry import tool_registry
@@ -20,6 +20,8 @@ from .memory.session import Session, SessionManager
 from .memory.search import keyword_search
 from .skills.loader import SkillLoader
 from .viz import AutoVisualizer, snapshot_workspace
+from .hooks import hook_system, HookContext
+from .stats import agent_stats, RunStats
 
 logger = get_logger(__name__)
 
@@ -57,6 +59,7 @@ class Agent:
         self._skill_loader = SkillLoader()
         self._system_prompt_cache: Optional[str] = None
         self._system_prompt_cache_key: Optional[Tuple[Any, ...]] = None
+        self._current_run: Optional[RunStats] = None
 
     def _system_prompt_fingerprint(self) -> Tuple[Any, ...]:
         """根据文件 mtime 判断系统提示是否需要重建。"""
@@ -156,6 +159,33 @@ class Agent:
                 content=f"Error: Invalid JSON arguments: {tc['function']['arguments']}",
             )
 
+        # ── 幂等性追踪: 同一轮中相同工具+相同参数跳过重复执行 ──
+        idem_key = context.metadata.setdefault("_tool_idem_keys", set())
+        arg_fp = (func_name, json.dumps(arguments, sort_keys=True, default=str))
+        if arg_fp in idem_key:
+            logger.info("Skipping duplicate tool call: %s", func_name)
+            return LLMMessage(
+                role="tool",
+                tool_call_id=tc["id"],
+                content="[Skipped: duplicate tool call with identical arguments in this round]",
+                name=func_name,
+            )
+        idem_key.add(arg_fp)
+
+        # ── before_tool hook (可阻止工具执行) ──
+        hook_ctx = await hook_system.fire("before_tool",
+            chat_id=context.chat_id,
+            channel=context.channel,
+            data={"tool_name": func_name, "arguments": arguments},
+        )
+        if hook_ctx.prevent:
+            return LLMMessage(
+                role="tool",
+                tool_call_id=tc["id"],
+                content=f"[Tool '{func_name}' blocked by hook: {hook_ctx.prevent_reason}]",
+                name=func_name,
+            )
+
         # 为 execute 工具注入 stdout 逐行回调，用于 LAMMPS 进度上报
         on_progress: Optional[ProgressCallback] = context.metadata.get("_on_progress")
         if on_progress and func_name == "execute":
@@ -215,6 +245,14 @@ class Agent:
         }
         logger.info("Executing tool: %s(%s)", func_name, arguments)
         result = await tool_registry.execute(func_name, arguments, exec_context)
+
+        # ── after_tool hook ──
+        await hook_system.fire("after_tool",
+            chat_id=context.chat_id,
+            channel=context.channel,
+            data={"tool_name": func_name, "arguments": arguments, "result": result},
+        )
+
         return LLMMessage(
             role="tool",
             tool_call_id=tc["id"],
@@ -244,9 +282,16 @@ class Agent:
         stream: bool,
         on_stream_chunk: Optional[StreamChunkCallback],
     ) -> LLMResponse:
+        # ── before_llm hook ──
+        await hook_system.fire("before_llm",
+            data={"message_count": len(messages), "tool_count": len(tools) if tools else 0},
+        )
+
         if stream and on_stream_chunk:
             full_content = ""
-            stream_tool_calls: List[Dict] = []
+            # 流式工具调用累积 (类似 openai_compat.py 的实现)
+            accumulated_tool_calls: Dict[int, Dict] = {}
+            stream_reasoning: Optional[str] = None
             stream_finish: Optional[str] = None
             usage: Dict[str, int] = {}
             async for chunk in self.llm.chat_stream(
@@ -255,29 +300,69 @@ class Agent:
                 temperature=config.llm.temperature,
                 max_tokens=config.llm.max_tokens,
             ):
-                full_content += chunk.delta_content or ""
+                # ── 处理 delta 文本内容 ──
                 if chunk.delta_content:
+                    full_content += chunk.delta_content
                     await on_stream_chunk(chunk.delta_content)
+
+                # ── 捕获 reasoning_content (DeepSeek thinking) ──
+                if chunk.reasoning_content:
+                    stream_reasoning = chunk.reasoning_content
+
+                # ── 处理增量 tool_calls ──
                 if chunk.delta_tool_calls:
-                    stream_tool_calls = chunk.delta_tool_calls
+                    for tc_delta in chunk.delta_tool_calls:
+                        idx = tc_delta.get("index", 0)
+                        if idx not in accumulated_tool_calls:
+                            accumulated_tool_calls[idx] = {
+                                "id": tc_delta.get("id", ""),
+                                "type": "function",
+                                "function": {"name": "", "arguments": ""},
+                            }
+                        acc = accumulated_tool_calls[idx]
+                        if tc_delta.get("id"):
+                            acc["id"] = tc_delta["id"]
+                        fn = tc_delta.get("function") or {}
+                        if fn.get("name"):
+                            acc["function"]["name"] += fn["name"]
+                        if fn.get("arguments"):
+                            acc["function"]["arguments"] += fn["arguments"]
+
                 if chunk.finish_reason:
                     stream_finish = chunk.finish_reason
                 if chunk.usage:
                     usage = chunk.usage
-            return LLMResponse(
+
+            # 构建最终的 tool_calls 列表
+            final_tool_calls = list(accumulated_tool_calls.values()) if accumulated_tool_calls else []
+
+            response = LLMResponse(
                 content=full_content,
-                tool_calls=stream_tool_calls,
+                tool_calls=final_tool_calls,
                 finish_reason=stream_finish or "stop",
                 usage=usage,
+                reasoning_content=stream_reasoning,
             )
-        response = await self.llm.chat(
-            messages,
-            tools,
-            temperature=config.llm.temperature,
-            max_tokens=config.llm.max_tokens,
+        else:
+            response = await self.llm.chat(
+                messages,
+                tools,
+                temperature=config.llm.temperature,
+                max_tokens=config.llm.max_tokens,
+            )
+            if on_stream_chunk and response.content:
+                await on_stream_chunk(response.content)
+
+        # ── after_llm hook ──
+        await hook_system.fire("after_llm",
+            data={
+                "finish_reason": response.finish_reason,
+                "has_tool_calls": bool(response.tool_calls),
+                "content_length": len(response.content),
+                "usage": response.usage,
+            },
         )
-        if on_stream_chunk and response.content:
-            await on_stream_chunk(response.content)
+
         return response
 
     def _should_stop_loop(self, response: LLMResponse) -> bool:
@@ -304,7 +389,11 @@ class Agent:
             messages, tools=None, stream=False, on_stream_chunk=on_stream_chunk
         )
         if response.content:
-            session.add_message(LLMMessage(role="assistant", content=response.content))
+            session.add_message(LLMMessage(
+                role="assistant",
+                content=response.content,
+                reasoning_content=response.reasoning_content,
+            ))
             return response.content
         return "已达到最大工具调用轮数，任务可能未完成，请简化需求后重试。"
 
@@ -317,10 +406,29 @@ class Agent:
     ) -> str:
         """
         核心方法：接收用户消息，运行 Agent Loop，返回最终回复
+
+        新增特性:
+          - before_agent / after_agent hooks
+          - 每轮后自动保存 session (checkpoint recovery)
+          - 单轮工具失败不终止整个循环
+          - 错误时触发 on_error hook
         """
         if on_progress:
             context.metadata["_on_progress"] = on_progress
         session = await self._resolve_session(context)
+
+        # ── Stats tracking ──
+        self._current_run = agent_stats.start_run(context.chat_id)
+
+        # ── before_agent hook ──
+        hook_ctx = await hook_system.fire("before_agent",
+            chat_id=context.chat_id,
+            channel=context.channel,
+            account_id=context.account_id,
+            data={"message": context.user_message},
+        )
+        if hook_ctx.prevent:
+            return f"[Agent blocked: {hook_ctx.prevent_reason}]"
 
         if context.user_message:
             prefix = self._memory_prefix(context.user_message)
@@ -352,6 +460,10 @@ class Agent:
                         session.session_id,
                         round_num,
                     )
+                    await hook_system.fire("on_compaction",
+                        chat_id=context.chat_id,
+                        data={"session_id": session.session_id, "round": round_num},
+                    )
                     await self.sessions.compact(session, self.llm)
                     messages = [
                         LLMMessage(role="system", content=system_prompt),
@@ -378,7 +490,11 @@ class Agent:
                 if self._should_stop_loop(response):
                     if response.content:
                         session.add_message(
-                            LLMMessage(role="assistant", content=response.content)
+                            LLMMessage(
+                                role="assistant",
+                                content=response.content,
+                                reasoning_content=response.reasoning_content,
+                            )
                         )
                     break
 
@@ -386,6 +502,7 @@ class Agent:
                     role="assistant",
                     content=response.content or "",
                     tool_calls=response.tool_calls,
+                    reasoning_content=response.reasoning_content,
                 )
                 session.add_message(assistant_msg)
                 messages.append(assistant_msg)
@@ -402,10 +519,14 @@ class Agent:
                     snap_after = snapshot_workspace()
                     await auto_viz.after_tool_round(snap_before, snap_after)
 
+                # ── 每轮后保存 session (checkpoint recovery) ──
+                await self.sessions.save(session)
+
                 logger.info(
-                    "Round %s: executed %s tool(s)",
+                    "Round %s: executed %s tool(s), tokens=%s",
                     round_num,
                     len(response.tool_calls),
+                    round_tokens,
                 )
             else:
                 hit_max_rounds = True
@@ -419,6 +540,20 @@ class Agent:
 
         except Exception:
             logger.exception("Agent loop failed for chat_id=%s", context.chat_id)
+            # ── on_error hook ──
+            import sys
+            err_msg = str(sys.exc_info()[1])
+            await hook_system.fire("on_error",
+                chat_id=context.chat_id,
+                channel=context.channel,
+                data={"error": err_msg, "round": round_num if 'round_num' in dir() else 0},
+            )
+            # ── Record error stats ──
+            if self._current_run:
+                self._current_run.error = err_msg
+                agent_stats.end_run(self._current_run)
+                self._current_run = None
+            # ── 错误时也要尽力保存 session ──
             await self.sessions.save(session)
             raise
 
@@ -437,6 +572,26 @@ class Agent:
                     break
             if not (final_response or "").strip():
                 final_response = "（模型未返回文本，可能仅执行了工具调用；请查看上文工具输出或重试。）"
+
+        # ── after_agent hook ──
+        await hook_system.fire("after_agent",
+            chat_id=context.chat_id,
+            channel=context.channel,
+            data={
+                "rounds": round_num if 'round_num' in dir() else 0,
+                "final_response_length": len(final_response),
+                "total_tokens": all_usage,
+                "session_id": session.session_id,
+            },
+        )
+
+        # ── Record stats ──
+        if self._current_run:
+            self._current_run.prompt_tokens = all_usage["prompt_tokens"]
+            self._current_run.completion_tokens = all_usage["completion_tokens"]
+            self._current_run.rounds = round_num if 'round_num' in dir() else 0
+            agent_stats.end_run(self._current_run)
+            self._current_run = None
 
         logger.info(
             "Agent run complete: %s messages, %s tokens",
