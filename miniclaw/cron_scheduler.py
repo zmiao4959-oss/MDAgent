@@ -4,9 +4,10 @@ cron_scheduler.py — Cron 定时任务调度器
 import asyncio
 from croniter import croniter
 from datetime import datetime
-from typing import Dict, Callable, Any
+from typing import Dict, Callable, Any, Optional
 from .agent import Agent, AgentContext
 from .logger import get_logger
+from .tools.message_tool import send_message_tool
 
 logger = get_logger(__name__)
 
@@ -36,6 +37,7 @@ class CronScheduler:
         self.agent = agent
         self.jobs: list[CronJob] = []
         self._task: asyncio.Task = None
+        self._last_fired: Dict[int, datetime] = {}
     
     def add_job(self, job: CronJob):
         self.jobs.append(job)
@@ -47,12 +49,26 @@ class CronScheduler:
         while True:
             now = datetime.now()
             for job in self.jobs:
-                cron = croniter(job.cron_expr, now)
-                prev_fire = cron.get_prev(datetime)
+                try:
+                    cron = croniter(job.cron_expr, now)
+                    prev_fire = cron.get_prev(datetime)
+                except (TypeError, ValueError) as error:
+                    logger.error("Invalid cron expression for '%s': %s", job.name, error)
+                    continue
                 
                 # 如果上次触发时间距离现在不到 60 秒，触发
-                if (now - prev_fire).total_seconds() < 60:
-                    await self._fire_job(job)
+                elapsed = (now - prev_fire).total_seconds()
+                job_key = id(job)
+                if 0 <= elapsed < 60 and self._last_fired.get(job_key) != prev_fire:
+                    # Mark before invoking the agent: duplicating a partially
+                    # completed background task is worse than a skipped poll.
+                    self._last_fired[job_key] = prev_fire
+                    try:
+                        await self._fire_job(job)
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception:
+                        logger.exception("Cron job '%s' failed", job.name)
             
             await asyncio.sleep(60)
     
@@ -69,4 +85,11 @@ class CronScheduler:
         # 如果指定了投递目标，主动发送结果
         if response and job.delivery_channel:
             logger.info(f"Cron '{job.name}' completed: {response[:100]}...")
+            result = await send_message_tool(
+                message=response,
+                channel=job.delivery_channel,
+                chat_id=job.delivery_to,
+            )
+            if result.startswith("Error:"):
+                logger.warning("Cron '%s' delivery failed: %s", job.name, result)
             # 在实际实现中，这里会调用 channel adapter 发送消息

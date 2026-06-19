@@ -16,6 +16,7 @@ from miniclaw.subagent import SubAgentManager
 from miniclaw.gateway.server import GatewayServer
 from miniclaw.channels.webchat import WebChatAdapter
 from miniclaw.tools import ensure_tools_loaded
+from miniclaw.tools.message_tool import register_send_callback, unregister_send_callback
 
 ensure_tools_loaded()
 
@@ -86,6 +87,9 @@ async def main():
             tg.set_message_handler(agent.process_message)
             adapters.append(tg)
 
+    for adapter in adapters:
+        register_send_callback(adapter.channel_name, adapter.send_message)
+
     channel_tasks = [
         asyncio.create_task(a.start(), name=f"channel-{a.channel_name}")
         for a in adapters
@@ -130,6 +134,7 @@ async def main():
     # 2. 通知各服务优雅退出
     for adapter in adapters:
         await adapter.stop()
+        unregister_send_callback(adapter.channel_name)
     await gateway.stop()
 
     # 3. 等待 WebChat / Gateway 等 server task 真正结束

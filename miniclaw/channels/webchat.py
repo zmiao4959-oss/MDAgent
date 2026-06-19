@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from ..agent import AgentContext
 from ..config import WORKSPACE_DIR
+from ..llm.base import LLMMessage
 from ..logger import get_logger
 from ..viz.constants import SKIP_DIR_NAMES, VISUAL_EXT
 from .base import BaseChannelAdapter
@@ -250,4 +251,13 @@ class WebChatAdapter(BaseChannelAdapter):
             self._uvicorn_server.should_exit = True
 
     async def send_message(self, chat_id: str, text: str, **kwargs):
-        pass
+        if not self.session_manager:
+            raise RuntimeError("WebChat session manager is not available")
+        target = chat_id or "default"
+        if not target.startswith("webchat:"):
+            target = f"webchat:{target}"
+        session = await self.session_manager.resolve_session(target)
+        if session is None:
+            session = self.session_manager.get_or_create(target, "webchat", "local")
+        session.add_message(LLMMessage(role="assistant", content=text))
+        await self.session_manager.save(session)

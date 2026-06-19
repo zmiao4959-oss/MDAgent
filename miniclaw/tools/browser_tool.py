@@ -3,7 +3,10 @@ tools/browser_tool.py — 浏览器快照（Playwright，可选依赖）
 """
 from __future__ import annotations
 
+import asyncio
+import ipaddress
 import re
+import socket
 from typing import Optional, Tuple
 from urllib.parse import urlparse
 
@@ -15,10 +18,12 @@ logger = get_logger(__name__)
 _browser = None
 _page = None
 _playwright = None
+_browser_lock = asyncio.Lock()
 
 MAX_BROWSER_CHARS = 50_000
 DEFAULT_BROWSER_CHARS = 10_000
 GOTO_TIMEOUT_MS = 20_000
+DNS_TIMEOUT_SEC = 5
 
 # 禁止访问内网/本机（降低 SSRF 风险）
 _BLOCKED_HOST_PATTERNS = (
@@ -30,6 +35,44 @@ _BLOCKED_HOST_PATTERNS = (
     re.compile(r"^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$"),
     re.compile(r"^\[::1\]$"),
 )
+
+
+def _is_blocked_ip(host: str) -> bool:
+    """Return whether a literal IP address must not be reached by the agent."""
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return not address.is_global
+
+
+async def _validate_public_dns(host: str) -> Optional[str]:
+    """Reject host names that resolve to a non-public address.
+
+    Blocking only URL spellings such as ``127.0.0.1`` is insufficient: a
+    public-looking hostname can resolve to loopback or an RFC1918 address.
+    Resolve off the event loop and require every result to be globally routable.
+    """
+    try:
+        infos = await asyncio.wait_for(
+            asyncio.get_running_loop().getaddrinfo(
+                host, None, type=socket.SOCK_STREAM
+            ),
+            timeout=DNS_TIMEOUT_SEC,
+        )
+    except asyncio.TimeoutError:
+        return f"Error: DNS lookup timed out for host {host!r}"
+    except socket.gaierror:
+        return f"Error: could not resolve host {host!r}"
+
+    addresses = {info[4][0] for info in infos}
+    blocked = sorted(address for address in addresses if _is_blocked_ip(address))
+    if blocked:
+        return (
+            f"Error: blocked host {host!r}; it resolves to non-public address(es): "
+            f"{', '.join(blocked)}"
+        )
+    return None
 
 
 def _validate_url(url: str) -> Tuple[Optional[str], Optional[str]]:
@@ -46,6 +89,10 @@ def _validate_url(url: str) -> Tuple[Optional[str], Optional[str]]:
         return None, f"Error: invalid URL (no host): {url}"
 
     host = parsed.hostname or ""
+    if _is_blocked_ip(host):
+        return None, (
+            f"Error: blocked host {host!r} (local/private addresses not allowed)"
+        )
     for pat in _BLOCKED_HOST_PATTERNS:
         if pat.match(host):
             return None, (
@@ -86,6 +133,23 @@ async def _reset_browser():
     _page = _browser = _playwright = None
 
 
+async def _guard_navigation(route, request) -> None:
+    """Abort navigation redirects that would cross into private networks."""
+    if not request.is_navigation_request():
+        await route.continue_()
+        return
+
+    _, err = _validate_url(request.url)
+    if err is None:
+        host = urlparse(request.url).hostname or ""
+        err = await _validate_public_dns(host)
+    if err:
+        logger.warning("Blocked browser navigation to %s: %s", request.url, err)
+        await route.abort("blockedbyclient")
+        return
+    await route.continue_()
+
+
 @tool_registry.register(
     name="browser_snapshot",
     description="Open an http(s) URL and return readable page text (Playwright).",
@@ -120,20 +184,37 @@ async def browser_snapshot_tool(url: str, maxChars: int = DEFAULT_BROWSER_CHARS,
     if err:
         return err
 
+    host = urlparse(safe_url).hostname or ""
+    dns_err = await _validate_public_dns(host)
+    if dns_err:
+        return dns_err
+
     try:
         max_chars = max(500, min(int(maxChars), MAX_BROWSER_CHARS))
     except (TypeError, ValueError):
         max_chars = DEFAULT_BROWSER_CHARS
 
-    try:
-        page = await _get_page()
-        await page.goto(safe_url, wait_until="domcontentloaded", timeout=GOTO_TIMEOUT_MS)
-        title = await page.title()
-        text = await page.inner_text("body")
-    except Exception as e:
-        logger.warning("browser_snapshot failed for %s: %s", safe_url, e)
-        await _reset_browser()
-        return f"Error browsing {url}: {e}"
+    # The page is intentionally reused to avoid a new browser for every tool
+    # call.  Serialise access so concurrent tool calls cannot navigate it away
+    # from each other, and keep the redirect guard installed only for this run.
+    async with _browser_lock:
+        page = None
+        try:
+            page = await _get_page()
+            await page.route("**/*", _guard_navigation)
+            await page.goto(safe_url, wait_until="domcontentloaded", timeout=GOTO_TIMEOUT_MS)
+            title = await page.title()
+            text = await page.inner_text("body")
+        except Exception as e:
+            logger.warning("browser_snapshot failed for %s: %s", safe_url, e)
+            await _reset_browser()
+            return f"Error browsing {url}: {e}"
+        finally:
+            if page is not None:
+                try:
+                    await page.unroute("**/*", _guard_navigation)
+                except Exception:
+                    pass
 
     if len(text) > max_chars:
         text = text[:max_chars] + f"\n... (truncated at {max_chars} chars)"

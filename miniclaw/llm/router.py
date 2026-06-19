@@ -43,7 +43,7 @@ class LLMRouter:
         for fb in (fallback_configs or []):
             self.providers.append(
                 OpenAICompatProvider(
-                    api_key=fb.api_key or "",
+                    api_key=fb.resolved_api_key,
                     base_url=fb.base_url,
                     model=fb.model,
                 )
@@ -85,12 +85,23 @@ class LLMRouter:
 
     async def chat_stream(self, messages, tools=None, temperature=0.7, max_tokens=4096):
         """流式调用（仅主 provider，降级自动 fallback 到非流式）"""
+        emitted_output = False
         try:
             async for chunk in self.providers[0].chat_stream(
                 messages, tools, temperature, max_tokens
             ):
+                # Once a client has received output, a non-streaming fallback
+                # would replay the response from the beginning and produce a
+                # confusing duplicated answer.  It is safer to surface the
+                # interrupted stream in that case.
+                emitted_output = emitted_output or bool(
+                    chunk.delta_content or chunk.delta_tool_calls
+                )
                 yield chunk
         except Exception as e:
+            if emitted_output:
+                logger.warning("Stream interrupted after yielding output: %s", e)
+                raise
             logger.warning("Stream failed (%s), falling back to non-streaming", e)
             response = await self.chat(messages, tools, temperature, max_tokens)
             yield LLMStreamChunk(

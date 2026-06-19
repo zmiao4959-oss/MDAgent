@@ -2,7 +2,7 @@ import os
 import yaml
 from pathlib import Path
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any
+from typing import Mapping, Optional, Dict, Any
 from dotenv import load_dotenv
 load_dotenv()  
 
@@ -17,6 +17,30 @@ load_dotenv()
 """
 WORKSPACE_DIR = Path(os.environ.get("MINICLAW_WORKSPACE", Path.home() / ".miniclaw" / "workspace"))
 WORKSPACE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def resolve_config_path(
+    workspace_dir: Path = WORKSPACE_DIR,
+    *,
+    environ: Optional[Mapping[str, str]] = None,
+) -> Path:
+    """Return the configuration file to load without creating one implicitly.
+
+    A user-specific config next to the workspace wins when it exists.  On a
+    fresh install, fall back to the example shipped with MiniClaw so that
+    ``python main.py`` uses the repository's documented defaults.  An explicit
+    ``MINICLAW_CONFIG`` always wins, which is useful for deployments and tests.
+    """
+    env = os.environ if environ is None else environ
+    explicit = env.get("MINICLAW_CONFIG")
+    if explicit:
+        return Path(explicit).expanduser()
+
+    user_config = workspace_dir.parent / "config.yaml"
+    if user_config.exists():
+        return user_config
+
+    return Path(__file__).resolve().with_name("config.yaml")
 
 #  YAML 是一种人类可读的数据序列化语言，常用来写项目配置（缩进表示层级，类似 JSON 但更简洁）
 def _load_yaml(path: Path) -> dict:
@@ -41,7 +65,13 @@ class LLMConfig:
     # 调用 obj.resolved_api_key 时，不需要加括号 ()，看起来就像在访问一个普通属性
     @property
     def resolved_api_key(self) -> str:
-        return self.api_key or os.environ.get("MINICLAW_API_KEY", "")
+        """Resolve an explicit key before provider-specific and shared env vars."""
+        provider_var = f"{self.provider.upper().replace('-', '_')}_API_KEY"
+        return (
+            self.api_key
+            or os.environ.get(provider_var, "")
+            or os.environ.get("MINICLAW_API_KEY", "")
+        )
 
 
 @dataclass
@@ -74,7 +104,7 @@ class Config:
     _instance = None
     
     def __init__(self, config_path: Optional[Path] = None):
-        self.config_path = config_path or WORKSPACE_DIR.parent / "config.yaml"
+        self.config_path = config_path or resolve_config_path()
         raw = _load_yaml(self.config_path)
         
         # 解析各子配置

@@ -27,6 +27,7 @@ class TelegramAdapter(BaseChannelAdapter):
             return
 
         app = Application.builder().token(self.bot_token).build()
+        self.bot = app.bot
         stop_event = asyncio.Event()
         self._stop_event = stop_event
         
@@ -77,11 +78,16 @@ class TelegramAdapter(BaseChannelAdapter):
                         await app.stop()
         finally:
             self._stop_event = None
+            self.bot = None
 
     async def stop(self):
         if self._stop_event and not self._stop_event.is_set():
             self._stop_event.set()
     
     async def send_message(self, chat_id: str, text: str, **kwargs):
-        # Telegram 消息在处理函数内部直接回复，这里留作主动推送备用
-        pass
+        if self.bot is None:
+            raise RuntimeError("Telegram adapter is not running")
+        target = str(chat_id or "").removeprefix("telegram:")
+        if not target:
+            raise ValueError("A Telegram chat ID is required")
+        await self.bot.send_message(chat_id=target, text=text)

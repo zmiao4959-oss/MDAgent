@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.codebase-memory/
+
+# Local runtime state and credentials
+.env
+.miniclaw/

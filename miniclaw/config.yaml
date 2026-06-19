@@ -9,7 +9,8 @@ llm:
     - provider: openai
       model: gpt-4o-mini
       base_url: https://api.openai.com/v1
-      api_key: 66666666666666
+      # Put this in MINICLAW_API_KEY (or a local, untracked config file).
+      api_key: ""
 
 gateway:
   host: 127.0.0.1
