@@ -53,25 +53,38 @@ class AutoVisualizer:
             return
 
         done = _viz_done_set(self.session)
+        dirty = False
         for path in diff_snapshots(before, after):
             kind = _classify_new_file(path)
             if not kind:
                 continue
             key = str(path.resolve())
+
+            # 文件被覆盖（同路径，mtime/size 变化）：允许重新推送
+            if key in done and key in before and before[key] != after.get(key):
+                done.discard(key)
+                dirty = True
+
             if key in done:
                 continue
 
             if kind == "structure":
-                _mark_viz_done(self.session, key)
+                done.add(key)
+                dirty = True
                 task = asyncio.create_task(self._render_structure(path))
                 self.pending.append(task)
             elif kind == "csv":
-                _mark_viz_done(self.session, key)
+                done.add(key)
+                dirty = True
                 await self._emit_media("csv", key)
             elif kind == "media":
-                _mark_viz_done(self.session, key)
+                done.add(key)
+                dirty = True
                 media_type = "gif" if path.suffix.lower() == ".gif" else "image"
                 await self._emit_media(media_type, key)
+
+        if dirty:
+            self.session.metadata["viz_done"] = sorted(done)
 
     async def _emit(self, payload: Dict[str, Any]) -> None:
         if self.on_viz:

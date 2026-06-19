@@ -30,7 +30,8 @@ def _load_yaml(path: Path) -> dict:
 class LLMConfig:
     """LLM 提供者配置"""
     provider: str = "deepseek"          # 默认提供者
-    model: str = "deepseek-chat"
+    model: str = "deepseek-v4-pro"
+    #model: str = "deepseek-chat"
     api_key: str = ""                   # 从环境变量 MINICLAW_API_KEY 读取
     base_url: str = "https://api.deepseek.com/v1"
     temperature: float = 0.7

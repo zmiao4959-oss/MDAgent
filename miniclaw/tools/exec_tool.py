@@ -14,8 +14,10 @@ import os
 import re
 import shlex
 import subprocess
+import threading
+import time
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 from ..config import WORKSPACE_DIR
 from ..logger import get_logger
@@ -267,12 +269,14 @@ def _run_subprocess(
     cwd: str,
     timeout_sec: int,
     env: dict,
+    on_line: Optional[Callable[[str], None]] = None,
+    log_path: Optional[str] = None,
 ) -> Tuple[int, str, str]:
-    """
-    运行子进程并捕获输出。
+    """运行子进程并捕获输出。
 
-    与直接在 PowerShell 里跑不同：stdout/stderr 走管道，stdin 必须关闭，
-    否则部分 Windows 程序会因「非交互终端」一直阻塞；超时须杀整棵进程树。
+    on_line 不为 None 时，用独立线程逐行读取 stdout，每行立即回调。
+    log_path 不为 None 时，额外启动一个 daemon 线程轮询日志文件末尾，
+    适用于 LAMMPS -l logfile 场景（thermo 写入文件而非 stdout）。
     """
     popen_kwargs: dict = {
         "args": argv,
@@ -290,16 +294,101 @@ def _run_subprocess(
         popen_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW  # type: ignore[attr-defined]
 
     proc = subprocess.Popen(**popen_kwargs)
-    try:
-        stdout, stderr = proc.communicate(timeout=timeout_sec)
-    except subprocess.TimeoutExpired:
-        _kill_process_tree(proc)
+
+    stdout_lines: list[str] = []
+    _reader_error: Optional[Exception] = None
+
+    def _read_stdout() -> None:
+        nonlocal _reader_error
         try:
-            stdout, stderr = proc.communicate(timeout=5)
+            for line in proc.stdout:
+                line = line.rstrip("\n").rstrip("\r")
+                stdout_lines.append(line)
+                if on_line:
+                    try:
+                        on_line(line)
+                    except Exception:
+                        pass  # 回调异常不中断读取
+        except Exception as exc:
+            _reader_error = exc
+
+    # 日志文件轮询线程（LAMMPS -l 场景）
+    _log_thread: Optional[threading.Thread] = None
+    if log_path and on_line:
+        _log_file = Path(log_path)
+        if not _log_file.is_absolute():
+            _log_file = Path(cwd) / log_path
+        _log_file = _log_file.resolve()
+
+        def _poll_log() -> None:
+            last_step = -1
+            last_size = 0
+            while proc.poll() is None:
+                try:
+                    if _log_file.exists():
+                        size = _log_file.stat().st_size
+                        if size > last_size:
+                            # 只读新增部分（文件尾部）
+                            with open(_log_file, "r", encoding="utf-8", errors="replace") as fh:
+                                if last_size > 0:
+                                    fh.seek(last_size)
+                                for line in fh:
+                                    line = line.rstrip("\n").rstrip("\r")
+                                    if line and on_line:
+                                        try:
+                                            on_line(line)
+                                        except Exception:
+                                            pass
+                            last_size = size
+                except Exception:
+                    pass
+                time.sleep(1.5)  # LAMMPS thermo 通常每 100 步输出一次
+
+        _log_thread = threading.Thread(target=_poll_log, daemon=True)
+        _log_thread.start()
+
+    if on_line:
+        reader_thread = threading.Thread(target=_read_stdout, daemon=True)
+        reader_thread.start()
+        try:
+            reader_thread.join(timeout=timeout_sec)
+            if reader_thread.is_alive():
+                _kill_process_tree(proc)
+                raise subprocess.TimeoutExpired(argv, timeout_sec)
+        except subprocess.TimeoutExpired:
+            _kill_process_tree(proc)
+            try:
+                reader_thread.join(timeout=5)
+            except Exception:
+                pass
+            raise
+        if _reader_error:
+            logger.warning("stdout reader error: %s", _reader_error)
+        # 等日志轮询线程自然结束（进程已退出，proc.poll() 返回非 None）
+        if _log_thread is not None:
+            _log_thread.join(timeout=3)
+        stderr_data = ""
+        try:
+            _, stderr_data = proc.communicate(timeout=5)
         except Exception:
-            stdout, stderr = "", ""
-        raise
-    return proc.returncode or 0, stdout or "", stderr or ""
+            try:
+                stderr_data = proc.stderr.read() or ""
+            except Exception:
+                pass
+        returncode = proc.returncode or 0
+        return returncode, "\n".join(stdout_lines), stderr_data or ""
+    else:
+        # 无回调时沿用原来的 communicate 路径
+        try:
+            stdout, stderr = proc.communicate(timeout=timeout_sec)
+        except subprocess.TimeoutExpired:
+            _kill_process_tree(proc)
+            try:
+                stdout, stderr = proc.communicate(timeout=5)
+            except Exception:
+                stdout, stderr = "", ""
+            raise
+        return proc.returncode or 0, stdout or "", stderr or ""
 
 
 def _format_run_result(
@@ -389,8 +478,16 @@ def execute_tool(
     timeout: int = DEFAULT_TIMEOUT_SEC,
     **kwargs,
 ) -> str:
+    on_line: Optional[Callable[[str], None]] = kwargs.pop("_on_line", None)
     if kwargs:
         logger.debug("Ignoring unexpected execute_tool kwargs: %s", sorted(kwargs.keys()))
+
+    # 从命令中解析 LAMMPS -l logfile 路径（用于轮询日志进度）
+    log_path: Optional[str] = None
+    if on_line:
+        m = re.search(r'(?:^|\s)-l\s+(?:"([^"]+)"|(\S+))', command)
+        if m:
+            log_path = (m.group(1) or m.group(2))
 
     workspace_root = WORKSPACE_DIR.resolve()
     cwd, err = _resolve_cwd(workspace_root, working_dir)
@@ -441,6 +538,8 @@ def execute_tool(
             cwd=str(cwd),
             timeout_sec=timeout_sec,
             env=run_env,
+            on_line=on_line,
+            log_path=log_path,
         )
     except subprocess.TimeoutExpired:
         return (

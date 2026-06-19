@@ -51,9 +51,15 @@
     );
   }
 
-  function assetUrl(path) {
-    return `/api/asset?path=${encodeURIComponent(path)}`;
+  function assetUrl(path, bustCache = false) {
+    let url = `/api/asset?path=${encodeURIComponent(path)}`;
+    if (bustCache) url += `&_=${Date.now()}`;
+    return url;
   }
+
+  // 跟踪已展示的媒体/结构卡片，同路径覆盖时移除旧卡片
+  const _mediaCardsByPath = new Map();
+  const _structureCardsByPath = new Map();
 
   function addMsg(role, text) {
     const d = document.createElement("div");
@@ -63,9 +69,22 @@
     msgs.scrollTop = msgs.scrollHeight;
   }
 
-  function setChatProgress(active, text) {
+  function setChatProgress(active, text, percent) {
     chatRunning = active;
-    chatProgress.classList.toggle("active", active);
+    if (active && typeof percent === "number" && percent >= 0) {
+      // 真实进度：停掉脉冲动画，显示百分比宽度
+      chatProgress.classList.remove("active");
+      chatProgress.classList.add("determinate");
+      chatProgress.style.width = Math.min(100, Math.round(percent)) + "%";
+    } else if (active) {
+      // 不确定进度：脉冲动画
+      chatProgress.classList.add("active");
+      chatProgress.classList.remove("determinate");
+      chatProgress.style.width = "";
+    } else {
+      chatProgress.classList.remove("active", "determinate");
+      chatProgress.style.width = "";
+    }
     chatStatusText.textContent = text || (active ? "Agent 运行中…" : "就绪");
     sendBtn.disabled = active;
     sendBtn.textContent = active ? "运行中…" : "发送";
@@ -93,6 +112,8 @@
     structureScenes.length = 0;
     savedMedia.length = 0;
     savedStructures.length = 0;
+    _mediaCardsByPath.clear();
+    _structureCardsByPath.clear();
     mediaCount = 0;
     structureCount = 0;
     updateBadge(mediaCountEl, 0);
@@ -212,7 +233,16 @@
     }
   }
 
-  function appendMedia(mediaType, filePath, persist = true) {
+  function appendMedia(mediaType, filePath, persist = true, bustCache = false) {
+    // 同路径已有卡片 → 移除旧卡片
+    const old = _mediaCardsByPath.get(filePath);
+    if (old) {
+      old.remove();
+      mediaCount = Math.max(0, mediaCount - 1);
+      const si = savedMedia.findIndex((m) => m.path === filePath);
+      if (si >= 0) savedMedia.splice(si, 1);
+    }
+
     removePlaceholder(mediaGallery);
     setVizProgress(true, "加载媒体…");
     const card = document.createElement("article");
@@ -224,12 +254,13 @@
       <p class="media-caption">${filePath}</p>`;
     const img = document.createElement("img");
     img.alt = label;
-    img.src = assetUrl(filePath);
+    img.src = assetUrl(filePath, bustCache);
     img.onload = () => setVizProgress(false);
     img.onerror = () => setVizProgress(false, "媒体加载失败");
     card.appendChild(img);
     mediaGallery.appendChild(card);
     mediaGallery.scrollTop = mediaGallery.scrollHeight;
+    _mediaCardsByPath.set(filePath, card);
     mediaCount += 1;
     updateBadge(mediaCountEl, mediaCount);
     switchTab("media");
@@ -294,11 +325,20 @@
     ctx.stroke();
   }
 
-  async function appendCsvChart(filePath, persist = true) {
+  async function appendCsvChart(filePath, persist = true, bustCache = false) {
+    // 同路径已有卡片 → 移除旧卡片
+    const old = _mediaCardsByPath.get(filePath);
+    if (old) {
+      old.remove();
+      mediaCount = Math.max(0, mediaCount - 1);
+      const si = savedMedia.findIndex((m) => m.path === filePath);
+      if (si >= 0) savedMedia.splice(si, 1);
+    }
+
     removePlaceholder(mediaGallery);
     setVizProgress(true, "解析 CSV…");
     try {
-      const text = await (await fetch(assetUrl(filePath))).text();
+      const text = await (await fetch(assetUrl(filePath, bustCache))).text();
       const { xs, ys } = parseCsvPlotData(text);
       if (xs.length < 2) {
         setVizProgress(false, "CSV 无有效数据");
@@ -316,6 +356,7 @@
       card.appendChild(canvas);
       mediaGallery.appendChild(card);
       mediaGallery.scrollTop = mediaGallery.scrollHeight;
+      _mediaCardsByPath.set(filePath, card);
       mediaCount += 1;
       updateBadge(mediaCountEl, mediaCount);
       switchTab("media");
@@ -645,6 +686,7 @@
         }
       }
     }
+    _structureCardsByPath.delete(card._label);
     card.remove();
     structureCount = Math.max(0, structureCount - 1);
     updateBadge(structureCountEl, structureCount);
@@ -686,6 +728,7 @@
     card.appendChild(canvasWrap);
     structureGallery.appendChild(card);
     structureGallery.scrollTop = structureGallery.scrollHeight;
+    _structureCardsByPath.set(label, card);
     structureCount += 1;
     updateBadge(structureCountEl, structureCount);
     let scene = null;
@@ -743,8 +786,8 @@
       setVizProgress(false, data.text || "渲染失败");
     } else if (ev === "media") {
       const mt = data.media_type;
-      if (mt === "csv") await appendCsvChart(data.path);
-      else appendMedia(mt, data.path);
+      if (mt === "csv") await appendCsvChart(data.path, true, true);
+      else appendMedia(mt, data.path, true, true);
     }
   }
 
@@ -864,7 +907,15 @@
         if (x.done) break;
         buffer += decoder.decode(x.value, { stream: true });
         buffer = parseSseBuffer(buffer, (payload) => {
-          if (payload.viz) handleVizEvent(payload);
+          if (payload.progress) {
+            const p = payload.progress;
+            if (p.total) {
+              const pct = Math.round((p.current / p.total) * 100);
+              setChatProgress(true, `Step ${p.current} / ${p.total} (${pct}%)`, pct);
+            } else {
+              setChatProgress(true, `Step ${p.current}`);
+            }
+          } else if (payload.viz) handleVizEvent(payload);
           else if (payload.delta) agDiv.textContent += payload.delta;
           else if (payload.done) {
             setChatProgress(false);
@@ -875,7 +926,15 @@
       }
       if (buffer.trim()) {
         parseSseBuffer(buffer + "\n", (payload) => {
-          if (payload.viz) handleVizEvent(payload);
+          if (payload.progress) {
+            const p = payload.progress;
+            if (p.total) {
+              const pct = Math.round((p.current / p.total) * 100);
+              setChatProgress(true, `Step ${p.current} / ${p.total} (${pct}%)`, pct);
+            } else {
+              setChatProgress(true, `Step ${p.current}`);
+            }
+          } else if (payload.viz) handleVizEvent(payload);
           else if (payload.delta) agDiv.textContent += payload.delta;
         });
       }

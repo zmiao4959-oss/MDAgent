@@ -135,6 +135,9 @@ class WebChatAdapter(BaseChannelAdapter):
                     payload["viz"] = True
                     await out_q.put(payload)
 
+                async def on_progress(data: Dict[str, Any]) -> None:
+                    await out_q.put({"kind": "progress", "data": data})
+
                 async def run_agent() -> None:
                     try:
                         if adapter._message_handler:
@@ -142,6 +145,7 @@ class WebChatAdapter(BaseChannelAdapter):
                                 ctx,
                                 on_stream_chunk=collect_delta,
                                 on_viz_event=on_viz,
+                                on_progress=on_progress,
                             )
                     finally:
                         pending = ctx.metadata.get("viz_tasks") or []
@@ -159,6 +163,8 @@ class WebChatAdapter(BaseChannelAdapter):
                             yield f"data: {json.dumps(item, ensure_ascii=False)}\n\n"
                         elif item.get("kind") == "delta":
                             yield f"data: {json.dumps({'delta': item['text']}, ensure_ascii=False)}\n\n"
+                        elif item.get("kind") == "progress":
+                            yield f"data: {json.dumps({'progress': item['data']}, ensure_ascii=False)}\n\n"
                 finally:
                     await task
 

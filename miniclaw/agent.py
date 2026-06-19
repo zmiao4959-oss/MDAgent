@@ -3,7 +3,9 @@ agent.py — Agent 主循环（★ 核心引擎）
 """
 import json
 import asyncio
+import re
 from datetime import datetime
+from pathlib import Path
 from typing import List, Dict, Optional, Any, Callable, Awaitable, Tuple
 
 from dataclasses import dataclass, field
@@ -32,6 +34,7 @@ _SYSTEM_PROMPT_FILES = (
 
 StreamChunkCallback = Callable[[str], Awaitable[None]]
 VizEventCallback = Callable[[Dict[str, Any]], Awaitable[None]]
+ProgressCallback = Callable[[Dict[str, Any]], Awaitable[None]]
 
 
 @dataclass
@@ -153,6 +156,57 @@ class Agent:
                 content=f"Error: Invalid JSON arguments: {tc['function']['arguments']}",
             )
 
+        # 为 execute 工具注入 stdout 逐行回调，用于 LAMMPS 进度上报
+        on_progress: Optional[ProgressCallback] = context.metadata.get("_on_progress")
+        if on_progress and func_name == "execute":
+            loop = asyncio.get_running_loop()
+            cmd_text: str = arguments.get("command", "")
+
+            # 尝试从 LAMMPS input 文件解析总步数 (run N)
+            total: Optional[int] = None
+            m_in = re.search(r'(?:^|\s)-in\s+(?:"([^"]+)"|(\S+))', cmd_text)
+            if m_in:
+                in_path = m_in.group(1) or m_in.group(2)
+                try:
+                    p = Path(in_path)
+                    if not p.is_absolute():
+                        wd = arguments.get("working_dir", "")
+                        base = Path(wd) if wd else WORKSPACE_DIR
+                        if not base.is_absolute():
+                            base = WORKSPACE_DIR / base
+                        p = base / in_path
+                    p = p.resolve()
+                    if p.exists():
+                        content = p.read_text(encoding="utf-8", errors="replace")
+                        runs = re.findall(
+                            r"^run\s+(\d+)", content, re.MULTILINE | re.IGNORECASE
+                        )
+                        if runs:
+                            total = sum(int(n) for n in runs)
+                            logger.debug("LAMMPS total steps: %s (from %s run(s))", total, len(runs))
+                except Exception:
+                    pass
+
+            def _on_line(line: str) -> None:
+                """在 stdout 读取线程中调用；检测 LAMMPS thermo 行并推送进度。"""
+                stripped = line.strip()
+                parts = stripped.split()
+                if len(parts) < 3:
+                    return
+                # LAMMPS thermo 行：第一个 token 是正整数步数
+                if not parts[0].isdigit():
+                    return
+                step = int(parts[0])
+                data: Dict[str, Any] = {"current": step}
+                if total is not None:
+                    data["total"] = total
+                try:
+                    asyncio.run_coroutine_threadsafe(on_progress(data), loop)
+                except Exception:
+                    pass
+
+            arguments["_on_line"] = _on_line
+
         exec_context = {
             "chat_id": context.chat_id,
             "channel": context.channel,
@@ -259,10 +313,13 @@ class Agent:
         context: AgentContext,
         on_stream_chunk: Optional[StreamChunkCallback] = None,
         on_viz_event: Optional[VizEventCallback] = None,
+        on_progress: Optional[ProgressCallback] = None,
     ) -> str:
         """
         核心方法：接收用户消息，运行 Agent Loop，返回最终回复
         """
+        if on_progress:
+            context.metadata["_on_progress"] = on_progress
         session = await self._resolve_session(context)
 
         if context.user_message:

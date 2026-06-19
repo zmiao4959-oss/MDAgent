@@ -109,11 +109,11 @@ class ToolRegistry:
         return None
 
     def _filter_arguments(self, tool: ToolDefinition, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """只保留 schema 声明的参数，避免模型多传字段导致 TypeError。"""
+        """只保留 schema 声明的参数，避免模型多传字段导致 TypeError。_ 开头的内部参数始终放行。"""
         allowed = self._allowed_arg_names(tool)
         if not allowed:
             return dict(arguments)
-        return {k: v for k, v in arguments.items() if k in allowed}
+        return {k: v for k, v in arguments.items() if k in allowed or k.startswith("_")}
 
     def _truncate_result(self, text: str) -> str:
         if len(text) <= MAX_TOOL_RESULT_CHARS:

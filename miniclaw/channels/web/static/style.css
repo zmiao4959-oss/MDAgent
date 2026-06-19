@@ -192,24 +192,26 @@ html, body {
 .panel-status {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-  font-size: 12px;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 13px;
   color: var(--muted);
 }
 
 .progress-track {
   flex: 1;
-  height: 3px;
-  background: #2a2a40;
-  border-radius: 2px;
+  height: 10px;
+  background: #1a1a2e;
+  border-radius: 5px;
   overflow: hidden;
+  border: 1px solid #333;
 }
 
 .progress-bar {
   height: 100%;
   width: 0;
-  background: var(--accent);
+  background: linear-gradient(90deg, #00b8e6, #00d4ff);
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.4);
   transition: width 0.3s;
 }
 
@@ -217,6 +219,22 @@ html, body {
 .viz-status .progress-bar.active {
   width: 100%;
   animation: pulse 1.2s ease-in-out infinite;
+}
+
+.progress-bar.determinate {
+  animation: none;
+  transition: width 0.3s ease;
+}
+
+.status-text {
+  min-width: 140px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #bbb;
+}
+
+.chat-status .status-text {
+  color: var(--accent);
 }
 
 @keyframes pulse {
