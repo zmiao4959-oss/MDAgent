@@ -1,0 +1,29 @@
+# MiniClaw — AI Agent 框架依赖
+# 核心
+openai>=1.50.0
+pyyaml>=6.0
+python-dotenv>=1.0
+websockets>=12.0
+fastapi>=0.110.0
+uvicorn>=0.29.0
+
+# 调度
+croniter>=2.0
+
+# Token 计数（可选，提供精确计数）
+tiktoken>=0.7.0
+
+# 语义搜索（可选）
+sentence-transformers>=2.7.0
+
+# 可视化（可选，OVITO 渲染需要）
+# ovito>=3.10.0
+
+# 系统监控（可选）
+psutil>=5.9.0
+
+# Web 搜索（可选）
+aiohttp>=3.9.0
+
+# Telegram Bot（可选）
+# python-telegram-bot>=21.0

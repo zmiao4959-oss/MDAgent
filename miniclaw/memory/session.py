@@ -28,8 +28,12 @@ class Session:
         self.last_active = time.time()
     
     def estimate_tokens(self) -> int:
-        """简单估算 token 数（4 字符 ≈ 1 token）"""
-        return sum(len(m.content or "") // 4 for m in self.messages)
+        """使用 tiktoken 精确估算 token 数（fallback: 字符估算）。"""
+        try:
+            from ..llm.token_counter import count_messages_tokens
+            return count_messages_tokens(self.messages)
+        except Exception:
+            return sum(len(m.content or "") // 4 for m in self.messages)
     
     def should_compact(self) -> bool:
         """是否需要压缩上下文"""
@@ -159,6 +163,30 @@ class SessionManager:
             return s
         return await self.load_latest_session_for_chat(chat_id)
 
+    async def delete_session(self, chat_id: str) -> bool:
+        """删除指定 chat_id 的会话（内存 + 磁盘 JSON）。"""
+        sid = self._chat_to_session.pop(chat_id, None)
+        if sid:
+            self._sessions.pop(sid, None)
+            path = self.save_dir / f"{sid.replace(':', '_')}.json"
+            if path.exists():
+                try:
+                    path.unlink()
+                except OSError:
+                    pass
+        # 同时检查磁盘上可能存在的旧文件（chat_id 匹配）
+        for p in self.save_dir.glob("*.json"):
+            try:
+                data = json.loads(p.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            if data.get("chat_id") == chat_id:
+                try:
+                    p.unlink()
+                except OSError:
+                    pass
+        return True
+
     def list_conversations_by_channel(self, channel: str) -> List[Dict]:
         """列出某频道全部对话（磁盘 JSON + 内存合并，按 last_active 倒序）。"""
         by_chat: Dict[str, Dict] = {}
@@ -186,6 +214,7 @@ class SessionManager:
                 "last_active": la,
                 "preview": preview_from_dict(data.get("messages", [])),
                 "message_count": len(data.get("messages", [])),
+                "total_tokens": data.get("metadata", {}).get("total_tokens", 0),
             }
             by_chat[cid] = row
 
@@ -204,6 +233,7 @@ class SessionManager:
                 "last_active": float(sess.last_active),
                 "preview": prev,
                 "message_count": len(sess.messages),
+                "total_tokens": sess.metadata.get("total_tokens", 0),
             }
             old = by_chat.get(cid)
             if not old or row["last_active"] >= old["last_active"]:

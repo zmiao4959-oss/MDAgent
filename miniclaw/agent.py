@@ -341,6 +341,9 @@ class Agent:
         if context.channel == "webchat" and on_viz_event:
             auto_viz = AutoVisualizer(session, on_viz_event, pending_viz)
 
+        # 追踪本次运行的 token 用量（记录到 session metadata）
+        session.metadata.setdefault("total_tokens", 0)
+
         try:
             for round_num in range(1, max_rounds + 1):
                 if session.should_compact():
@@ -355,18 +358,19 @@ class Agent:
                         *session.messages,
                     ]
 
-                use_stream = bool(on_stream_chunk and round_num == 1)
+                # 所有轮次都支持流式输出（首轮文本流式，后续轮工具调用也尽量流式）
+                should_stream = bool(on_stream_chunk)
                 response = await self._call_llm(
                     messages,
                     tools,
-                    stream=use_stream,
-                    on_stream_chunk=on_stream_chunk if use_stream else (
-                        on_stream_chunk if round_num > 1 else None
-                    ),
+                    stream=should_stream,
+                    on_stream_chunk=on_stream_chunk,
                 )
 
                 all_usage["prompt_tokens"] += response.usage.get("prompt_tokens", 0)
                 all_usage["completion_tokens"] += response.usage.get("completion_tokens", 0)
+                round_tokens = response.usage.get("prompt_tokens", 0) + response.usage.get("completion_tokens", 0)
+                session.metadata["total_tokens"] = session.metadata.get("total_tokens", 0) + round_tokens
 
                 if response.content:
                     final_response = response.content
@@ -418,6 +422,10 @@ class Agent:
             await self.sessions.save(session)
             raise
 
+        # 持久化 token 用量统计
+        session.metadata["last_run_tokens"] = (
+            all_usage["prompt_tokens"] + all_usage["completion_tokens"]
+        )
         await self.sessions.save(session)
 
         if on_stream_chunk:

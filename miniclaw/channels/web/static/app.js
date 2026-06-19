@@ -61,10 +61,34 @@
   const _mediaCardsByPath = new Map();
   const _structureCardsByPath = new Map();
 
+  // 简单 Markdown 渲染（加粗、代码块、行内代码、斜体）
+  function renderMarkdown(text) {
+    if (!text) return "";
+    let html = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    // 代码块 ```
+    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>');
+    // 行内代码 `...`
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // 加粗 **...**
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    // 斜体 *...*
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    // 换行
+    html = html.replace(/\n/g, '<br>');
+    return html;
+  }
+
   function addMsg(role, text) {
     const d = document.createElement("div");
     d.className = role;
-    d.textContent = text;
+    if (role === "agent" || role === "system") {
+      d.innerHTML = renderMarkdown(text);
+    } else {
+      d.textContent = text;
+    }
     msgs.appendChild(d);
     msgs.scrollTop = msgs.scrollHeight;
   }
@@ -836,6 +860,12 @@
       pv.textContent = row.preview || "";
       btn.appendChild(head);
       btn.appendChild(pv);
+      if (row.total_tokens) {
+        const tok = document.createElement("span");
+        tok.className = "token-count";
+        tok.textContent = `${(row.total_tokens / 1000).toFixed(1)}k tk`;
+        head.appendChild(tok);
+      }
       btn.addEventListener("click", () => selectChat(row.chat_id));
       convList.appendChild(btn);
     });
@@ -889,6 +919,7 @@
     if (!text || chatRunning) return;
     addMsg("user", text);
     inp.value = "";
+    inp.style.height = "auto";  // 重置 textarea 高度
     const agDiv = document.createElement("div");
     agDiv.className = "agent";
     msgs.appendChild(agDiv);
@@ -947,8 +978,36 @@
   }
 
   document.getElementById("new-chat").addEventListener("click", createNewChat);
+
+  // 导出对话
+  document.getElementById("btn-export").addEventListener("click", () => {
+    const url = `/api/export?chat_id=${encodeURIComponent(currentChatId)}&fmt=markdown`;
+    window.open(url, "_blank");
+  });
+
+  // 删除当前对话
+  document.getElementById("btn-delete-chat").addEventListener("click", async () => {
+    if (!confirm("确定删除当前对话？此操作不可撤销。")) return;
+    try {
+      await fetch(`/api/conversations/${encodeURIComponent(currentChatId)}`, { method: "DELETE" });
+      await loadSidebar();
+      const items = convList.querySelectorAll(".conv-item");
+      if (items.length) items[0].click();
+      else await createNewChat();
+    } catch (e) {
+      alert("删除失败: " + e.message);
+    }
+  });
+
   sendBtn.addEventListener("click", send);
-  inp.addEventListener("keydown", (e) => { if (e.key === "Enter") send(); });
+  inp.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+  // 自动调整 textarea 高度
+  inp.addEventListener("input", () => {
+    inp.style.height = "auto";
+    inp.style.height = Math.min(inp.scrollHeight, 150) + "px";
+  });
   document.getElementById("refresh-files").addEventListener("click", refreshFileList);
   document.getElementById("browse-up").addEventListener("click", navigateBrowseUp);
   document.getElementById("load-viz").addEventListener("click", loadSelectedVisualization);

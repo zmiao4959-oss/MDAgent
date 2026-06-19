@@ -5,6 +5,7 @@ channels/webchat.py — Web 聊天界面（可折叠历史 + 左对话右可视�
 import asyncio
 import json
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
@@ -92,6 +93,17 @@ class WebChatAdapter(BaseChannelAdapter):
             await adapter.session_manager.save(session)
             return {"chat_id": chat_id}
 
+        @app.delete("/api/conversations/{chat_id}")
+        async def delete_conversation(chat_id: str):
+            """删除指定会话（从内存和磁盘移除）。"""
+            if not adapter.session_manager:
+                return {"ok": False, "error": "session_manager not available"}
+            try:
+                await adapter.session_manager.delete_session(chat_id)
+                return {"ok": True, "chat_id": chat_id}
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
+
         @app.get("/api/history")
         async def history(chat_id: str):
             if not adapter.session_manager:
@@ -110,6 +122,58 @@ class WebChatAdapter(BaseChannelAdapter):
                     continue
                 out.append({"role": m.role, "content": m.content or ""})
             return {"messages": out, "chat_id": chat_id}
+
+        @app.get("/api/export")
+        async def export_conversation(chat_id: str, fmt: str = "markdown"):
+            """导出对话为 Markdown 或 JSON。"""
+            if not adapter.session_manager:
+                return {"error": "session_manager not available"}
+            session = await adapter.session_manager.resolve_session(chat_id)
+            if not session:
+                return {"error": "conversation not found", "chat_id": chat_id}
+
+            if fmt == "json":
+                return {
+                    "chat_id": chat_id,
+                    "exported_at": datetime.now().isoformat(),
+                    "messages": [
+                        {"role": m.role, "content": m.content, "name": m.name}
+                        for m in session.messages
+                    ],
+                }
+
+            # Markdown 导出
+            lines = [
+                f"# MiniClaw 对话导出",
+                f"",
+                f"- **Chat ID**: `{chat_id}`",
+                f"- **导出时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                f"- **消息数**: {len(session.messages)}",
+                f"",
+                f"---",
+                f"",
+            ]
+            for m in session.messages:
+                if m.role == "system":
+                    continue
+                role_label = {"user": "👤 用户", "assistant": "🤖 Agent", "tool": "🔧 工具"}.get(m.role, m.role)
+                lines.append(f"### {role_label}")
+                if m.role == "tool" and m.name:
+                    lines.append(f"*工具: `{m.name}`*")
+                lines.append("")
+                lines.append(m.content or "(空)")
+                lines.append("")
+                lines.append("---")
+                lines.append("")
+
+            from fastapi.responses import PlainTextResponse
+            return PlainTextResponse(
+                "\n".join(lines),
+                media_type="text/markdown; charset=utf-8",
+                headers={
+                    "Content-Disposition": f"attachment; filename=miniclaw-{chat_id.replace(':', '-')}.md"
+                },
+            )
 
         @app.post("/api/chat")
         async def chat(request: Request):

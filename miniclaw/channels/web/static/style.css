@@ -160,6 +160,19 @@ html, body {
   text-overflow: ellipsis;
 }
 
+.conv-item .token-count {
+  font-size: 10px;
+  color: var(--muted);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.conv-item strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .messages {
   flex: 1;
   border: 1px solid var(--border);
@@ -170,9 +183,21 @@ html, body {
   background: var(--panel);
 }
 
-.user { color: var(--accent); margin: 8px 0; white-space: pre-wrap; }
-.agent { color: var(--agent); margin: 8px 0; white-space: pre-wrap; }
-.system { color: var(--muted); font-size: 0.85em; margin: 6px 0; white-space: pre-wrap; }
+.user { color: var(--accent); margin: 8px 0; white-space: pre-wrap; padding: 8px 12px; background: #1a2744; border-radius: 8px; border-left: 3px solid var(--accent); }
+.agent { color: var(--agent); margin: 8px 0; white-space: pre-wrap; padding: 8px 12px; background: #1e1e30; border-radius: 8px; border-left: 3px solid var(--agent); line-height: 1.6; }
+.system { color: var(--muted); font-size: 0.85em; margin: 6px 0; white-space: pre-wrap; padding: 6px 12px; background: #1a1a2a; border-radius: 6px; border-left: 2px solid var(--muted); }
+
+.agent pre { background: #0d0d1a; padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.88em; border: 1px solid #333; }
+.agent code { background: #2a2a40; padding: 1px 5px; border-radius: 3px; font-size: 0.9em; font-family: "Cascadia Code", "Fira Code", Consolas, monospace; }
+.agent pre code { background: transparent; padding: 0; border-radius: 0; }
+
+.chat-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.chat-actions .ghost-btn { font-size: 12px; padding: 4px 8px; }
 
 .input-row {
   display: flex;
@@ -187,6 +212,16 @@ html, body {
   background: var(--panel);
   color: var(--text);
   font-size: 15px;
+  font-family: inherit;
+  resize: none;
+  max-height: 150px;
+  line-height: 1.4;
+  overflow-y: auto;
+}
+
+#input:focus {
+  border-color: var(--accent);
+  outline: none;
 }
 
 .panel-status {

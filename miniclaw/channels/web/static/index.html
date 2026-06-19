@@ -22,6 +22,10 @@
       <section id="chat-panel" class="panel chat-panel">
         <div class="panel-head">
           <h2>MiniClaw</h2>
+          <div class="chat-actions">
+            <button type="button" id="btn-export" class="ghost-btn" title="导出当前对话">📥 导出</button>
+            <button type="button" id="btn-delete-chat" class="ghost-btn" title="删除当前对话">🗑</button>
+          </div>
         </div>
         <div id="messages" class="messages"></div>
         <div class="panel-status chat-status">
@@ -29,7 +33,7 @@
           <span id="chat-status-text" class="status-text">就绪</span>
         </div>
         <div class="input-row">
-          <input id="input" type="text" placeholder="输入消息..." autofocus />
+          <textarea id="input" rows="1" placeholder="输入消息... (Enter 发送, Shift+Enter 换行)" autofocus></textarea>
           <button type="button" id="btn-send" class="primary-btn">发送</button>
         </div>
       </section>

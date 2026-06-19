@@ -106,12 +106,25 @@ class GatewayServer:
                 }))
             
             elif method == "status":
+                import time
+                mem_mb, cpu = 0, 0
+                try:
+                    import psutil
+                    proc = psutil.Process()
+                    mem_mb = proc.memory_info().rss / (1024 * 1024)
+                    cpu = proc.cpu_percent(interval=0.1)
+                except Exception:
+                    pass
+
                 await ws.send(json.dumps({
                     "type": "res", "id": req_id, "ok": True,
                     "payload": {
                         "uptime": "running",
                         "connections": len(self.connections),
                         "channels": list(self.agent.sessions._chat_to_session.keys()),
+                        "memory_mb": round(mem_mb, 1),
+                        "cpu_percent": cpu,
+                        "timestamp": time.time(),
                     },
                 }))
             
