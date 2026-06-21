@@ -82,13 +82,21 @@ class Session:
 
 
 class SessionManager:
-    """会话管理器"""
-    
+    """会话管理器（内存缓存 + SQLite 持久化 + JSON 向后兼容）"""
+
     def __init__(self, save_dir: Path):
         self.save_dir = save_dir
         self.save_dir.mkdir(parents=True, exist_ok=True)
         self._sessions: Dict[str, Session] = {}  # session_id → Session
         self._chat_to_session: Dict[str, str] = {}  # chat_id → session_id
+        self._store = None  # SessionStore 懒加载
+
+    def _get_store(self):
+        """懒加载 SQLite SessionStore。"""
+        if self._store is None:
+            from .session_store import get_store
+            self._store = get_store()
+        return self._store
     
     def get_or_create(self, chat_id: str, channel: str = "unknown", 
                       account_id: str = "") -> Session:
@@ -113,11 +121,28 @@ class SessionManager:
         return self._sessions.get(session_id)
     
     async def save(self, session: Session):
+        # ── 始终写 JSON：人类可读，方便溯源 agent 行为 ──
         path = self.save_dir / f"{session.session_id.replace(':', '_')}.json"
         path.write_text(
             json.dumps(session.to_save_dict(), ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
+        logger.debug("Session saved → %s (%s messages)", path.name, len(session.messages))
+        # ── 同步写 SQLite：加速查询/列表/搜索 ──
+        try:
+            store = self._get_store()
+            store.save(
+                session.session_id,
+                session.chat_id,
+                channel=session.metadata.get("channel", ""),
+                account_id=session.metadata.get("account_id", ""),
+                messages=session.to_save_dict().get("messages", []),
+                metadata=session.metadata,
+                created_at=session.created_at,
+                last_active=session.last_active,
+            )
+        except Exception:
+            logger.debug("SQLite save skipped for %s (JSON already written)", session.session_id)
     
     async def load(self, session_id: str) -> Optional[Session]:
         path = self.save_dir / f"{session_id.replace(':', '_')}.json"
@@ -137,7 +162,8 @@ class SessionManager:
         return None
 
     async def load_latest_session_for_chat(self, chat_id: str) -> Optional[Session]:
-        """按 chat_id 从磁盘选最近活跃的一条会话并 load 进内存。"""
+        """按 chat_id 加载最近活跃会话 — JSON 优先（人类可读主数据源），SQLite 辅助加速。"""
+        # 1. 先扫描 JSON 目录（主数据源，人类可读）
         best_la = -1.0
         best_sid: Optional[str] = None
         for path in self.save_dir.glob("*.json"):
@@ -154,9 +180,42 @@ class SessionManager:
             if la > best_la:
                 best_la = la
                 best_sid = sid
-        if not best_sid:
-            return None
-        return await self.load(best_sid)
+        if best_sid:
+            return await self.load(best_sid)
+
+        # 2. 回退 SQLite（可能 JSON 文件被手动删除但 DB 里还有）
+        try:
+            store = self._get_store()
+            row = store.resolve_by_chat(chat_id)
+            if row:
+                return self._session_from_dict(row)
+        except Exception:
+            pass
+
+        return None
+
+    def _session_from_dict(self, data: dict) -> Session:
+        """从 dict（SQLite 或 JSON）构建 Session 对象并加入内存缓存。"""
+        sid = data["session_id"]
+        s = Session(
+            session_id=sid,
+            chat_id=data["chat_id"],
+            metadata=data.get("metadata", {}),
+            created_at=data.get("created_at", time.time()),
+            last_active=data.get("last_active", time.time()),
+        )
+        for md in data.get("messages", []):
+            s.messages.append(LLMMessage(
+                role=md["role"],
+                content=md["content"],
+                tool_call_id=md.get("tool_call_id"),
+                tool_calls=md.get("tool_calls"),
+                name=md.get("name"),
+                reasoning_content=md.get("reasoning_content"),
+            ))
+        self._sessions[sid] = s
+        self._chat_to_session[data["chat_id"]] = sid
+        return s
 
     async def resolve_session(self, chat_id: str) -> Optional[Session]:
         """优先内存，否则从磁盘恢复该 chat_id 的会话。"""
@@ -166,7 +225,7 @@ class SessionManager:
         return await self.load_latest_session_for_chat(chat_id)
 
     async def delete_session(self, chat_id: str) -> bool:
-        """删除指定 chat_id 的会话（内存 + 磁盘 JSON）。"""
+        """删除指定 chat_id 的会话（内存 + SQLite + JSON）。"""
         sid = self._chat_to_session.pop(chat_id, None)
         if sid:
             self._sessions.pop(sid, None)
@@ -176,7 +235,12 @@ class SessionManager:
                     path.unlink()
                 except OSError:
                     pass
-        # 同时检查磁盘上可能存在的旧文件（chat_id 匹配）
+        # SQLite 删除
+        try:
+            self._get_store().delete(chat_id)
+        except Exception:
+            pass
+        # 清理遗留 JSON 文件
         for p in self.save_dir.glob("*.json"):
             try:
                 data = json.loads(p.read_text(encoding="utf-8"))
@@ -190,7 +254,14 @@ class SessionManager:
         return True
 
     def list_conversations_by_channel(self, channel: str) -> List[Dict]:
-        """列出某频道全部对话（磁盘 JSON + 内存合并，按 last_active 倒序）。"""
+        """列出某频道全部对话 — 优先 SQLite，回退 JSON 扫描。"""
+        # 尝试 SQLite
+        try:
+            return self._get_store().list_by_channel(channel)
+        except Exception:
+            pass
+
+        # 回退：JSON 目录扫描
         by_chat: Dict[str, Dict] = {}
 
         def preview_from_dict(messages: list) -> str:
@@ -242,6 +313,13 @@ class SessionManager:
                 by_chat[cid] = row
 
         return sorted(by_chat.values(), key=lambda x: -float(x["last_active"]))
+
+    def close(self) -> None:
+        """关闭 SQLite 存储连接。"""
+        if self._store is not None:
+            from .session_store import close_store
+            close_store()
+            self._store = None
 
     async def compact(self, session: Session, llm_router: LLMRouter) -> None:
         """

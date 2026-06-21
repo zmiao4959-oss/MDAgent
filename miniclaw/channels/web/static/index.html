@@ -5,10 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MiniClaw</title>
   <link rel="stylesheet" href="/static/style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/atom-one-dark.min.css" />
-  <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"
+          integrity="sha384-mtIuPpQkC5LPBWjXv3lJbO5aYd4Rq+PJzG2W+gRvKqXesHrLJhQ8JqKRbzWx4ot"
+          crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"
+          integrity="sha384-NV5qL8HHDtHvY0Km6oJgK4nnXJgAAMEKwtgeSHNnWEX5CwYFb/8QQF1FZ7H0jYj"
+          crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/atom-one-dark.min.css"
+        integrity="sha384-kfYq5wAq0KIkjBMEHmkX9JXh2EZDhFp6A4KHgeN3RO+tqvHh9dHkF7tqxRmVb1W"
+        crossorigin="anonymous" />
+  <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"
+          integrity="sha384-hOjvBSfXgUHnTAPcBLUZw9jBzBmKZJJmXYvGFqLZLQfAt5fMn5CfDq4jqPeZBxMj"
+          crossorigin="anonymous"></script>
 </head>
 <body>
   <div id="app">
@@ -21,12 +29,15 @@
         </div>
       </div>
       <div class="sidebar-head">
-        <h3>历史对话</h3>
+        <h3>项目</h3>
         <button type="button" id="sidebar-toggle" class="icon-btn" title="折叠/展开">◀</button>
       </div>
-      <button type="button" id="new-chat" class="primary-btn">+ 新对话</button>
-      <div class="sidebar-caption">CONVERSATIONS</div>
-      <div id="conv-list" class="conv-list"></div>
+      <button type="button" id="new-chat" class="primary-btn">+ 新项目</button>
+      <div class="sidebar-caption">PROJECTS</div>
+      <div class="conv-search-wrap">
+        <input type="text" id="conv-search" class="conv-search" placeholder="搜索项目..." />
+      </div>
+      <div id="conv-list" class="conv-list project-list"></div>
       <div class="sidebar-footer">
         <span class="live-dot"></span>
         <span>本地 Agent 已连接</span>
@@ -37,18 +48,23 @@
       <section id="chat-panel" class="panel chat-panel">
         <div class="panel-head chat-head">
           <div class="section-title">
-            <span class="eyebrow">ACTIVE WORKSPACE</span>
-            <h2>工作会话</h2>
-            <span id="current-chat-label" class="current-chat-label">webchat:default</span>
+            <span class="eyebrow">PROJECT WORKSPACE</span>
+            <h2>当前项目</h2>
+            <div class="project-heading-row">
+              <span id="current-chat-label" class="current-chat-label">Quick start</span>
+              <span id="project-status" class="project-status status-active">进行中</span>
+            </div>
+            <p id="project-objective" class="project-objective">定义目标，让 Agent 开始工作。</p>
           </div>
           <div class="runtime-status" title="运行统计每 30 秒更新一次">
             <span id="runtime-dot" class="runtime-dot"></span>
             <span id="runtime-summary">系统就绪，等待任务</span>
           </div>
           <div class="chat-actions">
-            <button type="button" id="btn-fork" class="ghost-btn" title="分叉当前对话">🔀 分叉</button>
+            <button type="button" id="btn-fork" class="ghost-btn" title="暂停或恢复项目">Ⅱ 暂停</button>
+            <button type="button" id="btn-complete" class="ghost-btn" title="标记项目完成">✓ 完成</button>
             <button type="button" id="btn-export" class="ghost-btn" title="导出当前对话">📥 导出</button>
-            <button type="button" id="btn-delete-chat" class="ghost-btn" title="删除当前对话">🗑</button>
+            <button type="button" id="btn-delete-chat" class="ghost-btn" title="归档当前项目">▣</button>
           </div>
         </div>
         <div id="messages" class="messages"></div>
@@ -91,8 +107,25 @@
           <span id="viz-status-text" class="status-text">无渲染任务</span>
         </div>
         <div class="viz-tabs">
+          <button class="tab" data-tab="plan">计划</button>
+          <button class="tab" data-tab="run">运行</button>
+          <button class="tab" data-tab="artifacts">产物 <span id="artifact-count" class="tab-badge">0</span></button>
           <button class="tab active" data-tab="media">媒体 <span id="media-count" class="tab-badge">0</span></button>
           <button class="tab" data-tab="structure">结构 3D <span id="structure-count" class="tab-badge">0</span></button>
+        </div>
+        <div id="tab-plan" class="tab-pane">
+          <div id="project-summary" class="project-summary">项目总结会在每轮任务完成后更新。</div>
+          <div class="plan-actions"><button id="run-next-task" class="primary-btn" type="button">▶ 执行下一项</button></div>
+          <form id="task-form" class="task-form"><input id="task-input" maxlength="300" placeholder="添加下一步任务…" /><button class="ghost-btn" type="submit">添加</button></form>
+          <div id="task-list" class="task-list"><p class="placeholder">还没有任务计划。</p></div>
+        </div>
+        <div id="tab-run" class="tab-pane">
+          <div id="run-timeline" class="run-timeline"><p class="placeholder">项目运行记录会显示在这里。</p></div>
+        </div>
+        <div id="tab-artifacts" class="tab-pane">
+          <div id="artifact-summary" class="artifact-summary">选择一个项目以查看运行摘要。</div>
+          <div id="artifact-list" class="artifact-list"><p class="placeholder">项目生成的文件会显示在这里。</p></div>
+          <pre id="artifact-preview" class="artifact-preview" hidden></pre>
         </div>
         <div id="tab-media" class="tab-pane active">
           <div id="media-gallery" class="media-gallery">
@@ -114,6 +147,26 @@
         </div>
       </section>
     </div>
+  </div>
+  <div id="project-dialog" class="project-dialog" hidden>
+    <form id="project-form" class="project-dialog-card">
+      <div class="project-dialog-heading">
+        <div>
+          <span class="eyebrow">NEW PROJECT</span>
+          <h2>创建项目</h2>
+        </div>
+        <button id="project-dialog-close" class="icon-btn" type="button" aria-label="关闭">×</button>
+      </div>
+      <label for="project-title">项目名称</label>
+      <input id="project-title" name="title" maxlength="120" placeholder="例如：整理 LAMMPS 模拟方案" required />
+      <label for="project-objective">目标 <span>可选</span></label>
+      <textarea id="project-objective-input" name="objective" rows="4" maxlength="2000" placeholder="写下希望 Agent 持续推进的事情、交付物或判断标准。"></textarea>
+      <div class="project-dialog-note">每个项目都会拥有独立的对话与运行状态；目前项目仍共享同一个本地工作区。</div>
+      <div class="project-dialog-actions">
+        <button id="project-dialog-cancel" class="ghost-btn" type="button">取消</button>
+        <button class="primary-btn" type="submit">创建并开始</button>
+      </div>
+    </form>
   </div>
   <script src="/static/app.js"></script>
 </body>

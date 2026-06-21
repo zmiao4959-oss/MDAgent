@@ -10,12 +10,12 @@ from pathlib import Path
 from typing import Optional
 
 from .registry import tool_registry
-from ..config import WORKSPACE_DIR
+from ..config import WORKSPACE_DIR, MEMORY_FILE as _MEMORY_FILENAME
 from ..logger import get_logger
 
 logger = get_logger(__name__)
 
-MEMORY_FILE = WORKSPACE_DIR / "MEMORY.md"
+MEMORY_FILE = WORKSPACE_DIR / _MEMORY_FILENAME
 
 
 def _ensure_memory_file() -> Path:

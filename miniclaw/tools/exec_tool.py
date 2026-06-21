@@ -19,7 +19,7 @@ import time
 from pathlib import Path
 from typing import Callable, Optional, Tuple
 
-from ..config import WORKSPACE_DIR
+from ..config import active_workspace_dir
 from ..logger import get_logger
 from .registry import tool_registry
 
@@ -489,7 +489,7 @@ def execute_tool(
         if m:
             log_path = (m.group(1) or m.group(2))
 
-    workspace_root = WORKSPACE_DIR.resolve()
+    workspace_root = active_workspace_dir()
     cwd, err = _resolve_cwd(workspace_root, working_dir)
     if err:
         return err

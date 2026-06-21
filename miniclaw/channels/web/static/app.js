@@ -1,5 +1,6 @@
 (function () {
   const CHAT_STORAGE_KEY = "miniclaw_webchat_chat_id";
+  const PROJECT_STORAGE_KEY = "miniclaw_webchat_project_id";
   const VIZ_STORAGE_PREFIX = "miniclaw_viz_";
   const SIDEBAR_COLLAPSED_KEY = "miniclaw_sidebar_collapsed";
 
@@ -11,12 +12,22 @@
   const fileSelect = document.getElementById("file-select");
   const mediaGallery = document.getElementById("media-gallery");
   const structureGallery = document.getElementById("structure-gallery");
+  const artifactList = document.getElementById("artifact-list");
+  const artifactSummary = document.getElementById("artifact-summary");
+  const artifactPreview = document.getElementById("artifact-preview");
+  const runTimeline = document.getElementById("run-timeline");
+  const taskList = document.getElementById("task-list");
+  const taskForm = document.getElementById("task-form");
+  const taskInput = document.getElementById("task-input");
+  const projectSummary = document.getElementById("project-summary");
+  const runNextTaskButton = document.getElementById("run-next-task");
   const chatProgress = document.getElementById("chat-progress");
   const chatStatusText = document.getElementById("chat-status-text");
   const vizProgress = document.getElementById("viz-progress");
   const vizStatusText = document.getElementById("viz-status-text");
   const mediaCountEl = document.getElementById("media-count");
   const structureCountEl = document.getElementById("structure-count");
+  const artifactCountEl = document.getElementById("artifact-count");
   const browsePathEl = document.getElementById("browse-path");
   const browseUpBtn = document.getElementById("browse-up");
   const atomRadiusSlider = document.getElementById("atom-radius-slider");
@@ -24,9 +35,16 @@
   const currentChatLabel = document.getElementById("current-chat-label");
   const runtimeDot = document.getElementById("runtime-dot");
   const runtimeSummary = document.getElementById("runtime-summary");
+  const projectDialog = document.getElementById("project-dialog");
+  const projectForm = document.getElementById("project-form");
+  const projectTitleInput = document.getElementById("project-title");
+  const projectObjectiveInput = document.getElementById("project-objective-input");
 
   let currentChatId = localStorage.getItem(CHAT_STORAGE_KEY) || "webchat:default";
+  let currentProjectId = localStorage.getItem(PROJECT_STORAGE_KEY) || "";
   let chatRunning = false;
+  const projectsById = new Map();
+  const runningProjectIds = new Set();
   let mediaCount = 0;
   let structureCount = 0;
   let workspaceRoot = "";
@@ -76,7 +94,7 @@
   }
 
   function assetUrl(path, bustCache = false) {
-    let url = `/api/asset?path=${encodeURIComponent(path)}`;
+    let url = `/api/asset?path=${encodeURIComponent(path)}&project_id=${encodeURIComponent(currentProjectId || "")}`;
     if (bustCache) url += `&_=${Date.now()}`;
     return url;
   }
@@ -85,33 +103,58 @@
   const _mediaCardsByPath = new Map();
   const _structureCardsByPath = new Map();
 
-  // 增强版 Markdown 渲染（使用 marked.js + highlight.js）
+  // ── 安全 HTML 清洗 ──
+  function sanitizeHTML(html) {
+    const div = document.createElement("div");
+    div.innerHTML = html;
+    // 移除危险标签和属性
+    const dangerous = div.querySelectorAll("script, iframe, object, embed, link[rel=stylesheet]");
+    dangerous.forEach((el) => el.remove());
+    // 移除所有 on* 事件属性
+    div.querySelectorAll("*").forEach((el) => {
+      Array.from(el.attributes).forEach((attr) => {
+        if (attr.name.startsWith("on")) el.removeAttribute(attr.name);
+      });
+      // 安全处理 style 属性（移除 expression/javascript:）
+      if (el.hasAttribute("style")) {
+        const style = el.getAttribute("style");
+        if (/expression|javascript:|behavior/i.test(style)) {
+          el.removeAttribute("style");
+        }
+      }
+    });
+    return div.innerHTML;
+  }
+
+  // 增强版 Markdown 渲染（使用 marked.js + highlight.js + 安全清洗）
   function renderMarkdown(text) {
     if (!text) return "";
     if (typeof marked !== "undefined") {
       try {
         let html = marked.parse(text);
-        // 为代码块添加复制按钮
-        html = html.replace(
-          /(<pre><code(?:\s[^>]*)?>)([\s\S]*?)(<\/code><\/pre>)/g,
-          function (_, open, code, close) {
-            const escaped = code
-              .replace(/&lt;/g, "<")
-              .replace(/&gt;/g, ">")
-              .replace(/&amp;/g, "&")
-              .replace(/&quot;/g, '"');
-            return (
-              '<div class="code-block-wrapper">' +
-              '<button class="copy-btn" title="复制代码" onclick="navigator.clipboard.writeText(this.dataset.code);this.textContent=\'✓\';setTimeout(()=>this.textContent=\'📋\',1500)" data-code="' +
-              escaped.replace(/"/g, "&quot;") +
-              '">📋</button>' +
-              open +
-              code +
-              close +
-              "</div>"
-            );
-          }
-        );
+        // 为代码块添加复制按钮 — 使用安全的 DOM 方式而非 HTML 字符串拼接
+        const tmp = document.createElement("div");
+        tmp.innerHTML = html;
+        tmp.querySelectorAll("pre > code").forEach((codeEl) => {
+          const rawCode = codeEl.textContent || "";
+          const pre = codeEl.parentElement;
+          const wrapper = document.createElement("div");
+          wrapper.className = "code-block-wrapper";
+          const btn = document.createElement("button");
+          btn.className = "copy-btn";
+          btn.title = "复制代码";
+          btn.textContent = "📋";
+          btn.addEventListener("click", () => {
+            navigator.clipboard.writeText(rawCode).then(() => {
+              btn.textContent = "✓";
+              setTimeout(() => { btn.textContent = "📋"; }, 1500);
+            }).catch(() => {});
+          });
+          wrapper.appendChild(btn);
+          pre.parentNode.insertBefore(wrapper, pre);
+          wrapper.appendChild(pre);
+        });
+        html = sanitizeHTML(tmp.innerHTML);
         return html;
       } catch (e) {
         console.error("marked parse error:", e);
@@ -215,7 +258,14 @@
     msgs.scrollTop = msgs.scrollHeight;
   }
 
-  function setChatProgress(active, text, percent) {
+  function setChatProgress(active, text, percent, projectId = currentProjectId) {
+    if (projectId) {
+      if (active) runningProjectIds.add(projectId);
+      else runningProjectIds.delete(projectId);
+    }
+    // A background project may still stream after the user switches tabs.
+    // Keep its state, but never overwrite the newly selected project's UI.
+    if (projectId && projectId !== currentProjectId) return;
     chatRunning = active;
     if (active && typeof percent === "number" && percent >= 0) {
       // 真实进度：停掉脉冲动画，显示百分比宽度
@@ -349,7 +399,7 @@
   async function refreshFileList() {
     const target = browseDir || workspaceRoot;
     if (!target) return;
-    const res = await fetch(`/api/files?work_dir=${encodeURIComponent(target)}`);
+    const res = await fetch(`/api/files?work_dir=${encodeURIComponent(target)}&project_id=${encodeURIComponent(currentProjectId || "")}`);
     if (!res.ok) return;
     const data = await res.json();
     updateBrowseUI(data);
@@ -371,12 +421,128 @@
   }
 
   async function navigateBrowseUp() {
-    const res = await fetch(`/api/files?work_dir=${encodeURIComponent(browseDir || workspaceRoot)}`);
+    const res = await fetch(`/api/files?work_dir=${encodeURIComponent(browseDir || workspaceRoot)}&project_id=${encodeURIComponent(currentProjectId || "")}`);
     const data = await res.json();
     if (data.parent_dir) {
       browseDir = data.parent_dir;
       await refreshFileList();
     }
+  }
+
+  function formatFileSize(bytes) {
+    const value = Number(bytes || 0);
+    if (value < 1024) return `${value} B`;
+    if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+    return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  async function previewArtifact(artifact) {
+    const textExtensions = new Set([".txt", ".md", ".log", ".json", ".yaml", ".yml", ".csv", ".py", ".js", ".sh", ".ps1", ".lmp", ".in"]);
+    artifactPreview.hidden = false;
+    if (!textExtensions.has((artifact.ext || "").toLowerCase())) {
+      artifactPreview.textContent = `${artifact.name}\n\n该文件可在“媒体 / 结构 3D”标签中加载，或从项目工作区直接打开。`;
+      return;
+    }
+    artifactPreview.textContent = "正在加载预览…";
+    try {
+      const response = await fetch(assetUrl(artifact.path));
+      if (!response.ok) throw new Error("无法读取文件");
+      const text = await response.text();
+      artifactPreview.textContent = text.length > 12000 ? `${text.slice(0, 12000)}\n\n… 已截断` : text;
+    } catch (error) {
+      artifactPreview.textContent = `预览失败：${error.message}`;
+    }
+  }
+
+  async function refreshArtifacts() {
+    if (!currentProjectId || !artifactList) return;
+    try {
+      const [artifactResponse, summaryResponse] = await Promise.all([
+        fetch(`/api/projects/${encodeURIComponent(currentProjectId)}/artifacts`),
+        fetch(`/api/projects/${encodeURIComponent(currentProjectId)}/summary`),
+      ]);
+      const data = await artifactResponse.json();
+      const summary = await summaryResponse.json();
+      if (!data.ok) return;
+      const artifacts = data.artifacts || [];
+      updateBadge(artifactCountEl, artifacts.length);
+      artifactList.innerHTML = "";
+      artifactPreview.hidden = true;
+      const project = summary.project || {};
+      const latest = summary.latest_artifact?.rel_path || "尚无产物";
+      artifactSummary.textContent = `${project.message_count || 0} 条消息 · ${summary.artifact_count || 0} 个文件 · 最新：${latest}`;
+      if (!artifacts.length) {
+        artifactList.innerHTML = '<p class="placeholder">项目生成的文件会显示在这里。</p>';
+        return;
+      }
+      artifacts.forEach((artifact) => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "artifact-item";
+        const name = document.createElement("strong");
+        name.textContent = artifact.name;
+        const detail = document.createElement("span");
+        detail.textContent = `${artifact.rel_path} · ${formatFileSize(artifact.size)}`;
+        item.append(name, detail);
+        item.addEventListener("click", () => previewArtifact(artifact));
+        artifactList.appendChild(item);
+      });
+    } catch (_) {
+      artifactSummary.textContent = "暂时无法读取项目产物。";
+    }
+  }
+
+  async function refreshTimeline() {
+    if (!currentProjectId || !runTimeline) return;
+    try {
+      const response = await fetch(`/api/projects/${encodeURIComponent(currentProjectId)}/timeline`);
+      const data = await response.json();
+      if (!data.ok) return;
+      runTimeline.innerHTML = "";
+      const events = data.events || [];
+      if (!events.length) {
+        runTimeline.innerHTML = '<p class="placeholder">项目运行记录会显示在这里。</p>';
+        return;
+      }
+      events.forEach((event) => {
+        const row = document.createElement("div");
+        row.className = `timeline-event event-${event.kind}`;
+        const when = document.createElement("time");
+        when.textContent = new Date((event.at || 0) * 1000).toLocaleTimeString();
+        const text = document.createElement("span");
+        text.textContent = event.text;
+        row.append(when, text);
+        runTimeline.appendChild(row);
+      });
+    } catch (_) {}
+  }
+
+  async function refreshPlan() {
+    if (!currentProjectId || !taskList) return;
+    const response = await fetch(`/api/projects/${encodeURIComponent(currentProjectId)}/plan`);
+    const data = await response.json();
+    if (!data.ok) return;
+    projectSummary.textContent = data.summary || "项目总结会在每轮任务完成后更新。";
+    taskList.innerHTML = "";
+    if (!(data.tasks || []).length) {
+      taskList.innerHTML = '<p class="placeholder">还没有任务计划。</p>';
+      return;
+    }
+    data.tasks.forEach((task) => {
+      const row = document.createElement("label");
+      row.className = "task-item";
+      const check = document.createElement("input");
+      check.type = "checkbox";
+      check.checked = Boolean(task.done);
+      const title = document.createElement("span");
+      title.textContent = task.title;
+      row.append(check, title);
+      check.addEventListener("change", async () => {
+        await fetch(`/api/projects/${encodeURIComponent(currentProjectId)}/tasks/${encodeURIComponent(task.task_id)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ done: check.checked }) });
+        await refreshPlan();
+      });
+      taskList.appendChild(row);
+    });
   }
 
   function appendMedia(mediaType, filePath, persist = true, bustCache = false) {
@@ -436,10 +602,14 @@
 
   function drawStressStrainOnCanvas(canvas, xs, ys) {
     const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
     const w = 640;
     const h = 360;
-    canvas.width = w;
-    canvas.height = h;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    ctx.scale(dpr, dpr);
     const pad = { l: 52, r: 18, t: 28, b: 42 };
     const plotW = w - pad.l - pad.r;
     const plotH = h - pad.t - pad.b;
@@ -786,8 +956,10 @@
     camera.lookAt(0, 0, 0);
     let rot = 0;
     let frameId = null;
+    let animPaused = false;
     function animate() {
       frameId = requestAnimationFrame(animate);
+      if (animPaused) return;
       rot += 0.003;
       camera.position.x = dist * Math.cos(rot);
       camera.position.z = dist * Math.sin(rot);
@@ -795,6 +967,11 @@
       renderer.render(scene, camera);
     }
     animate();
+    // Pause animation when panel is not visible to save GPU/CPU
+    const visObserver = new IntersectionObserver((entries) => {
+      animPaused = !entries[0].isIntersecting;
+    }, { threshold: 0.01 });
+    visObserver.observe(container);
     return {
       baseSize,
       setRadius(r) { updateInstanceMatrices(r); },
@@ -807,6 +984,7 @@
       },
       dispose() {
         if (frameId) cancelAnimationFrame(frameId);
+        visObserver.disconnect();
         renderer.dispose();
         sphereGeo.dispose();
         material.dispose();
@@ -959,13 +1137,40 @@
 
   function setActiveInSidebar() {
     convList.querySelectorAll(".conv-item").forEach((el) => {
-      el.classList.toggle("active", el.dataset.chatId === currentChatId);
+      el.classList.toggle("active", el.dataset.projectId === currentProjectId);
     });
   }
 
   function updateCurrentChatLabel() {
     if (!currentChatLabel) return;
-    currentChatLabel.textContent = currentChatId.replace(/^webchat:/, "");
+    const project = projectsById.get(currentProjectId);
+    currentChatLabel.textContent = project ? project.title : "Select a project";
+    const objective = document.getElementById("project-objective");
+    if (objective) objective.textContent = project?.objective || "Add a goal to give this project a clear direction.";
+    const status = document.getElementById("project-status");
+    if (status) {
+      const current = project?.is_running ? "running" : (project?.status || "active");
+      const labels = { active: "进行中", queued: "排队中", running: "运行中", paused: "已暂停", completed: "已完成", failed: "需处理", archived: "已归档" };
+      status.className = `project-status status-${current}`;
+      status.textContent = labels[current] || current;
+    }
+    const pauseButton = document.getElementById("btn-fork");
+    if (pauseButton) {
+      const paused = project?.status === "paused";
+      pauseButton.dataset.state = paused ? "paused" : "active";
+      pauseButton.textContent = paused ? "▶ 恢复" : "Ⅱ 暂停";
+      pauseButton.disabled = !project || ["completed", "archived"].includes(project.status);
+    }
+    const locked = !project || ["paused", "completed", "archived"].includes(project.status);
+    if (locked) {
+      inp.disabled = true;
+      sendBtn.disabled = true;
+      sendBtn.textContent = project?.status === "paused" ? "已暂停" : "不可发送";
+    } else if (!chatRunning) {
+      inp.disabled = false;
+      sendBtn.disabled = false;
+      sendBtn.textContent = "发送";
+    }
   }
 
   function compactNumber(value) {
@@ -996,31 +1201,38 @@
   }
 
   async function loadSidebar() {
-    const r = await fetch("/api/conversations");
+    const r = await fetch("/api/projects");
     const data = await r.json();
-    const list = data.conversations || [];
+    const list = data.projects || [];
+    projectsById.clear();
+    list.forEach((project) => projectsById.set(project.project_id, project));
     convList.innerHTML = "";
-    list.forEach((row) => {
+    list.forEach((project) => {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "conv-item";
-      btn.dataset.chatId = row.chat_id;
+      btn.dataset.projectId = project.project_id;
       const head = document.createElement("div");
+      head.className = "project-item-head";
       const strong = document.createElement("strong");
-      strong.textContent = row.chat_id.replace(/^webchat:/, "");
+      strong.textContent = project.title;
       head.appendChild(strong);
+      const state = document.createElement("span");
+      const visibleStatus = project.is_running ? "running" : project.status;
+      const labels = { active: "进行中", queued: "排队中", running: "运行中", paused: "暂停", completed: "完成", failed: "需处理", archived: "归档" };
+      state.className = `project-status status-${visibleStatus}`;
+      state.textContent = labels[visibleStatus] || visibleStatus;
+      head.appendChild(state);
       const pv = document.createElement("div");
       pv.className = "preview";
-      pv.textContent = row.preview || "";
+      pv.textContent = project.preview || project.objective || "尚未开始";
       btn.appendChild(head);
       btn.appendChild(pv);
-      if (row.total_tokens) {
-        const tok = document.createElement("span");
-        tok.className = "token-count";
-        tok.textContent = `${(row.total_tokens / 1000).toFixed(1)}k tk`;
-        head.appendChild(tok);
-      }
-      btn.addEventListener("click", () => selectChat(row.chat_id));
+      const meta = document.createElement("div");
+      meta.className = "project-meta";
+      meta.innerHTML = `<span>${project.message_count || 0} 条消息</span><span>${project.is_running ? "后台运行" : "随时可继续"}</span>`;
+      btn.appendChild(meta);
+      btn.addEventListener("click", () => selectChat(project.project_id));
       convList.appendChild(btn);
     });
     setActiveInSidebar();
@@ -1047,21 +1259,48 @@
     msgs.scrollTop = msgs.scrollHeight;
   }
 
-  async function selectChat(chatId) {
-    currentChatId = chatId;
+  async function selectChat(projectId) {
+    const project = projectsById.get(projectId);
+    if (!project) return;
+    currentProjectId = projectId;
+    currentChatId = project.chat_id;
+    workspaceRoot = project.workspace_dir || workspaceRoot;
+    browseDir = workspaceRoot;
+    localStorage.setItem(PROJECT_STORAGE_KEY, currentProjectId);
     localStorage.setItem(CHAT_STORAGE_KEY, currentChatId);
     updateCurrentChatLabel();
     setActiveInSidebar();
+    const running = Boolean(project.is_running || runningProjectIds.has(projectId));
+    setChatProgress(running, running ? "Agent 正在后台运行…" : "就绪", undefined, projectId);
+    updateCurrentChatLabel();
     await loadHistory();
     await restoreVizState();
+    await refreshFileList();
+    await refreshArtifacts();
+    await refreshTimeline();
+    await refreshPlan();
     inp.focus();
   }
 
   async function createNewChat() {
-    const r = await fetch("/api/conversations", { method: "POST" });
+    if (!projectDialog) return;
+    projectDialog.hidden = false;
+    projectTitleInput?.focus();
+  }
+
+  async function createProject(title, objective) {
+    const r = await fetch("/api/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, objective }),
+    });
     const data = await r.json();
-    if (data.chat_id) await selectChat(data.chat_id);
+    if (!data.ok || !data.project) {
+      alert("创建项目失败: " + (data.error || "未知错误"));
+      return;
+    }
     await loadSidebar();
+    await selectChat(data.project.project_id);
   }
 
   function parseSseBuffer(buffer, onPayload) {
@@ -1078,7 +1317,9 @@
 
   async function send() {
     const text = inp.value.trim();
-    if (!text || chatRunning) return;
+    const projectId = currentProjectId;
+    const chatId = currentChatId;
+    if (!text || !projectId || runningProjectIds.has(projectId)) return;
     addMsg("user", text);
     inp.value = "";
     inp.style.height = "auto";
@@ -1091,7 +1332,7 @@
     agDiv.appendChild(thinkingEl);
     msgs.appendChild(agDiv);
     msgs.scrollTop = msgs.scrollHeight;
-    setChatProgress(true, "等待响应…");
+    setChatProgress(true, "等待响应…", undefined, projectId);
 
     let rawContent = "";
     let firstContent = false;
@@ -1100,8 +1341,13 @@
       const resp = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, chat_id: currentChatId }),
+        body: JSON.stringify({ message: text, chat_id: chatId, project_id: projectId }),
       });
+      if (!resp.ok) throw new Error(await resp.text());
+      if ((resp.headers.get("content-type") || "").includes("application/json")) {
+        const error = await resp.json();
+        throw new Error(error.error || "项目暂时无法运行");
+      }
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -1114,9 +1360,9 @@
             const p = payload.progress;
             if (p.total) {
               const pct = Math.round((p.current / p.total) * 100);
-              setChatProgress(true, `Step ${p.current} / ${p.total} (${pct}%)`, pct);
+              setChatProgress(true, `Step ${p.current} / ${p.total} (${pct}%)`, pct, projectId);
             } else {
-              setChatProgress(true, `Step ${p.current}`);
+              setChatProgress(true, `Step ${p.current}`, undefined, projectId);
             }
           } else if (payload.viz) {
             handleVizEvent(payload);
@@ -1136,7 +1382,8 @@
             msgs.scrollTop = msgs.scrollHeight;
           } else if (payload.done) {
             if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
-            setChatProgress(false);
+            setChatProgress(false, undefined, undefined, projectId);
+            if (!rawContent.trim() && payload.full) rawContent = payload.full;
             // 最终渲染（去掉光标）
             if (rawContent.trim() && typeof marked !== "undefined") {
               agDiv.innerHTML = renderMarkdown(rawContent);
@@ -1154,8 +1401,8 @@
         parseSseBuffer(buffer + "\n", (payload) => {
           if (payload.progress) {
             const p = payload.progress;
-            if (p.total) setChatProgress(true, `Step ${p.current} / ${p.total}`, Math.round((p.current / p.total) * 100));
-            else setChatProgress(true, `Step ${p.current}`);
+            if (p.total) setChatProgress(true, `Step ${p.current} / ${p.total}`, Math.round((p.current / p.total) * 100), projectId);
+            else setChatProgress(true, `Step ${p.current}`, undefined, projectId);
           } else if (payload.viz) handleVizEvent(payload);
           else if (payload.delta) {
             if (!firstContent) { if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove(); firstContent = true; }
@@ -1176,13 +1423,58 @@
     } catch (e) {
       if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
       agDiv.textContent = "Error: " + e.message;
-      setChatProgress(false);
+      setChatProgress(false, undefined, undefined, projectId);
     }
     await loadSidebar();
+    updateCurrentChatLabel();
     setActiveInSidebar();
+    await refreshArtifacts();
+    await refreshTimeline();
+    await refreshPlan();
   }
 
   document.getElementById("new-chat").addEventListener("click", createNewChat);
+
+  taskForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const title = taskInput?.value.trim();
+    if (!title || !currentProjectId) return;
+    await fetch(`/api/projects/${encodeURIComponent(currentProjectId)}/tasks`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title }) });
+    taskInput.value = "";
+    await refreshPlan();
+  });
+  runNextTaskButton?.addEventListener("click", async () => {
+    if (!currentProjectId) return;
+    const response = await fetch(`/api/projects/${encodeURIComponent(currentProjectId)}/run-next`, { method: "POST" });
+    const data = await response.json();
+    if (!data.ok) { alert(data.error || "无法执行任务"); return; }
+    await loadSidebar();
+    updateCurrentChatLabel();
+    await refreshTimeline();
+  });
+
+  function closeProjectDialog() {
+    if (!projectDialog) return;
+    projectDialog.hidden = true;
+    projectForm?.reset();
+  }
+
+  document.getElementById("project-dialog-close").addEventListener("click", closeProjectDialog);
+  document.getElementById("project-dialog-cancel").addEventListener("click", closeProjectDialog);
+  projectDialog?.addEventListener("click", (event) => {
+    if (event.target === projectDialog) closeProjectDialog();
+  });
+  projectForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const title = projectTitleInput?.value.trim() || "";
+    if (!title) return;
+    try {
+      await createProject(title, projectObjectiveInput?.value.trim() || "");
+      closeProjectDialog();
+    } catch (error) {
+      alert("创建项目失败: " + error.message);
+    }
+  });
 
   document.querySelectorAll(".quick-action").forEach((button) => {
     button.addEventListener("click", () => {
@@ -1192,24 +1484,37 @@
     });
   });
 
-  // 分叉对话
+  async function projectAction(action) {
+    if (!currentProjectId) return;
+    const resp = await fetch(`/api/projects/${encodeURIComponent(currentProjectId)}/action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || "未知错误");
+    await loadSidebar();
+    updateCurrentChatLabel();
+    setActiveInSidebar();
+    if (action === "resume") inp.focus();
+  }
+
   document.getElementById("btn-fork").addEventListener("click", async () => {
-    if (!confirm("从当前对话末尾分叉（创建分支）？新对话将保留当前所有消息。")) return;
+    const project = projectsById.get(currentProjectId);
+    if (!project) return;
     try {
-      const resp = await fetch(`/api/conversations/${encodeURIComponent(currentChatId)}/fork`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ at_index: -1 }),
-      });
-      const data = await resp.json();
-      if (data.ok && data.chat_id) {
-        await selectChat(data.chat_id);
-        await loadSidebar();
-      } else {
-        alert("分叉失败: " + (data.error || "未知错误"));
-      }
+      await projectAction(project.status === "paused" ? "resume" : "pause");
     } catch (e) {
-      alert("分叉失败: " + e.message);
+      alert("更新项目失败: " + e.message);
+    }
+  });
+
+  document.getElementById("btn-complete").addEventListener("click", async () => {
+    if (!confirm("标记这个项目为已完成？")) return;
+    try {
+      await projectAction("complete");
+    } catch (e) {
+      alert("更新项目失败: " + e.message);
     }
   });
 
@@ -1219,18 +1524,54 @@
     window.open(url, "_blank");
   });
 
-  // 删除当前对话
   document.getElementById("btn-delete-chat").addEventListener("click", async () => {
-    if (!confirm("确定删除当前对话？此操作不可撤销。")) return;
+    if (!confirm("归档当前项目？历史记录会被保留。")) return;
     try {
-      await fetch(`/api/conversations/${encodeURIComponent(currentChatId)}`, { method: "DELETE" });
+      await projectAction("archive");
       await loadSidebar();
-      const items = convList.querySelectorAll(".conv-item");
-      if (items.length) items[0].click();
+      const next = [...projectsById.values()].find((project) => project.status !== "archived");
+      if (next) await selectChat(next.project_id);
       else await createNewChat();
     } catch (e) {
-      alert("删除失败: " + e.message);
+      alert("归档失败: " + e.message);
     }
+  });
+
+  // 对话搜索/过滤
+  const convSearch = document.getElementById("conv-search");
+  if (convSearch) {
+    convSearch.addEventListener("input", () => {
+      const filter = convSearch.value.toLowerCase();
+      convList.querySelectorAll(".conv-item").forEach((el) => {
+        const text = (el.textContent || "").toLowerCase();
+        el.style.display = text.includes(filter) ? "" : "none";
+      });
+    });
+  }
+
+  // Project rename (double-click a project card)
+  convList.addEventListener("dblclick", async (e) => {
+    const item = e.target.closest(".conv-item");
+    if (!item) return;
+    const projectId = item.dataset.projectId;
+    const nameSpan = item.querySelector("strong");
+    if (!nameSpan) return;
+    const oldName = nameSpan.textContent;
+    const newName = prompt("重命名项目:", oldName);
+    if (!newName || newName === oldName) return;
+    try {
+      const resp = await fetch(`/api/projects/${encodeURIComponent(projectId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newName }),
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        await loadSidebar();
+        updateCurrentChatLabel();
+        return;
+      }
+    } catch (_) {}
   });
 
   sendBtn.addEventListener("click", send);
@@ -1278,24 +1619,23 @@
     atomRadiusSlider.dispatchEvent(new Event("input"));
   });
 
-  window.addEventListener("resize", () => structureScenes.forEach((s) => s.onResize?.()));
+  let resizeTimer;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => structureScenes.forEach((s) => s.onResize?.()), 150);
+});
 
   async function init() {
     await loadConfig();
     const list = await loadSidebar();
-    const ids = list.map((x) => x.chat_id);
+    const ids = list.map((project) => project.project_id);
     if (!ids.length) {
-      currentChatId = "webchat:default";
-      localStorage.setItem(CHAT_STORAGE_KEY, currentChatId);
-    } else if (ids.indexOf(currentChatId) < 0) {
-      currentChatId = list[0].chat_id;
-      localStorage.setItem(CHAT_STORAGE_KEY, currentChatId);
+      await createNewChat();
+      return;
     }
-    updateCurrentChatLabel();
+    if (!ids.includes(currentProjectId)) currentProjectId = list[0].project_id;
+    await selectChat(currentProjectId);
     await refreshRuntimeStats();
-    setActiveInSidebar();
-    await loadHistory();
-    await restoreVizState();
   }
 
   init();

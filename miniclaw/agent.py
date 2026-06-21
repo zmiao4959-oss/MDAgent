@@ -10,7 +10,7 @@ from typing import List, Dict, Optional, Any, Callable, Awaitable, Tuple
 
 from dataclasses import dataclass, field
 
-from .config import config, WORKSPACE_DIR
+from .config import active_workspace_dir, config, workspace_scope, WORKSPACE_DIR, MEMORY_FILE
 from .logger import get_logger
 from .llm.base import LLMMessage, LLMResponse, LLMStreamChunk
 from .llm.router import LLMRouter
@@ -19,7 +19,8 @@ from .tools.registry import tool_registry
 from .memory.session import Session, SessionManager
 from .memory.search import keyword_search
 from .skills.loader import SkillLoader
-from .viz import AutoVisualizer, snapshot_workspace
+from .viz.auto import AutoVisualizer
+from .viz.snapshot import snapshot_workspace
 from .hooks import hook_system, HookContext
 from .stats import agent_stats, RunStats
 
@@ -31,7 +32,7 @@ _SYSTEM_PROMPT_FILES = (
     "SOUL.md",
     "IDENTITY.md",
     "USER.md",
-    "MEMORY.md",
+    MEMORY_FILE,
 )
 
 StreamChunkCallback = Callable[[str], Awaitable[None]]
@@ -59,12 +60,13 @@ class Agent:
         self._skill_loader = SkillLoader()
         self._system_prompt_cache: Optional[str] = None
         self._system_prompt_cache_key: Optional[Tuple[Any, ...]] = None
-        self._current_run: Optional[RunStats] = None
 
-    def _system_prompt_fingerprint(self) -> Tuple[Any, ...]:
-        """根据文件 mtime 判断系统提示是否需要重建。"""
+    # ── 三层上下文工程 (Stable / Context / Volatile) ──
+
+    def _stable_fingerprint(self) -> Tuple[Any, ...]:
+        """Stable 层指纹：身份文件 + 工具 + 技能（最少变动，缓存友好）。"""
         parts: List[Any] = []
-        for name in _SYSTEM_PROMPT_FILES:
+        for name in ("SOUL.md", "IDENTITY.md"):
             path = WORKSPACE_DIR / name
             if path.exists():
                 stat = path.stat()
@@ -82,24 +84,25 @@ class Agent:
         parts.append(("tools", tuple(tool_registry.tool_names())))
         return tuple(parts)
 
-    def _build_system_prompt(self) -> str:
-        """组装系统提示 —— 这是整个 Agent 的"灵魂注入"（带文件变更缓存）。"""
-        key = self._system_prompt_fingerprint()
-        if self._system_prompt_cache is not None and self._system_prompt_cache_key == key:
-            static = self._system_prompt_cache
-            return f"{static}\n\n## Runtime Info\n- Current time: {datetime.now().isoformat()}\n- Workspace: {WORKSPACE_DIR}"
+    def _context_fingerprint(self) -> Tuple[Any, ...]:
+        """Context 层指纹：环境文件（AGENTS.md, USER.md, MEMORY.md）。"""
+        parts: List[Any] = []
+        for name in ("AGENTS.md", "USER.md", MEMORY_FILE):
+            path = WORKSPACE_DIR / name
+            if path.exists():
+                stat = path.stat()
+                parts.append((name, stat.st_mtime_ns, stat.st_size))
+        return tuple(parts)
 
+    def _build_stable_prompt(self) -> str:
+        """Stable 层：身份 + 工具描述 + 技能列表（缓存友好，极少重建）。"""
         self._skill_loader._refresh()
         parts: List[str] = []
 
-        for filename in ("AGENTS.md", "SOUL.md", "IDENTITY.md", "USER.md"):
+        for filename in ("SOUL.md", "IDENTITY.md"):
             path = WORKSPACE_DIR / filename
             if path.exists():
                 parts.append(path.read_text(encoding="utf-8"))
-
-        mem = WORKSPACE_DIR / "MEMORY.md"
-        if mem.exists():
-            parts.append(f"## Long-term Memory\n{mem.read_text(encoding='utf-8')}")
 
         parts.append(f"## Available Tools\n{tool_registry.get_descriptions()}")
 
@@ -114,10 +117,59 @@ class Agent:
                 parts.append("  </skill>")
             parts.append("</available_skills>")
 
-        static = "\n\n".join(parts)
-        self._system_prompt_cache = static
-        self._system_prompt_cache_key = key
-        return f"{static}\n\n## Runtime Info\n- Current time: {datetime.now().isoformat()}\n- Workspace: {WORKSPACE_DIR}"
+        return "\n\n".join(parts)
+
+    def _build_context_prompt(self) -> str:
+        """Context 层：项目指令 + 用户偏好 + 长期记忆。"""
+        parts: List[str] = []
+
+        for filename in ("AGENTS.md", "USER.md"):
+            path = WORKSPACE_DIR / filename
+            if path.exists():
+                parts.append(path.read_text(encoding="utf-8"))
+
+        mem = WORKSPACE_DIR / MEMORY_FILE
+        if mem.exists():
+            mem_text = mem.read_text(encoding="utf-8")
+            # 限制记忆内容大小，避免撑爆上下文
+            if len(mem_text) > 8000:
+                mem_text = mem_text[:8000] + "\n\n... [记忆文件过长，已截断]"
+            parts.append(f"## Long-term Memory\n{mem_text}")
+
+        return "\n\n".join(parts)
+
+    def _build_system_prompt(self) -> str:
+        """三层上下文组装：Stable（缓存） + Context（文件感知缓存） + Volatile（每轮动态）。"""
+        stable_key = self._stable_fingerprint()
+        context_key = self._context_fingerprint()
+
+        # 重建 Stable 层
+        if (self._system_prompt_cache is None
+                or getattr(self, '_stable_cache_key', None) != stable_key):
+            self._stable_cache = self._build_stable_prompt()
+            self._stable_cache_key = stable_key
+
+        # 重建 Context 层
+        if (getattr(self, '_context_cache', None) is None
+                or getattr(self, '_context_cache_key', None) != context_key):
+            self._context_cache = self._build_context_prompt()
+            self._context_cache_key = context_key
+
+        # Volatile 层每轮动态注入
+        parts = [self._stable_cache]
+        if self._context_cache:
+            parts.append(self._context_cache)
+        parts.append(
+            f"## Runtime Info\n"
+            f"- Current time: {datetime.now().isoformat()}\n"
+            f"- Workspace: {active_workspace_dir()}"
+        )
+
+        # 保持向后兼容的缓存键
+        full_key = (stable_key, context_key)
+        self._system_prompt_cache = "\n\n".join(parts)
+        self._system_prompt_cache_key = full_key
+        return self._system_prompt_cache
 
     def _build_tool_definitions(self) -> List[Dict]:
         """生成 OpenAI function-calling 格式的工具定义"""
@@ -201,9 +253,9 @@ class Agent:
                     p = Path(in_path)
                     if not p.is_absolute():
                         wd = arguments.get("working_dir", "")
-                        base = Path(wd) if wd else WORKSPACE_DIR
+                        base = Path(wd) if wd else active_workspace_dir()
                         if not base.is_absolute():
-                            base = WORKSPACE_DIR / base
+                            base = active_workspace_dir() / base
                         p = base / in_path
                     p = p.resolve()
                     if p.exists():
@@ -404,6 +456,22 @@ class Agent:
         on_viz_event: Optional[VizEventCallback] = None,
         on_progress: Optional[ProgressCallback] = None,
     ) -> str:
+        """Run one request inside its project-specific workspace, if provided."""
+        with workspace_scope(context.metadata.get("workspace_dir")):
+            return await self._process_message(
+                context,
+                on_stream_chunk=on_stream_chunk,
+                on_viz_event=on_viz_event,
+                on_progress=on_progress,
+            )
+
+    async def _process_message(
+        self,
+        context: AgentContext,
+        on_stream_chunk: Optional[StreamChunkCallback] = None,
+        on_viz_event: Optional[VizEventCallback] = None,
+        on_progress: Optional[ProgressCallback] = None,
+    ) -> str:
         """
         核心方法：接收用户消息，运行 Agent Loop，返回最终回复
 
@@ -418,7 +486,9 @@ class Agent:
         session = await self._resolve_session(context)
 
         # ── Stats tracking ──
-        self._current_run = agent_stats.start_run(context.chat_id)
+        # A single Agent instance serves every WebChat project.  Keep this run
+        # local so concurrent projects cannot overwrite each other's stats.
+        current_run: RunStats = agent_stats.start_run(context.chat_id)
 
         # ── before_agent hook ──
         hook_ctx = await hook_system.fire("before_agent",
@@ -549,10 +619,8 @@ class Agent:
                 data={"error": err_msg, "round": round_num if 'round_num' in dir() else 0},
             )
             # ── Record error stats ──
-            if self._current_run:
-                self._current_run.error = err_msg
-                agent_stats.end_run(self._current_run)
-                self._current_run = None
+            current_run.error = err_msg
+            agent_stats.end_run(current_run)
             # ── 错误时也要尽力保存 session ──
             await self.sessions.save(session)
             raise
@@ -586,12 +654,10 @@ class Agent:
         )
 
         # ── Record stats ──
-        if self._current_run:
-            self._current_run.prompt_tokens = all_usage["prompt_tokens"]
-            self._current_run.completion_tokens = all_usage["completion_tokens"]
-            self._current_run.rounds = round_num if 'round_num' in dir() else 0
-            agent_stats.end_run(self._current_run)
-            self._current_run = None
+        current_run.prompt_tokens = all_usage["prompt_tokens"]
+        current_run.completion_tokens = all_usage["completion_tokens"]
+        current_run.rounds = round_num if 'round_num' in dir() else 0
+        agent_stats.end_run(current_run)
 
         logger.info(
             "Agent run complete: %s messages, %s tokens",

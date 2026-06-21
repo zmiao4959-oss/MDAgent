@@ -3,14 +3,12 @@ memory/file_store.py — 读写工作区文本文件
 """
 from pathlib import Path
 from typing import List
-from ..config import WORKSPACE_DIR
-from ..logger import get_logger
+from ..config import WORKSPACE_DIR, MEMORY_FILE
 
 logger = get_logger(__name__)
 
 # 系统文件列表（在组装上下文时加载）
 SYSTEM_FILES = ["SOUL.md", "AGENTS.md", "IDENTITY.md", "USER.md", "TOOLS.md", "HEARTBEAT.md"]
-MEMORY_FILE = "MEMORY.md"
 
 
 def read_if_exists(path: Path) -> str:

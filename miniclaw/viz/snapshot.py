@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
-from ..config import WORKSPACE_DIR
+from ..config import active_workspace_dir
 from .constants import SKIP_DIR_NAMES
 
 FileSnap = Dict[str, Tuple[int, int]]  # abs path -> (mtime_ns, size)
@@ -19,7 +19,7 @@ def _should_skip(path: Path, root: Path) -> bool:
 
 
 def snapshot_workspace(root: Path | None = None) -> FileSnap:
-    root = (root or WORKSPACE_DIR).resolve()
+    root = (root or active_workspace_dir()).resolve()
     snap: FileSnap = {}
     if not root.is_dir():
         return snap

@@ -1,5 +1,7 @@
 import os
 import yaml
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Mapping, Optional, Dict, Any
@@ -17,6 +19,30 @@ load_dotenv()
 """
 WORKSPACE_DIR = Path(os.environ.get("MINICLAW_WORKSPACE", Path.home() / ".miniclaw" / "workspace"))
 WORKSPACE_DIR.mkdir(parents=True, exist_ok=True)
+_ACTIVE_WORKSPACE: ContextVar[Optional[Path]] = ContextVar("miniclaw_active_workspace", default=None)
+
+
+def active_workspace_dir() -> Path:
+    """Return the workspace bound to the current Agent request."""
+    return (_ACTIVE_WORKSPACE.get() or WORKSPACE_DIR).resolve()
+
+
+@contextmanager
+def workspace_scope(workspace: Optional[Path | str]):
+    """Temporarily bind tool and visualisation code to one project workspace."""
+    if not workspace:
+        yield WORKSPACE_DIR.resolve()
+        return
+    path = Path(workspace).resolve()
+    path.mkdir(parents=True, exist_ok=True)
+    token = _ACTIVE_WORKSPACE.set(path)
+    try:
+        yield path
+    finally:
+        _ACTIVE_WORKSPACE.reset(token)
+
+# 集中定义工作区文件路径
+MEMORY_FILE = "MEMORY.md"
 
 
 def resolve_config_path(

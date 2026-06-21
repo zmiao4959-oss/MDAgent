@@ -6,7 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional, Tuple
 
-from ..config import WORKSPACE_DIR
+from ..config import active_workspace_dir
 
 # 单文件读写上限（字节）
 MAX_READ_BYTES = 512 * 1024
@@ -27,7 +27,7 @@ _IMAGE_SUFFIXES = frozenset({".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"})
 
 
 def workspace_root() -> Path:
-    return WORKSPACE_DIR.resolve()
+    return active_workspace_dir()
 
 
 def resolve_workspace_path(
@@ -80,16 +80,3 @@ def is_probably_text(path: Path) -> bool:
 
 def is_image(path: Path) -> bool:
     return path.suffix.lower() in _IMAGE_SUFFIXES
-
-
-def truncate_text_result(text: str, max_chars: int) -> str:
-    if len(text) <= max_chars:
-        return text
-    head = max_chars * 2 // 3
-    tail = max_chars - head
-    omitted = len(text) - head - tail
-    return (
-        f"{text[:head].rstrip()}\n\n"
-        f"... [{omitted} characters omitted] ...\n\n"
-        f"{text[-tail:].lstrip()}"
-    )

@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 from .registry import tool_registry
-from ..config import WORKSPACE_DIR, config
+from ..config import active_workspace_dir, config
 from ..logger import get_logger
 
 logger = get_logger(__name__)
@@ -62,9 +62,10 @@ def system_info_tool(detail: str = "all", **kwargs) -> str:
 
     if detail in ("workspace", "all"):
         lines.append("### Workspace")
-        lines.append(f"- Root: `{WORKSPACE_DIR}`")
+        root = active_workspace_dir()
+        lines.append(f"- Root: `{root}`")
         try:
-            files = list(WORKSPACE_DIR.rglob("*"))
+            files = list(root.rglob("*"))
             file_count = sum(1 for f in files if f.is_file())
             dir_count = sum(1 for d in files if d.is_dir())
             lines.append(f"- Files: {file_count}, Directories: {dir_count}")
