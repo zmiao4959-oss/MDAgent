@@ -1058,3 +1058,90 @@ html, body {
 .task-list { display: grid; gap: 6px; }
 .task-item { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border: 1px solid rgba(151,177,220,.11); border-radius: 8px; color: #c8d6e8; font-size: 12px; cursor: pointer; }
 .task-item:has(input:checked) span { color: #70819a; text-decoration: line-through; }
+
+/* ── 计划模式 Toggle ── */
+.plan-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--muted);
+  background: rgba(20,24,40,.6);
+  border: 1px solid rgba(151,177,220,.12);
+  transition: all .2s;
+  white-space: nowrap;
+  user-select: none;
+  flex-shrink: 0;
+}
+.plan-mode-toggle:hover {
+  border-color: rgba(151,177,220,.22);
+  color: #b9c9dd;
+}
+.plan-mode-toggle:has(input:checked) {
+  color: var(--accent);
+  border-color: rgba(0,212,255,.35);
+  background: rgba(0,212,255,.08);
+  box-shadow: 0 0 6px rgba(0,212,255,.08);
+}
+.plan-mode-toggle input[type="checkbox"] {
+  accent-color: var(--accent);
+  margin: 0;
+  width: 14px;
+  height: 14px;
+}
+
+/* ── 可视化面板折叠 ── */
+#viz-panel .panel-head {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+}
+#viz-panel .panel-head h2 {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: center;
+  text-align: center;
+}
+#viz-toggle {
+  grid-column: 1;
+  grid-row: 2;
+  justify-self: center;
+  transition: transform .25s;
+}
+#viz-panel .file-browser {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-width: 0;
+}
+.viz-panel.collapsed {
+  /* Override the responsive 40vh minimum so this also collapses on narrow screens. */
+  flex: 0 0 52px;
+  min-width: 52px;
+  min-height: 52px;
+  padding: 10px 7px;
+  overflow: hidden;
+  transition: flex-basis .2s, min-width .2s, min-height .2s, padding .2s;
+}
+.viz-panel.collapsed .panel-head {
+  display: flex;
+  justify-content: center;
+  flex-wrap: nowrap;
+  min-height: 30px;
+  margin: 0;
+}
+.viz-panel.collapsed .panel-head h2,
+.viz-panel.collapsed .file-browser,
+.viz-panel.collapsed .viz-status,
+.viz-panel.collapsed .viz-tabs,
+.viz-panel.collapsed .tab-pane {
+  display: none;
+}
+.viz-panel.collapsed #viz-toggle {
+  display: block;
+  margin: 0 auto;
+  transform: rotate(180deg);
+}

@@ -5,18 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MiniClaw</title>
   <link rel="stylesheet" href="/static/style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"
+  <script src="/static/three.min.js"
           integrity="sha384-mtIuPpQkC5LPBWjXv3lJbO5aYd4Rq+PJzG2W+gRvKqXesHrLJhQ8JqKRbzWx4ot"
           crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"
-          integrity="sha384-NV5qL8HHDtHvY0Km6oJgK4nnXJgAAMEKwtgeSHNnWEX5CwYFb/8QQF1FZ7H0jYj"
-          crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/atom-one-dark.min.css"
-        integrity="sha384-kfYq5wAq0KIkjBMEHmkX9JXh2EZDhFp6A4KHgeN3RO+tqvHh9dHkF7tqxRmVb1W"
-        crossorigin="anonymous" />
-  <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"
-          integrity="sha384-hOjvBSfXgUHnTAPcBLUZw9jBzBmKZJJmXYvGFqLZLQfAt5fMn5CfDq4jqPeZBxMj"
-          crossorigin="anonymous"></script>
+  <script src="/static/marked.min.js"></script>
+  <link rel="stylesheet" href="/static/highlight.css" />
+  <script src="/static/highlight.min.js"></script>
 </head>
 <body>
   <div id="app">
@@ -80,6 +74,10 @@
           <span id="chat-status-text" class="status-text">就绪</span>
         </div>
         <div class="input-row">
+          <label class="plan-mode-toggle" id="plan-mode-toggle" title="开启后 Agent 会先将目标分解为可执行步骤">
+            <input type="checkbox" id="plan-mode-checkbox" />
+            <span class="plan-mode-label">计划模式</span>
+          </label>
           <textarea id="input" rows="1" placeholder="输入消息... (Enter 发送, Shift+Enter 换行)" autofocus></textarea>
           <button type="button" id="btn-send" class="primary-btn">发送</button>
         </div>
@@ -88,6 +86,7 @@
       <section id="viz-panel" class="panel viz-panel">
         <div class="panel-head">
           <h2>可视化</h2>
+          <button type="button" id="viz-toggle" class="icon-btn" title="折叠">▶</button>
           <div class="file-browser">
             <div class="file-browser-nav">
               <button id="browse-up" type="button" class="icon-btn" title="上级目录" disabled>↑</button>

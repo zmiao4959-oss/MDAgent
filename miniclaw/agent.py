@@ -505,11 +505,32 @@ class Agent:
             full_content = prefix + context.user_message if prefix else context.user_message
             session.add_message(LLMMessage(role="user", content=full_content))
 
-        system_prompt = self._build_system_prompt()
-        messages = [LLMMessage(role="system", content=system_prompt)] + session.messages
-        tools = self._build_tool_definitions()
+        # ── Plan mode 分支：Planning Agent 专用 prompt + 受限制工具集 ──
+        plan_mode = bool(context.metadata.get("plan_mode", False))
+        if plan_mode:
+            from .planning import build_planning_system_prompt
 
-        max_rounds = config.agent.max_tool_rounds
+            project_id = context.metadata.get("project_id", "")
+            project_title = context.metadata.get("project_title", "")
+            project_objective = context.metadata.get("project_objective", "")
+            system_prompt = build_planning_system_prompt(
+                project_id, project_title, project_objective
+            )
+            tools = tool_registry.list_for_llm_exclude(
+                exclude_tags=["execution", "shell", "browser", "communication"]
+            )
+            max_rounds = config.agent.planning.max_tool_rounds
+            logger.info(
+                "Plan mode active for project %s (chat %s)",
+                project_id or "(none)",
+                context.chat_id,
+            )
+        else:
+            system_prompt = self._build_system_prompt()
+            tools = self._build_tool_definitions()
+            max_rounds = config.agent.max_tool_rounds
+
+        messages = [LLMMessage(role="system", content=system_prompt)] + session.messages
         final_response = ""
         all_usage = {"prompt_tokens": 0, "completion_tokens": 0}
         hit_max_rounds = False

@@ -3,6 +3,7 @@
   const PROJECT_STORAGE_KEY = "miniclaw_webchat_project_id";
   const VIZ_STORAGE_PREFIX = "miniclaw_viz_";
   const SIDEBAR_COLLAPSED_KEY = "miniclaw_sidebar_collapsed";
+  const VIZ_COLLAPSED_KEY = "miniclaw_viz_collapsed";
 
   const msgs = document.getElementById("messages");
   const convList = document.getElementById("conv-list");
@@ -35,6 +36,8 @@
   const currentChatLabel = document.getElementById("current-chat-label");
   const runtimeDot = document.getElementById("runtime-dot");
   const runtimeSummary = document.getElementById("runtime-summary");
+  const planModeCheckbox = document.getElementById("plan-mode-checkbox");
+  const planModeToggle = document.getElementById("plan-mode-toggle");
   const projectDialog = document.getElementById("project-dialog");
   const projectForm = document.getElementById("project-form");
   const projectTitleInput = document.getElementById("project-title");
@@ -43,6 +46,7 @@
   let currentChatId = localStorage.getItem(CHAT_STORAGE_KEY) || "webchat:default";
   let currentProjectId = localStorage.getItem(PROJECT_STORAGE_KEY) || "";
   let chatRunning = false;
+  let planMode = false;
   const projectsById = new Map();
   const runningProjectIds = new Set();
   let mediaCount = 0;
@@ -160,15 +164,35 @@
         console.error("marked parse error:", e);
       }
     }
-    // Fallback: 简易渲染
+    // Fallback: 简易渲染（支持标题、表格、代码块等常用 Markdown）
     let html = text
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
+    // 代码块
     html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>');
     html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // 标题
+    html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+    // 表格（简易）
+    html = html.replace(/^\|(.+)\|$/gm, function(match) {
+      if (/^\|[-:\s|]+\|$/.test(match)) return ''; // 分隔行跳过
+      const cells = match.slice(1, -1).split('|').map(function(c) { return '<td>' + c.trim() + '</td>'; });
+      return '<tr>' + cells.join('') + '</tr>';
+    });
+    html = html.replace(/(<tr>.*<\/tr>\n?)+/g, '<table>$&</table>');
+    // 水平线
+    html = html.replace(/^---+$/gm, '<hr>');
+    // 粗体/斜体
     html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    // 无序列表
+    html = html.replace(/^[\-\*] (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+    // 换行
     html = html.replace(/\n/g, '<br>');
     return html;
   }
@@ -1341,7 +1365,7 @@
       const resp = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, chat_id: chatId, project_id: projectId }),
+        body: JSON.stringify({ message: text, chat_id: chatId, project_id: projectId, plan_mode: planMode }),
       });
       if (!resp.ok) throw new Error(await resp.text());
       if ((resp.headers.get("content-type") || "").includes("application/json")) {
@@ -1393,6 +1417,12 @@
             }
             msgs.scrollTop = msgs.scrollHeight;
             refreshFileList();
+            // 计划模式：完成后自动关闭并刷新计划面板
+            if (planMode) {
+              planMode = false;
+              planModeCheckbox.checked = false;
+              inp.placeholder = "输入消息... (Enter 发送, Shift+Enter 换行)";
+            }
           }
         });
       }
@@ -1451,6 +1481,27 @@
     await loadSidebar();
     updateCurrentChatLabel();
     await refreshTimeline();
+    // 后台任务完成后刷新聊天历史 + 计划面板（每 2s 轮询，最长 5 分钟）
+    const projectId = currentProjectId;
+    let elapsed = 0;
+    const pollInterval = 2000;
+    const maxPoll = 300000; // 5 minutes
+    const pollTimer = setInterval(async () => {
+      elapsed += pollInterval;
+      await loadSidebar();
+      const project = projectsById.get(projectId);
+      const stillRunning = project?.is_running || project?.status === "running" || project?.status === "queued";
+      if (!stillRunning || elapsed >= maxPoll) {
+        clearInterval(pollTimer);
+        // 只在当前仍选中该项目时刷新
+        if (currentProjectId === projectId) {
+          await loadHistory();
+          await refreshPlan();
+          await refreshArtifacts();
+          updateCurrentChatLabel();
+        }
+      }
+    }, pollInterval);
   });
 
   function closeProjectDialog() {
@@ -1574,6 +1625,15 @@
     } catch (_) {}
   });
 
+  planModeCheckbox?.addEventListener("change", () => {
+    planMode = planModeCheckbox.checked;
+    if (planMode) {
+      inp.placeholder = "描述你的目标，Agent 会先制定执行计划...";
+    } else {
+      inp.placeholder = "输入消息... (Enter 发送, Shift+Enter 换行)";
+    }
+  });
+
   sendBtn.addEventListener("click", send);
   inp.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
@@ -1595,6 +1655,16 @@
   });
 
   if (localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1") sidebar.classList.add("collapsed");
+
+  document.getElementById("viz-toggle").addEventListener("click", () => {
+    document.getElementById("viz-panel").classList.toggle("collapsed");
+    localStorage.setItem(VIZ_COLLAPSED_KEY, document.getElementById("viz-panel").classList.contains("collapsed") ? "1" : "0");
+    structureScenes.forEach((s) => s.onResize?.());
+  });
+
+  if (localStorage.getItem(VIZ_COLLAPSED_KEY) === "1") {
+    document.getElementById("viz-panel").classList.add("collapsed");
+  }
 
   atomRadiusSlider.addEventListener("input", () => {
     atomRadiusTouched = true;

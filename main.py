@@ -17,6 +17,7 @@ from miniclaw.gateway.server import GatewayServer
 from miniclaw.channels.webchat import WebChatAdapter
 from miniclaw.tools import ensure_tools_loaded
 from miniclaw.tools.message_tool import register_send_callback, unregister_send_callback
+from miniclaw.planning import register_plan_project_manager
 
 ensure_tools_loaded()
 
@@ -78,6 +79,7 @@ async def main():
         webchat = WebChatAdapter(host="127.0.0.1", port=8000, session_manager=session_mgr)
         webchat.set_message_handler(agent.process_message)
         adapters.append(webchat)
+        register_plan_project_manager(webchat.projects)
 
     if config.channels.enabled.get("telegram", False):
         tg_token = config.channels.settings.get("telegram", {}).get("bot_token", "")

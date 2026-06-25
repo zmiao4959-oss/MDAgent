@@ -79,9 +79,18 @@ class WebChatAdapter(BaseChannelAdapter):
                         f"[Project next task]\n{task['title']}\n\n"
                         "完成后简洁汇报已做的事、产物和需要我确认的事项。"
                     ),
-                    metadata={"workspace_dir": str(self._workspace_for_project(project))},
+                    metadata={
+                        "workspace_dir": str(self._workspace_for_project(project)),
+                        # 供 after_agent hook 自动勾选任务
+                        "_plan_task_id": task.get("task_id", ""),
+                        "_plan_project_id": project.project_id,
+                    },
                 )
                 response = await self._message_handler(context)
+                # ── 自动勾选已完成任务 ──
+                self.projects.update_task(
+                    project.project_id, task["task_id"], done=True
+                )
                 self.projects.update(project.project_id, status="active")
                 self._project_event(project, "done", "计划任务执行完成，等待确认")
                 self._refresh_project_summary(project, response)
@@ -561,6 +570,7 @@ class WebChatAdapter(BaseChannelAdapter):
             user_message = body.get("message", "")
             chat_id = body.get("chat_id") or "webchat:default"
             project_id = body.get("project_id") or ""
+            plan_mode = bool(body.get("plan_mode", False))
             project: Optional[Project] = None
             if project_id:
                 project = adapter.projects.get(project_id)
@@ -579,15 +589,22 @@ class WebChatAdapter(BaseChannelAdapter):
             agent_timeout = float(body.get("timeout", 300))
 
             async def event_stream():
+                metadata: Dict[str, Any] = {}
+                if project is not None:
+                    metadata["workspace_dir"] = str(
+                        adapter._workspace_for_project(project)
+                    )
+                    metadata["project_id"] = project.project_id
+                    metadata["project_title"] = project.title
+                    metadata["project_objective"] = project.objective
+                if plan_mode:
+                    metadata["plan_mode"] = True
                 ctx = AgentContext(
                     chat_id=chat_id,
                     channel="webchat",
                     account_id="local",
                     user_message=user_message,
-                    metadata=(
-                        {"workspace_dir": str(adapter._workspace_for_project(project))}
-                        if project is not None else {}
-                    ),
+                    metadata=metadata,
                 )
                 out_q: asyncio.Queue = asyncio.Queue()
                 result: Dict[str, Any] = {"response": None}

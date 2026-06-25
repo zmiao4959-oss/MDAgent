@@ -78,9 +78,20 @@ class ToolRegistry:
             tools = [t for t in tools if tag_set.issubset(set(t.tags))]
         return [t.schema for t in tools]
 
-    def get_descriptions(self) -> str:
+    def list_for_llm_exclude(self, exclude_tags: Optional[List[str]] = None) -> List[Dict]:
+        """返回工具 schema 列表，排除包含任一 exclude_tag 的工具（OR 逻辑）。"""
+        tools = list(self._tools.values())
+        if exclude_tags:
+            exclude_set = set(exclude_tags)
+            tools = [t for t in tools if not exclude_set.intersection(set(t.tags))]
+        return [t.schema for t in tools]
+
+    def get_descriptions(self, exclude_tags: Optional[List[str]] = None) -> str:
         lines = []
+        exclude_set = set(exclude_tags) if exclude_tags else set()
         for td in self._tools.values():
+            if exclude_set and exclude_set.intersection(set(td.tags)):
+                continue
             extra = ""
             if td.risk_level != "low":
                 extra = f" [{td.risk_level} risk]"

@@ -21,6 +21,9 @@ agent:
   max_context_tokens: 80000
   heartbeat_interval_min: 30
   thinking: adaptive
+  planning:
+    max_tool_rounds: 5
+    temperature: 0.3
 
 channels:
   enabled:

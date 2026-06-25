@@ -123,6 +123,18 @@ class AgentConfig:
     compaction_keep_messages: int = 20  # 压缩时保留最近 N 条消息
     heartbeat_interval_min: int = 30    # 心跳间隔（分钟）
     thinking: str = "adaptive"          # on | off | adaptive
+    planning: "PlanningAgentConfig" = None  # type: ignore
+
+    def __post_init__(self):
+        if self.planning is None:
+            self.planning = PlanningAgentConfig()
+
+
+@dataclass
+class PlanningAgentConfig:
+    """Planning Agent 配置"""
+    max_tool_rounds: int = 5            # 规划阶段最多工具轮数
+    temperature: float = 0.3            # 规划阶段温度（更低=更确定）
 
 
 class Config:
@@ -169,12 +181,17 @@ class Config:
         )
         
         agent_raw = raw.get("agent", {})
+        planning_raw = agent_raw.get("planning", {})
         self.agent = AgentConfig(
             max_tool_rounds=agent_raw.get("max_tool_rounds", 15),
             max_context_tokens=agent_raw.get("max_context_tokens", 80000),
             compaction_keep_messages=agent_raw.get("compaction_keep_messages", 20),
             heartbeat_interval_min=agent_raw.get("heartbeat_interval_min", 30),
             thinking=agent_raw.get("thinking", "adaptive"),
+            planning=PlanningAgentConfig(
+                max_tool_rounds=planning_raw.get("max_tool_rounds", 5),
+                temperature=planning_raw.get("temperature", 0.3),
+            ),
         )
     """
     @classmethod 也是一个装饰器，它把方法变成类方法，与普通实例方法的区别在于：
