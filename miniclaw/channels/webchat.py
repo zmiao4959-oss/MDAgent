@@ -196,6 +196,13 @@ class WebChatAdapter(BaseChannelAdapter):
         app = FastAPI(title="MiniClaw")
         adapter = self
 
+        # ── 安全响应头 ──
+        @app.middleware("http")
+        async def security_headers(request: Request, call_next):
+            response = await call_next(request)
+            response.headers.setdefault("X-Content-Type-Options", "nosniff")
+            return response
+
         if WEB_DIR.is_dir():
             app.mount("/static", StaticFiles(directory=str(WEB_DIR)), name="static")
 
@@ -510,7 +517,10 @@ class WebChatAdapter(BaseChannelAdapter):
                     out.append({"role": "tool", "content": f"[{name}] {snippet}"})
                     continue
                 out.append({"role": m.role, "content": m.content or ""})
-            return {"messages": out, "chat_id": chat_id}
+            # 从 session metadata 恢复可视化状态（GIF / 结构文件等），
+            # 确保 SSE 断连后刷新页面仍能还原已完成的渲染产物。
+            viz_done = session.metadata.get("viz_done") if isinstance(session.metadata.get("viz_done"), list) else []
+            return {"messages": out, "chat_id": chat_id, "viz_done": viz_done}
 
         @app.get("/api/export")
         async def export_conversation(chat_id: str, fmt: str = "markdown"):

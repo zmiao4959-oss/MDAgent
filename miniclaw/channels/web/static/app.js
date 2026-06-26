@@ -1,7 +1,9 @@
-(function () {
+import * as THREE from '/static/three.module.js';
+
   const CHAT_STORAGE_KEY = "miniclaw_webchat_chat_id";
   const PROJECT_STORAGE_KEY = "miniclaw_webchat_project_id";
   const VIZ_STORAGE_PREFIX = "miniclaw_viz_";
+  const VIZ_REMOVED_KEY = "miniclaw_viz_removed";
   const SIDEBAR_COLLAPSED_KEY = "miniclaw_sidebar_collapsed";
   const VIZ_COLLAPSED_KEY = "miniclaw_viz_collapsed";
 
@@ -347,7 +349,12 @@
     document.querySelectorAll(".tab-pane").forEach((p) => {
       p.classList.toggle("active", p.id === `tab-${name}`);
     });
-    if (name === "structure") structureScenes.forEach((s) => s.onResize?.());
+    if (name === "structure") {
+      // 延迟到下一帧等 layout 完成，确保 clientWidth/Height 正确
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => structureScenes.forEach((s) => s.onResize?.()));
+      });
+    }
   }
 
   document.querySelectorAll(".tab").forEach((btn) => {
@@ -981,9 +988,16 @@
     let rot = 0;
     let frameId = null;
     let animPaused = false;
+
+    // 立即渲染第一帧，避免黑屏
+    renderer.render(scene, camera);
+
     function animate() {
       frameId = requestAnimationFrame(animate);
-      if (animPaused) return;
+      if (animPaused) {
+        // 保持最后一帧可见（不擦除）
+        return;
+      }
       rot += 0.003;
       camera.position.x = dist * Math.cos(rot);
       camera.position.z = dist * Math.sin(rot);
@@ -991,9 +1005,14 @@
       renderer.render(scene, camera);
     }
     animate();
-    // Pause animation when panel is not visible to save GPU/CPU
+    // 只在容器有可见尺寸时才启用动画，否则暂停以节省 GPU/CPU
     const visObserver = new IntersectionObserver((entries) => {
+      const wasPaused = animPaused;
       animPaused = !entries[0].isIntersecting;
+      // 从暂停恢复时立刻重绘一帧
+      if (wasPaused && !animPaused) {
+        renderer.render(scene, camera);
+      }
     }, { threshold: 0.01 });
     visObserver.observe(container);
     return {
@@ -1005,6 +1024,7 @@
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
         renderer.setSize(w, h);
+        renderer.render(scene, camera);
       },
       dispose() {
         if (frameId) cancelAnimationFrame(frameId);
@@ -1033,6 +1053,15 @@
           break;
         }
       }
+      // 记录到"已移除"集合，防止服务端 viz_done 在刷新时重新加载
+      try {
+        const raw = localStorage.getItem(VIZ_REMOVED_KEY);
+        const removed = raw ? JSON.parse(raw) : [];
+        if (!removed.includes(label)) {
+          removed.push(label);
+          localStorage.setItem(VIZ_REMOVED_KEY, JSON.stringify(removed.slice(-200)));
+        }
+      } catch (_) {}
     }
     _structureCardsByPath.delete(card._label);
     card.remove();
@@ -1098,12 +1127,15 @@
   async function loadStructureFromPath(path, ext, persist = true) {
     setVizProgress(true, "解析结构文件…");
     try {
-      const text = await (await fetch(assetUrl(path))).text();
+      const resp = await fetch(assetUrl(path));
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const text = await resp.text();
       const atoms = parseStructureFile(text, ext);
       appendStructure(atoms, path, persist);
       switchTab("structure");
       setVizProgress(false);
-    } catch {
+    } catch (e) {
+      console.error("结构加载失败:", path, e);
       setVizProgress(false, "结构加载失败");
     }
   }
@@ -1263,6 +1295,41 @@
     return list;
   }
 
+  // ── 从服务端 viz_done 列表恢复漏掉的媒体/结构卡片 ──
+  async function restoreVizFromServer(vizDonePaths) {
+    if (!vizDonePaths || !vizDonePaths.length) return;
+    const known = new Set([
+      ...savedMedia.map((m) => m.path),
+      ...savedStructures.map((s) => s.path),
+    ]);
+    // 读取用户手动移除的路径，避免刷新后复活
+    let removedSet = new Set();
+    try {
+      const raw = localStorage.getItem(VIZ_REMOVED_KEY);
+      if (raw) { JSON.parse(raw).forEach(function (p) { removedSet.add(p); }); }
+    } catch (_) {}
+    for (const rawPath of vizDonePaths) {
+      const path = String(rawPath);
+      if (known.has(path) || removedSet.has(path)) continue;
+      known.add(path);
+      const lower = path.toLowerCase();
+      try {
+        if (lower.endsWith(".gif")) {
+          appendMedia("gif", path, true, true);
+        } else if (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg")) {
+          appendMedia("image", path, true, true);
+        } else if (lower.endsWith(".csv")) {
+          await appendCsvChart(path, true, true);
+        }
+        // 注意：原始结构文件（.dump/.xyz 等）不在此自动恢复 —
+        // 文件可能很大，用户可手动从文件浏览器加载。
+      } catch (e) {
+        console.error("恢复 viz 产物失败:", path, e);
+      }
+    }
+    setVizProgress(false);
+  }
+
   async function loadHistory() {
     msgs.innerHTML = "";
     const r = await fetch(`/api/history?chat_id=${encodeURIComponent(currentChatId)}`);
@@ -1281,6 +1348,10 @@
       }
     });
     msgs.scrollTop = msgs.scrollHeight;
+    // 恢复 SSE 断连期间服务端已完成的渲染产物（GIF / 结构 3D）
+    if (data.viz_done) {
+      await restoreVizFromServer(data.viz_done);
+    }
   }
 
   async function selectChat(projectId) {
@@ -1297,8 +1368,8 @@
     const running = Boolean(project.is_running || runningProjectIds.has(projectId));
     setChatProgress(running, running ? "Agent 正在后台运行…" : "就绪", undefined, projectId);
     updateCurrentChatLabel();
-    await loadHistory();
     await restoreVizState();
+    await loadHistory();
     await refreshFileList();
     await refreshArtifacts();
     await refreshTimeline();
@@ -1360,6 +1431,24 @@
 
     let rawContent = "";
     let firstContent = false;
+    let receivedDone = false;
+
+    // ── 统一渲染 agent 消息卡片 ──
+    function finalizeAgentDiv(finalText) {
+      if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
+      setChatProgress(false, undefined, undefined, projectId);
+      if (finalText.trim()) {
+        if (typeof marked !== "undefined") {
+          agDiv.innerHTML = renderMarkdown(finalText);
+          addToolCallCardsAfterMsg(agDiv, finalText);
+        } else {
+          agDiv.textContent = finalText;
+        }
+      } else if (!agDiv.textContent && !agDiv.innerHTML.trim()) {
+        agDiv.textContent = "（模型未返回文本）";
+      }
+      msgs.scrollTop = msgs.scrollHeight;
+    }
 
     try {
       const resp = await fetch("/api/chat", {
@@ -1405,19 +1494,10 @@
             }
             msgs.scrollTop = msgs.scrollHeight;
           } else if (payload.done) {
-            if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
-            setChatProgress(false, undefined, undefined, projectId);
-            if (!rawContent.trim() && payload.full) rawContent = payload.full;
-            // 最终渲染（去掉光标）
-            if (rawContent.trim() && typeof marked !== "undefined") {
-              agDiv.innerHTML = renderMarkdown(rawContent);
-              addToolCallCardsAfterMsg(agDiv, rawContent);
-            } else {
-              agDiv.textContent = rawContent;
-            }
-            msgs.scrollTop = msgs.scrollHeight;
+            receivedDone = true;
+            // 服务端返回的 full 是权威完整结果，始终用它
+            finalizeAgentDiv(payload.full || rawContent);
             refreshFileList();
-            // 计划模式：完成后自动关闭并刷新计划面板
             if (planMode) {
               planMode = false;
               planModeCheckbox.checked = false;
@@ -1426,35 +1506,69 @@
           }
         });
       }
-      // 兜底：处理 buffer 剩余数据
+      // 兜底：处理 buffer 剩余数据（复用同一解析函数，避免遗漏 done 事件）
       if (buffer.trim()) {
         parseSseBuffer(buffer + "\n", (payload) => {
           if (payload.progress) {
             const p = payload.progress;
             if (p.total) setChatProgress(true, `Step ${p.current} / ${p.total}`, Math.round((p.current / p.total) * 100), projectId);
             else setChatProgress(true, `Step ${p.current}`, undefined, projectId);
-          } else if (payload.viz) handleVizEvent(payload);
-          else if (payload.delta) {
+          } else if (payload.viz) {
+            handleVizEvent(payload);
+          } else if (payload.delta) {
             if (!firstContent) { if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove(); firstContent = true; }
             rawContent += payload.delta;
+          } else if (payload.done) {
+            receivedDone = true;
+            finalizeAgentDiv(payload.full || rawContent);
+            refreshFileList();
           }
         });
       }
-      // 最终渲染
-      if (!firstContent && thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
-      if (rawContent.trim()) {
-        if (typeof marked !== "undefined") {
-          agDiv.innerHTML = renderMarkdown(rawContent);
-          addToolCallCardsAfterMsg(agDiv, rawContent);
-        } else {
-          agDiv.textContent = rawContent;
+      // 流正常结束但没收到 done → 用流式内容兜底渲染
+      if (!receivedDone) {
+        if (!firstContent && thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
+        if (rawContent.trim()) {
+          if (typeof marked !== "undefined") {
+            agDiv.innerHTML = renderMarkdown(rawContent);
+            addToolCallCardsAfterMsg(agDiv, rawContent);
+          } else {
+            agDiv.textContent = rawContent;
+          }
         }
       }
     } catch (e) {
       if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
-      agDiv.textContent = "Error: " + e.message;
+      if (!rawContent.trim()) {
+        agDiv.textContent = "Error: " + e.message;
+      }
       setChatProgress(false, undefined, undefined, projectId);
     }
+
+    // ── 保险：没收到 done 事件时，从服务端拉历史确保最终回复不丢失 ──
+    if (!receivedDone) {
+      try {
+        const hr = await fetch(`/api/history?chat_id=${encodeURIComponent(chatId)}`);
+        const hd = await hr.json();
+        const msgs = hd.messages || [];
+        let lastAssistant = "";
+        for (let i = msgs.length - 1; i >= 0; i--) {
+          if (msgs[i].role === "assistant") {
+            lastAssistant = msgs[i].content || "";
+            break;
+          }
+        }
+        if (lastAssistant && lastAssistant !== rawContent) {
+          if (!firstContent && thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
+          finalizeAgentDiv(lastAssistant);
+        }
+        // SSE 断开期间 OVITO 可能已完成 GIF 渲染 → 恢复服务端记录的 viz 产物
+        if (hd.viz_done) {
+          await restoreVizFromServer(hd.viz_done);
+        }
+      } catch (_) {}
+    }
+
     await loadSidebar();
     updateCurrentChatLabel();
     setActiveInSidebar();
@@ -1711,4 +1825,3 @@ window.addEventListener("resize", () => {
   init();
   refreshRuntimeStats();
   window.setInterval(refreshRuntimeStats, 30000);
-})();

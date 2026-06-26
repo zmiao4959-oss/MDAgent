@@ -466,6 +466,7 @@ html, body {
   cursor: pointer;
   font-size: 13px;
   color: #ccc;
+  -webkit-user-select: none;
   user-select: none;
   display: flex;
   align-items: center;
@@ -974,6 +975,7 @@ html, body {
   place-items: center;
   padding: 20px;
   background: rgba(2, 6, 15, .68);
+  -webkit-backdrop-filter: blur(7px);
   backdrop-filter: blur(7px);
 }
 .project-dialog-card {
@@ -1073,6 +1075,7 @@ html, body {
   border: 1px solid rgba(151,177,220,.12);
   transition: all .2s;
   white-space: nowrap;
+  -webkit-user-select: none;
   user-select: none;
   flex-shrink: 0;
 }

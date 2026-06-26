@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MiniClaw</title>
   <link rel="stylesheet" href="/static/style.css" />
-  <script src="/static/three.min.js"
-          integrity="sha384-mtIuPpQkC5LPBWjXv3lJbO5aYd4Rq+PJzG2W+gRvKqXesHrLJhQ8JqKRbzWx4ot"
-          crossorigin="anonymous"></script>
   <script src="/static/marked.min.js"></script>
   <link rel="stylesheet" href="/static/highlight.css" />
   <script src="/static/highlight.min.js"></script>
@@ -29,7 +26,7 @@
       <button type="button" id="new-chat" class="primary-btn">+ 新项目</button>
       <div class="sidebar-caption">PROJECTS</div>
       <div class="conv-search-wrap">
-        <input type="text" id="conv-search" class="conv-search" placeholder="搜索项目..." />
+        <input type="text" id="conv-search" class="conv-search" placeholder="搜索项目..." aria-label="搜索项目" />
       </div>
       <div id="conv-list" class="conv-list project-list"></div>
       <div class="sidebar-footer">
@@ -94,7 +91,7 @@
               <button id="refresh-files" type="button" class="ghost-btn">刷新</button>
             </div>
             <div class="file-browser-row">
-              <select id="file-select">
+              <select id="file-select" aria-label="选择文件或文件夹" title="浏览并选择可视化文件">
                 <option value="">— 进入子文件夹或选择文件 —</option>
               </select>
               <button id="load-viz" type="button" class="ghost-btn">加载</button>
@@ -115,7 +112,7 @@
         <div id="tab-plan" class="tab-pane">
           <div id="project-summary" class="project-summary">项目总结会在每轮任务完成后更新。</div>
           <div class="plan-actions"><button id="run-next-task" class="primary-btn" type="button">▶ 执行下一项</button></div>
-          <form id="task-form" class="task-form"><input id="task-input" maxlength="300" placeholder="添加下一步任务…" /><button class="ghost-btn" type="submit">添加</button></form>
+          <form id="task-form" class="task-form"><input id="task-input" maxlength="300" placeholder="添加下一步任务…" aria-label="任务标题" /><button class="ghost-btn" type="submit">添加</button></form>
           <div id="task-list" class="task-list"><p class="placeholder">还没有任务计划。</p></div>
         </div>
         <div id="tab-run" class="tab-pane">
@@ -135,7 +132,7 @@
           <div class="structure-controls">
             <span class="structure-controls-label">原子半径</span>
             <button id="atom-radius-dec" type="button" class="icon-btn">−</button>
-            <input type="range" id="atom-radius-slider" min="0.05" max="6" step="0.05" value="0.30" />
+            <input type="range" id="atom-radius-slider" min="0.05" max="6" step="0.05" value="0.30" aria-label="原子半径" title="调整原子显示半径" />
             <button id="atom-radius-inc" type="button" class="icon-btn">+</button>
             <button id="atom-radius-reset" type="button" class="ghost-btn">重置</button>
             <span id="atom-radius-value" class="atom-radius-value">0.30</span>
@@ -158,7 +155,7 @@
       </div>
       <label for="project-title">项目名称</label>
       <input id="project-title" name="title" maxlength="120" placeholder="例如：整理 LAMMPS 模拟方案" required />
-      <label for="project-objective">目标 <span>可选</span></label>
+      <label for="project-objective-input">目标 <span>可选</span></label>
       <textarea id="project-objective-input" name="objective" rows="4" maxlength="2000" placeholder="写下希望 Agent 持续推进的事情、交付物或判断标准。"></textarea>
       <div class="project-dialog-note">每个项目都会拥有独立的对话与运行状态；目前项目仍共享同一个本地工作区。</div>
       <div class="project-dialog-actions">
@@ -167,6 +164,6 @@
       </div>
     </form>
   </div>
-  <script src="/static/app.js"></script>
+  <script type="module" src="/static/app.js"></script>
 </body>
 </html>
