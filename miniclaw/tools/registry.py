@@ -142,7 +142,7 @@ class ToolRegistry:
             return f"Error: Unknown tool '{name}'"
 
         args = dict(arguments or {})
-        args.pop("_context", None)
+        args.setdefault("_context", dict(context or {}))
 
         err = self._validate_arguments(tool, args)
         if err:

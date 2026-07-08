@@ -123,11 +123,20 @@ class AgentConfig:
     compaction_keep_messages: int = 20  # 压缩时保留最近 N 条消息
     heartbeat_interval_min: int = 30    # 心跳间隔（分钟）
     thinking: str = "adaptive"          # on | off | adaptive
+    task_timeout_sec: int = 600         # 单次 Agent 任务整体超时（秒）
+    sse_keepalive_sec: int = 15         # SSE 流无事件超时断连检测（秒）
     planning: "PlanningAgentConfig" = None  # type: ignore
 
     def __post_init__(self):
         if self.planning is None:
             self.planning = PlanningAgentConfig()
+
+
+@dataclass
+class ExecutionConfig:
+    """子进程执行配置（execute 工具）"""
+    default_timeout_sec: int = 60       # execute 工具默认超时
+    max_timeout_sec: int = 900          # execute 工具最大超时
 
 
 @dataclass
@@ -182,16 +191,23 @@ class Config:
         
         agent_raw = raw.get("agent", {})
         planning_raw = agent_raw.get("planning", {})
+        execution_raw = raw.get("execution", {})
         self.agent = AgentConfig(
             max_tool_rounds=agent_raw.get("max_tool_rounds", 15),
             max_context_tokens=agent_raw.get("max_context_tokens", 80000),
             compaction_keep_messages=agent_raw.get("compaction_keep_messages", 20),
             heartbeat_interval_min=agent_raw.get("heartbeat_interval_min", 30),
             thinking=agent_raw.get("thinking", "adaptive"),
+            task_timeout_sec=agent_raw.get("task_timeout_sec", 600),
+            sse_keepalive_sec=agent_raw.get("sse_keepalive_sec", 15),
             planning=PlanningAgentConfig(
                 max_tool_rounds=planning_raw.get("max_tool_rounds", 5),
                 temperature=planning_raw.get("temperature", 0.3),
             ),
+        )
+        self.execution = ExecutionConfig(
+            default_timeout_sec=execution_raw.get("default_timeout_sec", 60),
+            max_timeout_sec=execution_raw.get("max_timeout_sec", 900),
         )
     """
     @classmethod 也是一个装饰器，它把方法变成类方法，与普通实例方法的区别在于：

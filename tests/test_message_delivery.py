@@ -3,6 +3,11 @@ import asyncio
 from miniclaw.channels.webchat import WebChatAdapter
 from miniclaw.cron_scheduler import CronJob, CronScheduler
 from miniclaw.memory.session import SessionManager
+from miniclaw.tools.message_tool import (
+    register_send_callback,
+    send_message_tool,
+    unregister_send_callback,
+)
 
 
 class _Agent:
@@ -42,3 +47,26 @@ def test_cron_delivers_completed_response(monkeypatch):
         "channel": "webchat",
         "chat_id": "default",
     }
+
+
+def test_send_message_uses_current_context_by_default():
+    delivered = {}
+
+    async def callback(chat_id, message):
+        delivered["chat_id"] = chat_id
+        delivered["message"] = message
+
+    register_send_callback("webchat", callback)
+    try:
+        result = asyncio.run(
+            send_message_tool(
+                "hello",
+                _context={"channel": "webchat", "chat_id": "webchat:ctx"},
+            )
+        )
+    finally:
+        unregister_send_callback("webchat")
+
+    assert "default" not in result
+    assert "webchat:webchat:ctx" in result
+    assert delivered == {"chat_id": "webchat:ctx", "message": "hello"}

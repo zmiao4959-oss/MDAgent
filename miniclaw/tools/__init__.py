@@ -17,6 +17,7 @@ def ensure_tools_loaded() -> None:
     from . import web_search  # noqa: F401
     from . import memory_tool  # noqa: F401
     from . import system_tool  # noqa: F401
+    from . import skill_tool  # noqa: F401
     try:
         from . import browser_tool  # noqa: F401
     except ImportError:

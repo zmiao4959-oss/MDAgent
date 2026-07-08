@@ -142,10 +142,15 @@ async def plan_add_tasks(
             "The planning system may not be fully initialized."
         )
 
-    project = pm.get(project_id)
+    ctx = kwargs.get("_context") or {}
+    context_project_id = (ctx.get("project_id") or "").strip()
+    requested_project_id = (project_id or "").strip()
+    effective_project_id = context_project_id or requested_project_id
+
+    project = pm.get(effective_project_id)
     if project is None:
         return (
-            f"Error: Project '{project_id}' not found. "
+            f"Error: Project '{effective_project_id or requested_project_id}' not found. "
             "Double-check the project_id from the system prompt and try again."
         )
 
@@ -157,7 +162,7 @@ async def plan_add_tasks(
         title = (task.get("title") or "").strip()
         if not title:
             continue
-        result = pm.add_task(project_id, title)
+        result = pm.add_task(project.project_id, title)
         if result:
             added.append(title)
 
@@ -171,14 +176,22 @@ async def plan_add_tasks(
     total = len(project.tasks)
     done = sum(1 for t in project.tasks if t.get("done"))
     pm.update_summary(
-        project_id,
+        project.project_id,
         f"已创建 {len(added)} 个新任务，共 {total} 个任务待执行。",
     )
+
+    note = ""
+    if context_project_id and requested_project_id and context_project_id != requested_project_id:
+        note = (
+            f"\n\nNote: ignored stale model-supplied project_id '{requested_project_id}' "
+            f"and used current request project_id '{context_project_id}'."
+        )
 
     return (
         f"Successfully added {len(added)} task(s):\n"
         + "\n".join(f"  {i+1}. {t}" for i, t in enumerate(added))
         + f"\n\nProject now has {total} task(s), {done} already done."
+        + note
     )
 
 

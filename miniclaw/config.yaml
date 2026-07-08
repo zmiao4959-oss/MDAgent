@@ -3,7 +3,7 @@ llm:
   model: deepseek-chat
   # api_key 优先从环境变量 MINICLAW_API_KEY 读取
   base_url: https://api.deepseek.com/v1
-  temperature: 0.7
+  temperature: 0.3
   max_tokens: 8192
   fallback_providers:
     - provider: openai
@@ -21,9 +21,15 @@ agent:
   max_context_tokens: 80000
   heartbeat_interval_min: 30
   thinking: adaptive
+  task_timeout_sec: 600         # 单次 Agent 任务整体超时
+  sse_keepalive_sec: 15         # SSE 流无事件时的断连检测间隔
   planning:
     max_tool_rounds: 5
     temperature: 0.3
+
+execution:
+  default_timeout_sec: 60       # execute 工具默认超时
+  max_timeout_sec: 900          # execute 工具最大超时
 
 channels:
   enabled:

@@ -2,7 +2,7 @@ from miniclaw.projects import ProjectManager
 from miniclaw.channels.webchat import WebChatAdapter
 from miniclaw.memory.session import SessionManager
 from miniclaw.config import workspace_scope
-from miniclaw.tools.paths import resolve_workspace_path
+from miniclaw.tools.paths import resolve_workspace_path, safe_relpath
 
 
 def test_projects_persist_and_support_lifecycle(tmp_path):
@@ -64,3 +64,23 @@ def test_project_artifacts_are_scoped_and_sorted(tmp_path):
     artifacts = adapter._project_artifacts(project)
 
     assert {artifact["name"] for artifact in artifacts} == {"result.log", "older.txt"}
+
+
+def test_resolve_workspace_path_allows_extra_read_root(tmp_path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    skill_root = tmp_path / "skills"
+    skill_root.mkdir()
+    skill_file = skill_root / "demo" / "SKILL.md"
+    skill_file.parent.mkdir()
+    skill_file.write_text("demo", encoding="utf-8")
+
+    path, error = resolve_workspace_path(
+        str(skill_file),
+        must_exist=True,
+        extra_roots=[skill_root],
+    )
+
+    assert error is None
+    assert path == skill_file.resolve()
+    assert safe_relpath(path) == str(path.resolve()).replace("\\", "/")

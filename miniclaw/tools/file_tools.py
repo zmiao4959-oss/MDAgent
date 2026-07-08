@@ -3,12 +3,17 @@ tools/file_tools.py — 工作区内文件读写、目录列表与内容搜索
 """
 from __future__ import annotations
 
+import json
 import re
+import shutil
 from pathlib import Path
 
 from .registry import tool_registry
 from .paths import (
+    readable_roots,
     resolve_workspace_path,
+    safe_relpath,
+    workspace_root,
     is_image,
     is_probably_text,
     MAX_READ_BYTES,
@@ -71,7 +76,11 @@ def _format_read_lines(
     tags=["filesystem"],
 )
 def read_tool(path: str, offset: int = 1, limit: int = DEFAULT_READ_LIMIT, **kwargs):
-    resolved, err = resolve_workspace_path(path, must_exist=True)
+    resolved, err = resolve_workspace_path(
+        path,
+        must_exist=True,
+        extra_roots=readable_roots(),
+    )
     if err:
         return err
 
@@ -123,7 +132,7 @@ def read_tool(path: str, offset: int = 1, limit: int = DEFAULT_READ_LIMIT, **kwa
     chunk = all_lines[start:end]
     return _format_read_lines(
         chunk,
-        path_display=str(resolved.relative_to(workspace_root())),
+        path_display=str(safe_relpath(resolved)),
         start_line=start + 1,
         total_lines=total,
         end_line=end,
@@ -176,8 +185,352 @@ def write_tool(path: str, content: str, **kwargs):
     except OSError as e:
         return f"Error writing {path}: {e}"
 
-    rel = resolved.relative_to(workspace_root())
+    rel = safe_relpath(resolved)
     return f"Successfully wrote {len(encoded)} bytes to {rel}"
+
+
+@tool_registry.register(
+    name="write_json",
+    description="Serialize structured data to a JSON file inside the workspace.",
+    schema={
+        "type": "function",
+        "function": {
+            "name": "write_json",
+            "description": (
+                "Write a JSON value to a workspace file. Prefer this over `write` "
+                "when creating config files so the model does not have to hand-craft "
+                "JSON syntax."
+            ),
+            "parameters": {
+                "type": "object",
+                "required": ["path", "data"],
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "JSON file path under workspace",
+                    },
+                    "data": {
+                        "description": "The JSON value to serialize",
+                        "anyOf": [
+                            {"type": "object"},
+                            {"type": "array"},
+                            {"type": "string"},
+                            {"type": "number"},
+                            {"type": "integer"},
+                            {"type": "boolean"},
+                            {"type": "null"},
+                        ],
+                    },
+                    "indent": {
+                        "type": "integer",
+                        "description": "Pretty-print indentation spaces (default 2, max 8)",
+                    },
+                    "sort_keys": {
+                        "type": "boolean",
+                        "description": "If true, sort object keys before writing",
+                    },
+                },
+            },
+        },
+    },
+    require_approval=True,
+    risk_level="medium",
+    tags=["filesystem"],
+)
+def write_json_tool(
+    path: str,
+    data,
+    indent: int = 2,
+    sort_keys: bool = False,
+    **kwargs,
+):
+    try:
+        indent = max(0, min(int(indent), 8))
+    except (TypeError, ValueError):
+        indent = 2
+
+    try:
+        content = json.dumps(
+            data,
+            ensure_ascii=False,
+            indent=indent or None,
+            sort_keys=bool(sort_keys),
+        )
+    except (TypeError, ValueError) as e:
+        return f"Error: data is not JSON-serializable: {e}"
+
+    if indent:
+        content += "\n"
+
+    encoded = content.encode("utf-8")
+    if len(encoded) > MAX_WRITE_BYTES:
+        return (
+            f"Error: JSON content too large ({len(encoded)} bytes, "
+            f"max {MAX_WRITE_BYTES} bytes)"
+        )
+
+    resolved, err = resolve_workspace_path(path, allow_create=True)
+    if err:
+        return err
+
+    if resolved.exists() and resolved.is_dir():
+        return f"Error: '{path}' is a directory, not a file"
+
+    try:
+        resolved.parent.mkdir(parents=True, exist_ok=True)
+        resolved.write_text(content, encoding="utf-8")
+    except OSError as e:
+        return f"Error writing {path}: {e}"
+
+    rel = safe_relpath(resolved)
+    return f"Successfully wrote JSON ({len(encoded)} bytes) to {rel}"
+
+
+def _set_json_path(root, dotted_path: str, value):
+    if not dotted_path or not str(dotted_path).strip():
+        return "empty update path"
+    parts = [p for p in str(dotted_path).split(".") if p]
+    if not parts:
+        return "empty update path"
+
+    current = root
+    for part in parts[:-1]:
+        if isinstance(current, dict):
+            if part not in current or not isinstance(current[part], (dict, list)):
+                current[part] = {}
+            current = current[part]
+            continue
+        if isinstance(current, list) and part.isdigit():
+            index = int(part)
+            if index >= len(current):
+                return f"list index out of range at '{part}' in '{dotted_path}'"
+            current = current[index]
+            continue
+        return f"cannot descend into '{part}' in '{dotted_path}'"
+
+    leaf = parts[-1]
+    if isinstance(current, dict):
+        current[leaf] = value
+        return None
+    if isinstance(current, list) and leaf.isdigit():
+        index = int(leaf)
+        if index >= len(current):
+            return f"list index out of range at '{leaf}' in '{dotted_path}'"
+        current[index] = value
+        return None
+    return f"cannot set '{leaf}' in '{dotted_path}'"
+
+
+@tool_registry.register(
+    name="update_json",
+    description="Update selected fields in an existing JSON file inside the workspace.",
+    schema={
+        "type": "function",
+        "function": {
+            "name": "update_json",
+            "description": (
+                "Patch a JSON config file by dotted field paths. Prefer this over "
+                "`write` when changing a few JSON settings; it preserves unrelated fields "
+                "and avoids hand-writing the whole file."
+            ),
+            "parameters": {
+                "type": "object",
+                "required": ["path", "updates"],
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Existing JSON file path under workspace",
+                    },
+                    "updates": {
+                        "type": "object",
+                        "description": (
+                            "Map of dotted JSON paths to new values, e.g. "
+                            "{\"tension.run_steps\": 40000, \"lattice.cells\": [20,20,20]}"
+                        ),
+                    },
+                    "indent": {
+                        "type": "integer",
+                        "description": "Pretty-print indentation spaces (default 2, max 8)",
+                    },
+                },
+            },
+        },
+    },
+    require_approval=True,
+    risk_level="medium",
+    tags=["filesystem"],
+)
+def update_json_tool(path: str, updates: dict, indent: int = 2, **kwargs):
+    if not isinstance(updates, dict) or not updates:
+        return "Error: updates must be a non-empty object"
+
+    resolved, err = resolve_workspace_path(path, must_exist=True)
+    if err:
+        return err
+    if resolved.is_dir():
+        return f"Error: '{path}' is a directory, not a JSON file"
+    if resolved.suffix.lower() != ".json":
+        return f"Error: update_json only supports .json files. Path: {path}"
+
+    try:
+        data = json.loads(resolved.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        return f"Error: invalid JSON in {path}: {e}"
+    except OSError as e:
+        return f"Error reading {path}: {e}"
+
+    for dotted_path, value in updates.items():
+        err = _set_json_path(data, dotted_path, value)
+        if err:
+            return f"Error: {err}"
+
+    try:
+        indent_value = max(0, min(int(indent), 8))
+    except (TypeError, ValueError):
+        indent_value = 2
+
+    try:
+        content = json.dumps(
+            data,
+            ensure_ascii=False,
+            indent=indent_value or None,
+        )
+    except (TypeError, ValueError) as e:
+        return f"Error: updated data is not JSON-serializable: {e}"
+    if indent_value:
+        content += "\n"
+
+    encoded = content.encode("utf-8")
+    if len(encoded) > MAX_WRITE_BYTES:
+        return (
+            f"Error: JSON content too large ({len(encoded)} bytes, "
+            f"max {MAX_WRITE_BYTES} bytes)"
+        )
+
+    try:
+        resolved.write_text(content, encoding="utf-8")
+    except OSError as e:
+        return f"Error writing {path}: {e}"
+
+    changed = ", ".join(str(k) for k in updates.keys())
+    return f"Successfully updated JSON fields in {safe_relpath(resolved)}: {changed}"
+
+
+@tool_registry.register(
+    name="make_dir",
+    description="Create a directory inside the workspace without using shell commands.",
+    schema={
+        "type": "function",
+        "function": {
+            "name": "make_dir",
+            "description": (
+                "Create one directory under the workspace. Prefer this over "
+                "`execute` with mkdir/cmd when preparing task folders."
+            ),
+            "parameters": {
+                "type": "object",
+                "required": ["path"],
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Directory path under workspace",
+                    },
+                    "parents": {
+                        "type": "boolean",
+                        "description": "Create parent directories if needed (default true)",
+                    },
+                },
+            },
+        },
+    },
+    require_approval=True,
+    risk_level="medium",
+    tags=["filesystem"],
+)
+def make_dir_tool(path: str, parents: bool = True, **kwargs):
+    resolved, err = resolve_workspace_path(path, allow_create=True)
+    if err:
+        return err
+
+    if resolved.exists() and resolved.is_file():
+        return f"Error: '{path}' is a file, not a directory"
+
+    try:
+        resolved.mkdir(parents=bool(parents), exist_ok=True)
+    except OSError as e:
+        return f"Error creating directory {path}: {e}"
+
+    return f"Successfully created directory {safe_relpath(resolved)}"
+
+
+@tool_registry.register(
+    name="copy_file",
+    description="Copy a file inside the workspace without using shell commands.",
+    schema={
+        "type": "function",
+        "function": {
+            "name": "copy_file",
+            "description": (
+                "Copy one file from a source path to a destination path inside the "
+                "active or global workspace. Creates parent directories when needed."
+            ),
+            "parameters": {
+                "type": "object",
+                "required": ["source_path", "destination_path"],
+                "properties": {
+                    "source_path": {
+                        "type": "string",
+                        "description": "Existing source file path under workspace",
+                    },
+                    "destination_path": {
+                        "type": "string",
+                        "description": "Destination file path under workspace",
+                    },
+                },
+            },
+        },
+    },
+    require_approval=True,
+    risk_level="medium",
+    tags=["filesystem"],
+)
+def copy_file_tool(source_path: str, destination_path: str, **kwargs):
+    source, err = resolve_workspace_path(source_path, must_exist=True)
+    if err:
+        return err
+
+    destination, err = resolve_workspace_path(destination_path, allow_create=True)
+    if err:
+        return err
+
+    if source.is_dir():
+        return f"Error: '{source_path}' is a directory. copy_file only supports files."
+    if destination.exists() and destination.is_dir():
+        return f"Error: '{destination_path}' is a directory, not a file"
+    if source.resolve() == destination.resolve():
+        return "Error: source_path and destination_path refer to the same file"
+
+    try:
+        size = source.stat().st_size
+    except OSError as e:
+        return f"Error: cannot stat {source_path}: {e}"
+
+    if size > MAX_WRITE_BYTES:
+        return (
+            f"Error: source file too large to copy safely ({size} bytes, "
+            f"max {MAX_WRITE_BYTES} bytes)"
+        )
+
+    try:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+    except OSError as e:
+        return f"Error copying {source_path} to {destination_path}: {e}"
+
+    return (
+        f"Successfully copied {size} bytes from {safe_relpath(source)} "
+        f"to {safe_relpath(destination)}"
+    )
 
 
 @tool_registry.register(
@@ -217,7 +570,11 @@ def list_tool(
     recursive: bool = False,
     **kwargs,
 ):
-    resolved, err = resolve_workspace_path(path, must_exist=True)
+    resolved, err = resolve_workspace_path(
+        path,
+        must_exist=True,
+        extra_roots=readable_roots(),
+    )
     if err:
         return err
 
@@ -234,16 +591,16 @@ def list_tool(
         return f"Error listing {path}: {e}"
 
     if not entries:
-        return f"Directory: {resolved.relative_to(workspace_root())}\n(empty or no matches for {glob_pattern!r})"
+        return f"Directory: {safe_relpath(resolved)}\n(empty or no matches for {glob_pattern!r})"
 
-    lines = [f"Directory: {resolved.relative_to(workspace_root())}  pattern={glob_pattern!r}"]
+    lines = [f"Directory: {safe_relpath(resolved)}  pattern={glob_pattern!r}"]
     shown = 0
     for entry in entries:
         if shown >= MAX_LIST_ENTRIES:
             lines.append(f"... ({len(entries) - shown} more entries omitted)")
             break
         try:
-            rel = entry.relative_to(workspace_root())
+            rel = safe_relpath(entry)
         except ValueError:
             continue
         if entry.is_dir():
@@ -323,7 +680,11 @@ def grep_tool(
     except re.error as e:
         return f"Error: invalid regex pattern: {e}"
 
-    resolved, err = resolve_workspace_path(path, must_exist=True)
+    resolved, err = resolve_workspace_path(
+        path,
+        must_exist=True,
+        extra_roots=readable_roots(),
+    )
     if err:
         return err
 
@@ -358,7 +719,7 @@ def grep_tool(
             text = fp.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             continue
-        rel = fp.relative_to(root)
+        rel = safe_relpath(fp)
         for line_no, line in enumerate(text.splitlines(), start=1):
             if rx.search(line):
                 matches.append(f"{rel}:{line_no}: {line.rstrip()}")

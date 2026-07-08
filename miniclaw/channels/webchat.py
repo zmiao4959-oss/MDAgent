@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from ..agent import AgentContext
-from ..config import WORKSPACE_DIR, workspace_scope
+from ..config import WORKSPACE_DIR, config, workspace_scope
 from ..llm.base import LLMMessage
 from ..logger import get_logger
 from ..projects import Project, ProjectManager
@@ -595,8 +595,8 @@ class WebChatAdapter(BaseChannelAdapter):
                 chat_id = project.chat_id
                 adapter.projects.update(project_id, status="queued", last_run=True)
                 adapter._project_event(project, "queued", "任务已加入运行队列")
-            # Agent 任务超时 (默认 5 分钟)
-            agent_timeout = float(body.get("timeout", 300))
+            # Agent 任务超时 (从 config.yaml 读取默认值)
+            agent_timeout = float(body.get("timeout", config.agent.task_timeout_sec))
 
             async def event_stream():
                 metadata: Dict[str, Any] = {}
@@ -696,7 +696,7 @@ class WebChatAdapter(BaseChannelAdapter):
                 try:
                     while True:
                         try:
-                            item = await asyncio.wait_for(out_q.get(), timeout=10.0)
+                            item = await asyncio.wait_for(out_q.get(), timeout=float(config.agent.sse_keepalive_sec))
                         except asyncio.TimeoutError:
                             # 检查客户端是否断开
                             if await request.is_disconnected():
@@ -734,8 +734,8 @@ class WebChatAdapter(BaseChannelAdapter):
 
             return StreamingResponse(event_stream(), media_type="text/event-stream")
 
-        config = uvicorn.Config(app, host=self.host, port=self.port, log_level="warning")
-        self._uvicorn_server = uvicorn.Server(config)
+        uvicorn_cfg = uvicorn.Config(app, host=self.host, port=self.port, log_level="warning")
+        self._uvicorn_server = uvicorn.Server(uvicorn_cfg)
         logger.info(f"WebChat at http://{self.host}:{self.port}")
         try:
             await self._uvicorn_server.serve()

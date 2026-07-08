@@ -1,6 +1,6 @@
 import asyncio
 
-from miniclaw.llm.base import LLMResponse, LLMStreamChunk
+from miniclaw.llm.base import LLMResponse, LLMStreamChunk, merge_stream_fragment
 from miniclaw.llm.router import LLMRouter
 
 
@@ -44,3 +44,21 @@ def test_stream_does_not_duplicate_after_partial_primary_output():
         assert "connection failed" in str(error)
     else:  # pragma: no cover
         raise AssertionError("an interrupted partial stream must not fall back")
+
+
+def test_merge_stream_fragment_accepts_cumulative_snapshots():
+    merged = ""
+    merged = merge_stream_fragment(merged, "{\"path\":")
+    merged = merge_stream_fragment(merged, "{\"path\": \"C:/tmp")
+    merged = merge_stream_fragment(merged, "{\"path\": \"C:/tmp/file.txt\"}")
+
+    assert merged == "{\"path\": \"C:/tmp/file.txt\"}"
+
+
+def test_merge_stream_fragment_accepts_true_deltas():
+    merged = ""
+    merged = merge_stream_fragment(merged, "{\"path\":")
+    merged = merge_stream_fragment(merged, " \"C:/tmp")
+    merged = merge_stream_fragment(merged, "/file.txt\"}")
+
+    assert merged == "{\"path\": \"C:/tmp/file.txt\"}"

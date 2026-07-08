@@ -19,15 +19,19 @@ import time
 from pathlib import Path
 from typing import Callable, Optional, Tuple
 
-from ..config import active_workspace_dir
+from ..config import active_workspace_dir, config
 from ..logger import get_logger
 from .registry import tool_registry
 
 logger = get_logger(__name__)
 
 MIN_TIMEOUT_SEC = 1
-MAX_TIMEOUT_SEC = 600
-DEFAULT_TIMEOUT_SEC = 30
+
+def _max_timeout() -> int:
+    return config.execution.max_timeout_sec
+
+def _default_timeout() -> int:
+    return config.execution.default_timeout_sec
 # 单轮工具返回给模型的上限（字符）；再大只保留头尾便于排错
 MAX_RETURN_CHARS = 24_000
 
@@ -49,6 +53,24 @@ _DANGEROUS_REGEXES = (
   re.compile(r"\brmdir\s+/s", re.I),
   re.compile(r"remove-item\s+.*-recurse", re.I),
   re.compile(r"\breg\s+delete\b", re.I),
+)
+_WINDOWS_SHELL_BUILTINS = frozenset(
+    {
+        "dir",
+        "copy",
+        "move",
+        "del",
+        "erase",
+        "ren",
+        "rename",
+        "type",
+        "set",
+        "cls",
+        "md",
+        "mkdir",
+        "rd",
+        "rmdir",
+    }
 )
 
 
@@ -98,6 +120,43 @@ def _find_blocked_interactive(command: str, argv: list[str]) -> Optional[str]:
         for name in _BLOCKED_INTERACTIVE_STEMS:
             if re.search(rf"(?:^|\s){re.escape(name)}(?:\s|\.exe|\b)", tok, re.I):
                 return name
+    return None
+
+
+# shell=False 下不会被解释的操作符；出现在独立 token 时说明用户依赖了 shell 功能
+_SHELL_OP_TOKENS = frozenset({"&&", "||", "|"})
+
+
+def _needs_shell_error(command: str, argv: list[str]) -> Optional[str]:
+    """Return an actionable error for shell syntax that shell=False cannot run.
+
+    IMPORTANT: 检查对象是 shlex 解析后的 argv 独立 token，而非 raw command string。
+    这样引号内的多命令（如 ssh hpc "cmd1 && cmd2"）会被正确放行，
+    因为 shlex 已将其合并为单个 token，不作为本地 shell 操作符处理。
+    """
+    stripped = (command or "").strip()
+    if not stripped:
+        return None
+
+    first = Path(argv[0]).stem.lower() if argv else ""
+    if first in {"cmd", "powershell", "pwsh", "bash", "sh"} | _PASSTHROUGH_EXECUTABLES:
+        return None
+
+    if os.name == "nt" and first in _WINDOWS_SHELL_BUILTINS:
+        return (
+            f"Error: `{argv[0]}` is a Windows shell built-in. Use `cmd /c {stripped}` "
+            "or call a real executable."
+        )
+
+    # 检查 argv 中的独立 shell 操作符 token（而非 raw string），
+    # 避免误杀引号内的 && / || / |（那些是传给目标程序的参数，无需本地 shell）
+    for tok in argv:
+        if tok in _SHELL_OP_TOKENS:
+            return (
+                "Error: shell operators detected, but `execute` runs with shell disabled. "
+                "Wrap the command with `cmd /c ...` on Windows, or call a single executable "
+                "with explicit arguments."
+            )
     return None
 
 
@@ -230,16 +289,49 @@ def _drop_shell_only_tail_argv(argv: list[str]) -> list[str]:
     return out
 
 
+# ssh / scp 等把尾部的远程命令原样传递，内部可以出现 && / || / | / 嵌套引号，
+# 这些字符不需要本地 shell 解释。Windows 的 shlex(posix=False) 不认识 \",
+# 碰到 POSIX 风格的嵌套双引号会把 argv 拆碎。对这类命令，直接用原始字符串提取
+# 远程命令部分，绕开 shlex 的引号解析。
+_PASSTHROUGH_EXECUTABLES = frozenset({"ssh", "scp"})
+
+
 def _build_argv(command: str) -> list[str]:
     """把用户输入拆成 argv；Windows 使用非 POSIX 规则以兼容常见引号写法。"""
-    # 删除前后空白
     command = (command or "").strip()
     if not command:
         raise ValueError("command is empty")
-    # nt windows系统
+
     posix = subprocess.os.name != "nt"
-    # 用外壳解析库拆分参数
-    return shlex.split(command, posix=posix)
+    argv = shlex.split(command, posix=posix)
+
+    # ssh / scp：检测 argv 是否被嵌套引号拆碎了，如果是就从原始字符串重建
+    first = Path(argv[0]).stem.lower() if argv else ""
+    if first in _PASSTHROUGH_EXECUTABLES and len(argv) >= 3:
+        # 找 host 在 argv 中的位置（跳过可执行文件名和 flags）
+        i = 1
+        while i < len(argv):
+            if argv[i].startswith("-"):
+                i += 1
+                # 跳过 flag 的值（如下一个 token 不以 - 开头）
+                if i < len(argv) and not argv[i].startswith("-"):
+                    i += 1
+            else:
+                break
+
+        if i < len(argv) - 1:
+            # 从原始 command 字符串中定位 host，提取尾部的远程命令
+            host_str = argv[i]
+            host_pos = command.find(host_str)
+            if host_pos >= 0:
+                rest_start = host_pos + len(host_str)
+                while rest_start < len(command) and command[rest_start].isspace():
+                    rest_start += 1
+                remote = command[rest_start:].strip()
+                remote = _strip_outer_quotes(remote)
+                argv = argv[: i + 1] + [remote]
+
+    return argv
 
 
 def _kill_process_tree(proc: subprocess.Popen) -> None:
@@ -460,8 +552,8 @@ def _format_run_result(
                     "timeout": {
                         "type": "integer",
                         "description": (
-                            f"Timeout in seconds (default {DEFAULT_TIMEOUT_SEC}, "
-                            f"max {MAX_TIMEOUT_SEC})."
+                            f"Timeout in seconds (default {_default_timeout()}, "
+                            f"max {_max_timeout()})."
                         ),
                     },
                 },
@@ -475,7 +567,7 @@ def _format_run_result(
 def execute_tool(
     command: str,
     working_dir: Optional[str] = None,
-    timeout: int = DEFAULT_TIMEOUT_SEC,
+    timeout: int = _default_timeout(),
     **kwargs,
 ) -> str:
     on_line: Optional[Callable[[str], None]] = kwargs.pop("_on_line", None)
@@ -495,9 +587,9 @@ def execute_tool(
         return err
 
     try:
-        timeout_sec = max(MIN_TIMEOUT_SEC, min(int(timeout), MAX_TIMEOUT_SEC))
+        timeout_sec = max(MIN_TIMEOUT_SEC, min(int(timeout), _max_timeout()))
     except (TypeError, ValueError):
-        timeout_sec = DEFAULT_TIMEOUT_SEC
+        timeout_sec = _default_timeout()
 
     preview = (command or "").replace("\n", " ")[:120]
     logger.info("execute: cwd=%s cmd_preview=%r", cwd, preview)
@@ -526,6 +618,11 @@ def execute_tool(
         logger.warning("execute blocked interactive command: %s", blocked)
         return _interactive_block_message(blocked)
 
+    shell_needed = _needs_shell_error(command, argv)
+    if shell_needed:
+        logger.warning("execute rejected shell-only syntax: %s", shell_needed)
+        return shell_needed
+
     try:
         run_env = os.environ.copy()
         # 子进程内 Python 写管道时默认用系统编码（如 GBK），含 ® 等字符会 UnicodeEncodeError；
@@ -545,7 +642,7 @@ def execute_tool(
         return (
             f"Error: Command timed out after {timeout_sec} seconds. "
             "(If the command works in PowerShell but hangs here, it may need a longer "
-            f"timeout parameter, up to {MAX_TIMEOUT_SEC}s.)"
+            f"timeout parameter, up to {_max_timeout()}s.)"
         )
     except FileNotFoundError:
         return "Error: Executable not found. Check PATH or use an explicit path to the program."

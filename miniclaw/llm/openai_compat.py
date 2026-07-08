@@ -2,7 +2,13 @@ import json
 from typing import List, Dict, Optional, AsyncIterator
 from openai import AsyncOpenAI
 
-from .base import BaseLLMProvider, LLMMessage, LLMResponse, LLMStreamChunk
+from .base import (
+    BaseLLMProvider,
+    LLMMessage,
+    LLMResponse,
+    LLMStreamChunk,
+    merge_stream_fragment,
+)
 
 
 class OpenAICompatProvider(BaseLLMProvider):
@@ -115,6 +121,7 @@ class OpenAICompatProvider(BaseLLMProvider):
                     idx = tc_delta.index
                     if idx not in accumulated_tool_calls:
                         accumulated_tool_calls[idx] = {
+                            "index": idx,
                             "id": tc_delta.id or "",
                             "type": "function",
                             "function": {"name": "", "arguments": ""},
@@ -122,10 +129,15 @@ class OpenAICompatProvider(BaseLLMProvider):
                     if tc_delta.id:
                         accumulated_tool_calls[idx]["id"] = tc_delta.id
                     if tc_delta.function:
+                        # name 是原子字段（非流式），用赋值避免重复拼接
                         if tc_delta.function.name:
-                            accumulated_tool_calls[idx]["function"]["name"] += tc_delta.function.name
+                            accumulated_tool_calls[idx]["function"]["name"] = tc_delta.function.name
+                        # arguments 是流式字段，需要拼接
                         if tc_delta.function.arguments:
-                            accumulated_tool_calls[idx]["function"]["arguments"] += tc_delta.function.arguments
+                            accumulated_tool_calls[idx]["function"]["arguments"] = merge_stream_fragment(
+                                accumulated_tool_calls[idx]["function"]["arguments"],
+                                tc_delta.function.arguments,
+                            )
 
             usage = {}
             if getattr(chunk, "usage", None):

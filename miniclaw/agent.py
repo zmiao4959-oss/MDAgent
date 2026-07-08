@@ -12,7 +12,12 @@ from dataclasses import dataclass, field
 
 from .config import active_workspace_dir, config, workspace_scope, WORKSPACE_DIR, MEMORY_FILE
 from .logger import get_logger
-from .llm.base import LLMMessage, LLMResponse, LLMStreamChunk
+from .llm.base import (
+    LLMMessage,
+    LLMResponse,
+    LLMStreamChunk,
+    merge_stream_fragment,
+)
 from .llm.router import LLMRouter
 from .tools import ensure_tools_loaded
 from .tools.registry import tool_registry
@@ -38,6 +43,10 @@ _SYSTEM_PROMPT_FILES = (
 StreamChunkCallback = Callable[[str], Awaitable[None]]
 VizEventCallback = Callable[[Dict[str, Any]], Awaitable[None]]
 ProgressCallback = Callable[[Dict[str, Any]], Awaitable[None]]
+
+_TOOL_DESC_LIMIT = 120
+_SKILL_DESC_LIMIT = 160
+_MAX_SKILLS_IN_PROMPT = 12
 
 
 @dataclass
@@ -104,20 +113,60 @@ class Agent:
             if path.exists():
                 parts.append(path.read_text(encoding="utf-8"))
 
-        parts.append(f"## Available Tools\n{tool_registry.get_descriptions()}")
+        parts.append(self._build_tool_prompt_summary())
 
         skills_list = self._skill_loader.list_all()
         if skills_list:
-            parts.append("<available_skills>")
-            for s in skills_list:
-                parts.append("  <skill>")
-                parts.append(f"    <name>{s.name}</name>")
-                parts.append(f"    <description>{s.description}</description>")
-                parts.append(f"    <location>{s.location}</location>")
-                parts.append("  </skill>")
-            parts.append("</available_skills>")
+            parts.append(self._build_skill_prompt_summary(skills_list))
 
         return "\n\n".join(parts)
+
+    def _build_tool_prompt_summary(self) -> str:
+        """Keep the prompt compact; exact tool schemas are sent separately."""
+        lines = [
+            "## Tooling",
+            "Function schemas are provided separately. Use those schemas for exact arguments and field names.",
+        ]
+        for tool_name in sorted(tool_registry.tool_names()):
+            td = tool_registry.get(tool_name)
+            if td is None:
+                continue
+            desc = " ".join((td.description or "").split())
+            if len(desc) > _TOOL_DESC_LIMIT:
+                desc = desc[: _TOOL_DESC_LIMIT - 3].rstrip() + "..."
+            suffix = ""
+            if td.risk_level != "low":
+                suffix += f" [{td.risk_level} risk]"
+            if td.require_approval:
+                suffix += " [requires approval]"
+            lines.append(f"- `{tool_name}`: {desc or 'No description.'}{suffix}")
+        return "\n".join(lines)
+
+    def _build_skill_prompt_summary(self, skills_list: List[Any]) -> str:
+        """Summarise skills without flooding the prompt with file paths."""
+        lines = [
+            "## Available Skills",
+            (
+                "If a skill clearly matches the task, call `read_skill` with the exact "
+                "skill name before acting. Skill files are named SKILL.md; do not guess "
+                "README.md or other filenames."
+            ),
+        ]
+        ordered = sorted(skills_list, key=lambda s: s.name.lower())
+        shown = ordered[:_MAX_SKILLS_IN_PROMPT]
+        for skill in shown:
+            desc = " ".join((skill.description or "").split())
+            if len(desc) > _SKILL_DESC_LIMIT:
+                desc = desc[: _SKILL_DESC_LIMIT - 3].rstrip() + "..."
+            line = f"- `{skill.name}`"
+            if desc:
+                line += f": {desc}"
+            line += f" (load: read_skill name={skill.name!r})"
+            lines.append(line)
+        remaining = len(ordered) - len(shown)
+        if remaining > 0:
+            lines.append(f"- ... and {remaining} more skills available in the workspace.")
+        return "\n".join(lines)
 
     def _build_context_prompt(self) -> str:
         """Context 层：项目指令 + 用户偏好 + 长期记忆。"""
@@ -294,6 +343,10 @@ class Agent:
             "channel": context.channel,
             "account_id": context.account_id,
             "approved": context.metadata.get("approved", False),
+            "project_id": context.metadata.get("project_id", ""),
+            "project_title": context.metadata.get("project_title", ""),
+            "project_objective": context.metadata.get("project_objective", ""),
+            "workspace_dir": context.metadata.get("workspace_dir", ""),
         }
         logger.info("Executing tool: %s(%s)", func_name, arguments)
         result = await tool_registry.execute(func_name, arguments, exec_context)
@@ -363,10 +416,11 @@ class Agent:
 
                 # ── 处理增量 tool_calls ──
                 if chunk.delta_tool_calls:
-                    for tc_delta in chunk.delta_tool_calls:
-                        idx = tc_delta.get("index", 0)
+                    for pos, tc_delta in enumerate(chunk.delta_tool_calls):
+                        idx = tc_delta.get("index", pos)
                         if idx not in accumulated_tool_calls:
                             accumulated_tool_calls[idx] = {
+                                "index": idx,
                                 "id": tc_delta.get("id", ""),
                                 "type": "function",
                                 "function": {"name": "", "arguments": ""},
@@ -375,10 +429,14 @@ class Agent:
                         if tc_delta.get("id"):
                             acc["id"] = tc_delta["id"]
                         fn = tc_delta.get("function") or {}
+                        # name 是原子字段，用赋值而非拼接（避免重复 chunk 导致 readread）
                         if fn.get("name"):
-                            acc["function"]["name"] += fn["name"]
+                            acc["function"]["name"] = fn["name"]
                         if fn.get("arguments"):
-                            acc["function"]["arguments"] += fn["arguments"]
+                            acc["function"]["arguments"] = merge_stream_fragment(
+                                acc["function"]["arguments"],
+                                fn["arguments"],
+                            )
 
                 if chunk.finish_reason:
                     stream_finish = chunk.finish_reason
@@ -599,6 +657,7 @@ class Agent:
                 messages.append(assistant_msg)
 
                 snap_before = snapshot_workspace() if auto_viz else {}
+                context.metadata["_tool_idem_keys"] = set()
                 tool_results = await self._handle_tool_calls(
                     response.tool_calls, context
                 )

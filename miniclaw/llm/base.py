@@ -3,6 +3,25 @@ from typing import AsyncIterator, List, Dict, Any, Optional
 from dataclasses import dataclass, field
 
 
+def merge_stream_fragment(existing: str, fragment: str) -> str:
+    """Merge streamed text that may arrive as deltas or cumulative snapshots.
+
+    Tool-call arguments are normally streamed as deltas.  Do not try to
+    de-duplicate suffix overlaps here: repeated characters such as the trailing
+    zeros in ``40000``, the second ``x`` in ``pxx``, or adjacent JSON braces are
+    meaningful and must be preserved.
+    """
+    if not fragment:
+        return existing
+    if not existing:
+        return fragment
+    if fragment == existing:
+        return existing
+    if fragment.startswith(existing):
+        return fragment
+    return existing + fragment
+
+
 @dataclass
 class LLMMessage:
     """一条对话消息"""

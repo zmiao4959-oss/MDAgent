@@ -72,18 +72,21 @@ async def send_message_tool(
     if not message or not message.strip():
         return "Error: message is required"
 
-    callback = _send_callbacks.get(channel)
+    context = kwargs.get("_context") or {}
+    target_channel = channel or context.get("channel") or "webchat"
+    target = chat_id or context.get("chat_id") or "default"
+
+    callback = _send_callbacks.get(target_channel)
     if callback is None:
         available = sorted(_send_callbacks.keys()) or ["(none registered)"]
         return (
-            f"Error: no send callback registered for channel '{channel}'. "
+            f"Error: no send callback registered for channel '{target_channel}'. "
             f"Available: {', '.join(available)}"
         )
 
     try:
-        target = chat_id or "default"
         await callback(target, message)
-        return f"Message sent to {channel}:{target} ({len(message)} chars)"
+        return f"Message sent to {target_channel}:{target} ({len(message)} chars)"
     except Exception as e:
         logger.exception("send_message failed for %s:%s", channel, chat_id)
         return f"Error sending message: {e}"

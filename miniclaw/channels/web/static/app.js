@@ -613,14 +613,54 @@ import * as THREE from '/static/three.module.js';
     }
   }
 
-  function parseCsvPlotData(text) {
+  function splitCsvLine(line) {
+    return line.split(",").map((v) => v.trim());
+  }
+
+  function normalizeHeaderName(value) {
+    return String(value || "").trim().toLowerCase().replace(/[^a-z0-9_./-]+/g, "_");
+  }
+
+  function isNumericCell(value) {
+    return Number.isFinite(parseFloat(value));
+  }
+
+  function inferCsvChartMeta(headers, filePath) {
+    const lowerPath = String(filePath || "").toLowerCase();
+    const names = (headers || []).map(normalizeHeaderName);
+    const joined = `${lowerPath} ${names.join(" ")}`;
+    const has = (...words) => words.some((word) => joined.includes(word));
+    const xName = headers?.[0] || "X";
+    const yName = headers?.[1] || "Y";
+
+    if (has("strain", "defo", "epsilon") && has("stress", "sigma", "pxx", "pyy", "pzz")) {
+      return { title: "应力-应变曲线 (CSV)", xLabel: "应变", yLabel: "应力" };
+    }
+    if (has("energy", "etotal", "pe", "poteng", "ke", "kineng", "enthalpy", "ecoh", "cohesive")) {
+      return { title: "系统能量曲线 (CSV)", xLabel: xName, yLabel: yName };
+    }
+    if (has("temperature", "temp")) {
+      return { title: "温度演化曲线 (CSV)", xLabel: xName, yLabel: yName };
+    }
+    if (has("pressure", "press")) {
+      return { title: "压力演化曲线 (CSV)", xLabel: xName, yLabel: yName };
+    }
+    return { title: "CSV 曲线", xLabel: xName, yLabel: yName };
+  }
+
+  function parseCsvPlotData(text, filePath = "") {
     const xs = [];
     const ys = [];
+    let headers = null;
     for (const line of text.split(/\r?\n/)) {
       const t = line.trim();
       if (!t || t.startsWith("#")) continue;
-      const parts = t.split(",");
+      const parts = splitCsvLine(t);
       if (parts.length < 2) continue;
+      if (!headers && (!isNumericCell(parts[0]) || !isNumericCell(parts[1]))) {
+        headers = parts;
+        continue;
+      }
       const x = parseFloat(parts[0]);
       const y = parseFloat(parts[1]);
       if (Number.isFinite(x) && Number.isFinite(y)) {
@@ -628,10 +668,10 @@ import * as THREE from '/static/three.module.js';
         ys.push(y);
       }
     }
-    return { xs, ys };
+    return { xs, ys, meta: inferCsvChartMeta(headers, filePath) };
   }
 
-  function drawStressStrainOnCanvas(canvas, xs, ys) {
+  function drawCsvCurveOnCanvas(canvas, xs, ys, meta = {}) {
     const ctx = canvas.getContext("2d");
     const dpr = window.devicePixelRatio || 1;
     const w = 640;
@@ -655,6 +695,10 @@ import * as THREE from '/static/three.module.js';
     ctx.fillStyle = "#141414";
     ctx.fillRect(0, 0, w, h);
     ctx.strokeStyle = "#3d3d3d";
+    ctx.fillStyle = "#d8d8d8";
+    ctx.font = "12px system-ui, sans-serif";
+    ctx.fillText(meta.yLabel || "Y", 10, 18);
+    ctx.fillText(meta.xLabel || "X", pad.l + plotW - 42, h - 12);
     ctx.beginPath();
     ctx.moveTo(pad.l, pad.t);
     ctx.lineTo(pad.l, pad.t + plotH);
@@ -686,7 +730,7 @@ import * as THREE from '/static/three.module.js';
     setVizProgress(true, "解析 CSV…");
     try {
       const text = await (await fetch(assetUrl(filePath, bustCache))).text();
-      const { xs, ys } = parseCsvPlotData(text);
+      const { xs, ys, meta } = parseCsvPlotData(text, filePath);
       if (xs.length < 2) {
         setVizProgress(false, "CSV 无有效数据");
         return;
@@ -695,11 +739,11 @@ import * as THREE from '/static/three.module.js';
       card.className = "media-card";
       const time = new Date().toLocaleTimeString();
       card.innerHTML = `
-        <div class="media-card-head"><span>应力应变曲线 (CSV)</span><time>${time}</time></div>
+        <div class="media-card-head"><span>${meta.title}</span><time>${time}</time></div>
         <p class="media-caption">${filePath}</p>`;
       const canvas = document.createElement("canvas");
       canvas.className = "csv-chart-canvas";
-      drawStressStrainOnCanvas(canvas, xs, ys);
+      drawCsvCurveOnCanvas(canvas, xs, ys, meta);
       card.appendChild(canvas);
       mediaGallery.appendChild(card);
       mediaGallery.scrollTop = mediaGallery.scrollHeight;
