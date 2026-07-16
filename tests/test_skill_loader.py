@@ -27,6 +27,29 @@ second line
     assert skill.description == "first line second line"
 
 
+def test_skill_loader_parses_standard_yaml_frontmatter(tmp_path: Path):
+    skill_dir = tmp_path / "skills" / "gpumd-script"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        """---
+name: gpumd-script
+description: >-
+  根据官方文档编写并检查
+  GPUMD 输入脚本。
+---
+
+# GPUMD 脚本助手
+""",
+        encoding="utf-8",
+    )
+
+    loader = SkillLoader(tmp_path / "skills")
+
+    skill = loader.get("gpumd-script")
+    assert skill is not None
+    assert skill.description == "根据官方文档编写并检查 GPUMD 输入脚本。"
+
+
 def test_skill_loader_scans_default_skill_roots(tmp_path: Path, monkeypatch):
     workspace = tmp_path / "workspace"
     workspace.mkdir()

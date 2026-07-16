@@ -31,6 +31,19 @@ execution:
   default_timeout_sec: 60       # execute 工具默认超时
   max_timeout_sec: 900          # execute 工具最大超时
 
+# GPUMD 等内部知识库使用的远程向量接口。
+# 密钥请放在 MINICLAW_EMBEDDING_API_KEY 或 ARK_API_KEY 环境变量中。
+rag:
+  enabled: true
+  base_url: https://ark.cn-beijing.volces.com/api/v3
+  model: doubao-embedding-vision-251215
+  # auto 会让带日期的 doubao-embedding-vision 模型使用 /embeddings/multimodal。
+  api_type: auto
+  api_key: ""
+  dimension: 2048
+  batch_size: 16
+  max_concurrency: 4
+
 channels:
   enabled:
     webchat: true

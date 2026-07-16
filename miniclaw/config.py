@@ -140,6 +140,27 @@ class ExecutionConfig:
 
 
 @dataclass
+class RAGConfig:
+    """远程向量检索配置；API 密钥只从本地配置或环境变量读取。"""
+    enabled: bool = True
+    base_url: str = "https://ark.cn-beijing.volces.com/api/v3"
+    model: str = "doubao-embedding-vision-251215"
+    api_type: str = "auto"
+    api_key: str = ""
+    dimension: int = 2048
+    batch_size: int = 16
+    max_concurrency: int = 4
+
+    @property
+    def resolved_api_key(self) -> str:
+        return (
+            self.api_key
+            or os.environ.get("MINICLAW_EMBEDDING_API_KEY", "")
+            or os.environ.get("ARK_API_KEY", "")
+        )
+
+
+@dataclass
 class PlanningAgentConfig:
     """Planning Agent 配置"""
     max_tool_rounds: int = 5            # 规划阶段最多工具轮数
@@ -192,6 +213,7 @@ class Config:
         agent_raw = raw.get("agent", {})
         planning_raw = agent_raw.get("planning", {})
         execution_raw = raw.get("execution", {})
+        rag_raw = raw.get("rag", {})
         self.agent = AgentConfig(
             max_tool_rounds=agent_raw.get("max_tool_rounds", 15),
             max_context_tokens=agent_raw.get("max_context_tokens", 80000),
@@ -208,6 +230,18 @@ class Config:
         self.execution = ExecutionConfig(
             default_timeout_sec=execution_raw.get("default_timeout_sec", 60),
             max_timeout_sec=execution_raw.get("max_timeout_sec", 900),
+        )
+        self.rag = RAGConfig(
+            enabled=rag_raw.get("enabled", True),
+            base_url=rag_raw.get(
+                "base_url", "https://ark.cn-beijing.volces.com/api/v3"
+            ),
+            model=rag_raw.get("model", "doubao-embedding-vision-251215"),
+            api_type=rag_raw.get("api_type", "auto"),
+            api_key=rag_raw.get("api_key", ""),
+            dimension=rag_raw.get("dimension", 2048),
+            batch_size=rag_raw.get("batch_size", 16),
+            max_concurrency=rag_raw.get("max_concurrency", 4),
         )
     """
     @classmethod 也是一个装饰器，它把方法变成类方法，与普通实例方法的区别在于：

@@ -2,6 +2,7 @@
 skills/loader.py - skill discovery and loading.
 """
 import re
+import yaml
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -46,15 +47,9 @@ class SkillLoader:
                 if not skill_file.exists():
                     continue
                 content = skill_file.read_text(encoding="utf-8")
-                name_match = re.search(r"<name>(.*?)</name>", content, re.DOTALL)
-                desc_match = re.search(r"<description>(.*?)</description>", content, re.DOTALL)
-                if not name_match:
+                name, description = self._parse_metadata(content)
+                if not name:
                     continue
-                name = name_match.group(1).strip()
-                description = (
-                    re.sub(r"\s+", " ", desc_match.group(1)).strip()
-                    if desc_match else ""
-                )
                 self._cache[name] = SkillInfo(
                     name=name,
                     description=description,
@@ -62,6 +57,32 @@ class SkillLoader:
                     skill_dir=skill_dir,
                 )
         logger.debug("Loaded %s skills", len(self._cache))
+
+    @staticmethod
+    def _parse_metadata(content: str) -> tuple[str, str]:
+        """同时读取标准 YAML frontmatter 与旧版 XML 标签元数据。"""
+        frontmatter = re.match(r"\A---\s*\n(.*?)\n---(?:\s*\n|\Z)", content, re.DOTALL)
+        if frontmatter:
+            try:
+                metadata = yaml.safe_load(frontmatter.group(1)) or {}
+            except yaml.YAMLError:
+                metadata = {}
+            if isinstance(metadata, dict):
+                name = str(metadata.get("name", "")).strip()
+                description = re.sub(
+                    r"\s+", " ", str(metadata.get("description", ""))
+                ).strip()
+                if name:
+                    return name, description
+
+        name_match = re.search(r"<name>(.*?)</name>", content, re.DOTALL)
+        desc_match = re.search(r"<description>(.*?)</description>", content, re.DOTALL)
+        name = name_match.group(1).strip() if name_match else ""
+        description = (
+            re.sub(r"\s+", " ", desc_match.group(1)).strip()
+            if desc_match else ""
+        )
+        return name, description
 
     def list_all(self) -> List[SkillInfo]:
         return list(self._cache.values())

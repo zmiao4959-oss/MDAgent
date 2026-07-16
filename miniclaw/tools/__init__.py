@@ -18,6 +18,7 @@ def ensure_tools_loaded() -> None:
     from . import memory_tool  # noqa: F401
     from . import system_tool  # noqa: F401
     from . import skill_tool  # noqa: F401
+    from . import rag_tool  # noqa: F401
     try:
         from . import browser_tool  # noqa: F401
     except ImportError:
