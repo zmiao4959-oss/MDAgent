@@ -41,11 +41,15 @@ def test_settings_dialog_and_controls_exist():
         "setting-task-notifications",
         "evolution-status",
         "evolution-candidate-count",
+        "evolution-pending-count",
+        "evolution-canary-count",
         "evolution-verified-count",
         "evolution-rejected-count",
         "evolution-filter",
         "evolution-experience-list",
         "refresh-evolution-experiences",
+        "reflection-proposal-count",
+        "reflection-proposal-list",
     ):
         assert f'id="{element_id}"' in html
 
@@ -67,10 +71,38 @@ def test_settings_are_persisted_and_applied_by_frontend():
     assert "showTaskCompletionNotification" in js
     assert 'fetch(`/api/evolution/experiences?' in js
     assert 'fetch("/api/evolution/feedback"' in js
+    assert 'fetch("/api/evolution/rollback"' in js
     assert "submitEvolutionFeedback" in js
+    assert "evolutionFeedbackMessage" in js
+    assert "refreshEvolutionExperiences({ preserveMessage: true })" in js
+    assert "thresholds.promotion_evidence" in js
     assert "refreshEvolutionExperiences" in js
     assert "experience.usage_count" in js
     assert "experience.task_pattern" in js
+    assert "/api/evolution/reflections" in js
+    assert "reviewReflectionProposal" in js
+
+
+def test_evolution_governance_routes_exist():
+    source = (Path(__file__).parents[1] / "miniclaw" / "channels" / "webchat.py").read_text(encoding="utf-8")
+    for route in (
+        "/api/evolution/export",
+        "/api/evolution/backup",
+        "/api/evolution/restore",
+        "/api/evolution/purge",
+        "/api/evolution/governance",
+    ):
+        assert route in source
+
+
+def test_evolution_skill_draft_routes_exist():
+    source = (Path(__file__).parents[1] / "miniclaw" / "channels" / "webchat.py").read_text(encoding="utf-8")
+    for route in (
+        "/api/evolution/skill-drafts",
+        "/api/evolution/skill-drafts/{draft_id}/test",
+        "/api/evolution/skill-drafts/{draft_id}/review",
+    ):
+        assert route in source
 
 
 def test_settings_css_has_light_theme_and_accessibility_states():
@@ -85,6 +117,8 @@ def test_settings_css_has_light_theme_and_accessibility_states():
     assert '.diagnostic-dot[data-state="unavailable"]' in css
     assert ".evolution-card" in css
     assert '.evolution-badge[data-status="verified"]' in css
+    assert '.evolution-badge[data-status="pending_evaluation"]' in css
+    assert '.evolution-badge[data-status="canary"]' in css
     assert ".evolution-actions" in css
 
 

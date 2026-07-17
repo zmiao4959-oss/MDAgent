@@ -276,13 +276,34 @@ class Agent:
         if not config.evolution.enabled:
             return
         try:
-            EvolutionService(active_workspace_dir()).complete_trace(
+            service = EvolutionService(active_workspace_dir())
+            service.complete_trace(
                 trace,
                 learn=config.evolution.auto_observe,
                 evaluate_applied=config.evolution.auto_evaluate_applied,
             )
+            if config.evolution.maintenance_enabled:
+                service.maintain_if_due(
+                    interval_hours=config.evolution.maintenance_interval_hours,
+                    candidate_ttl_days=config.evolution.candidate_ttl_days,
+                    verified_review_days=config.evolution.verified_review_days,
+                    trace_retention_days=config.evolution.trace_retention_days,
+                )
         except Exception:
             logger.exception("Failed to persist self-evolution trace")
+
+    async def _maybe_generate_reflection(self, trace: EvolutionTrace) -> None:
+        if not (config.evolution.enabled and config.evolution.deep_reflection_enabled):
+            return
+        try:
+            await asyncio.wait_for(
+                EvolutionService(active_workspace_dir()).generate_reflection(
+                    trace, self.llm, model=config.llm.model
+                ),
+                timeout=config.evolution.deep_reflection_timeout_sec,
+            )
+        except Exception:
+            logger.exception("Deep reflection proposal generation failed")
 
     async def _execute_one_tool(
         self, tc: Dict, context: AgentContext
@@ -772,6 +793,7 @@ class Agent:
             current_run.tool_errors = len(evolution_trace.errors)
             agent_stats.end_run(current_run)
             self._complete_evolution_trace(evolution_trace)
+            await self._maybe_generate_reflection(evolution_trace)
             # ── 错误时也要尽力保存 session ──
             await self.sessions.save(session)
             raise
@@ -821,6 +843,7 @@ class Agent:
         current_run.hit_max_rounds = hit_max_rounds
         agent_stats.end_run(current_run)
         self._complete_evolution_trace(evolution_trace)
+        await self._maybe_generate_reflection(evolution_trace)
 
         logger.info(
             "Agent run complete: %s messages, %s tokens",

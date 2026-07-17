@@ -11,7 +11,7 @@ import time
 from contextlib import closing
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 from .trace import EvolutionTrace
 
@@ -96,8 +96,118 @@ class ExperienceStore:
                     WHERE task_pattern = '' AND status = 'verified'
                     """
                 )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS experience_evaluations (
+                    evaluation_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    experience_id TEXT NOT NULL,
+                    passed INTEGER NOT NULL,
+                    report_json TEXT NOT NULL,
+                    created_at REAL NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS policy_versions (
+                    version INTEGER PRIMARY KEY AUTOINCREMENT,
+                    experience_id TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    snapshot_json TEXT NOT NULL,
+                    created_at REAL NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS experience_reflections (
+                    reflection_id TEXT PRIMARY KEY,
+                    experience_id TEXT NOT NULL,
+                    situation TEXT NOT NULL,
+                    lesson TEXT NOT NULL,
+                    failure_pattern TEXT NOT NULL,
+                    scope_json TEXT NOT NULL,
+                    confidence REAL NOT NULL,
+                    model TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    created_at REAL NOT NULL,
+                    reviewed_at REAL NOT NULL DEFAULT 0
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS canary_trials (
+                    experience_id TEXT PRIMARY KEY,
+                    uses INTEGER NOT NULL DEFAULT 0,
+                    successes INTEGER NOT NULL DEFAULT 0,
+                    failures INTEGER NOT NULL DEFAULT 0,
+                    started_at REAL NOT NULL,
+                    updated_at REAL NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS replay_reports (
+                    replay_id TEXT PRIMARY KEY,
+                    experience_id TEXT NOT NULL,
+                    passed INTEGER NOT NULL,
+                    report_json TEXT NOT NULL,
+                    created_at REAL NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS maintenance_reports (
+                    report_id TEXT PRIMARY KEY,
+                    report_json TEXT NOT NULL,
+                    created_at REAL NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS experience_evidence (
+                    evidence_id TEXT PRIMARY KEY,
+                    experience_id TEXT NOT NULL,
+                    project_id TEXT NOT NULL DEFAULT '',
+                    chat_id TEXT NOT NULL DEFAULT '',
+                    run_id TEXT NOT NULL DEFAULT '',
+                    source TEXT NOT NULL,
+                    positive INTEGER NOT NULL,
+                    score REAL NOT NULL DEFAULT 0,
+                    success INTEGER NOT NULL DEFAULT 0,
+                    error_count INTEGER NOT NULL DEFAULT 0,
+                    tokens INTEGER NOT NULL DEFAULT 0,
+                    created_at REAL NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_experience_evidence_experience
+                ON experience_evidence(experience_id, created_at)
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS experience_imports (
+                    source_path TEXT PRIMARY KEY,
+                    imported_at REAL NOT NULL,
+                    imported_count INTEGER NOT NULL
+                )
+                """
+            )
 
-    def observe(self, candidate: Experience, *, positive: bool = False) -> Experience:
+    def observe(
+        self,
+        candidate: Experience,
+        *,
+        positive: bool = False,
+        evidence: Optional[Dict] = None,
+    ) -> Experience:
         """Insert a candidate or merge another observation into the same strategy."""
         with self._lock, closing(self._connect()) as connection, connection:
             row = connection.execute(
@@ -111,15 +221,23 @@ class ExperienceStore:
                 current.updated_at = time.time()
                 self._reclassify(current)
                 self._update(connection, current)
+                self._record_evidence(connection, current.experience_id, positive, evidence)
                 return current
 
             if positive:
                 candidate.positive_evidence = 1
             self._reclassify(candidate)
             self._insert(connection, candidate)
+            self._record_evidence(connection, candidate.experience_id, positive, evidence)
             return candidate
 
-    def record_feedback(self, experience_id: str, *, positive: bool) -> Optional[Experience]:
+    def record_feedback(
+        self,
+        experience_id: str,
+        *,
+        positive: bool,
+        evidence: Optional[Dict] = None,
+    ) -> Optional[Experience]:
         with self._lock, closing(self._connect()) as connection, connection:
             row = connection.execute(
                 "SELECT * FROM experiences WHERE experience_id = ?", (experience_id,)
@@ -135,7 +253,116 @@ class ExperienceStore:
             experience.last_used_at = experience.updated_at
             self._reclassify(experience)
             self._update(connection, experience)
+            self._record_evidence(connection, experience.experience_id, positive, evidence)
             return experience
+
+    def evidence_sources(self, experience_id: str) -> Dict:
+        """Return non-sensitive provenance for evidence accumulated across projects."""
+        with self._lock, closing(self._connect()) as connection:
+            rows = connection.execute(
+                """
+                SELECT project_id, COUNT(*) AS evidence_count,
+                       SUM(positive) AS positive_count
+                FROM experience_evidence
+                WHERE experience_id = ?
+                GROUP BY project_id ORDER BY evidence_count DESC, project_id
+                """,
+                (experience_id,),
+            ).fetchall()
+        sources = [
+            {
+                "project_id": row["project_id"] or "legacy-or-default",
+                "evidence_count": int(row["evidence_count"]),
+                "positive_count": int(row["positive_count"] or 0),
+            }
+            for row in rows
+        ]
+        return {
+            "source_project_count": len({row["project_id"] for row in rows if row["project_id"]}),
+            "sources": sources,
+        }
+
+    def import_database(self, source_path: Path | str) -> int:
+        """Idempotently merge a legacy project-local experience database."""
+        source = Path(source_path).resolve()
+        if source == self.path.resolve() or not source.is_file():
+            return 0
+        source_key = str(source)
+        with self._lock, closing(self._connect()) as connection:
+            if connection.execute(
+                "SELECT 1 FROM experience_imports WHERE source_path = ?", (source_key,)
+            ).fetchone():
+                return 0
+        imported = ExperienceStore(source).all()
+        with self._lock, closing(self._connect()) as connection, connection:
+            if connection.execute(
+                "SELECT 1 FROM experience_imports WHERE source_path = ?", (source_key,)
+            ).fetchone():
+                return 0
+            for candidate in imported:
+                row = connection.execute(
+                    "SELECT * FROM experiences WHERE fingerprint = ?", (candidate.fingerprint,)
+                ).fetchone()
+                if row:
+                    current = self._from_row(row)
+                    current.positive_evidence += candidate.positive_evidence
+                    current.negative_evidence += candidate.negative_evidence
+                    current.observations += candidate.observations
+                    current.usage_count += candidate.usage_count
+                    current.created_at = min(current.created_at, candidate.created_at)
+                    current.updated_at = max(current.updated_at, candidate.updated_at)
+                    current.last_used_at = max(current.last_used_at, candidate.last_used_at)
+                    if current.status != "verified" and candidate.status == "verified":
+                        current.status = "verified"
+                    self._reclassify(current)
+                    self._update(connection, current)
+                else:
+                    self._insert(connection, candidate)
+            connection.execute(
+                "INSERT INTO experience_imports VALUES (?, ?, ?)",
+                (source_key, time.time(), len(imported)),
+            )
+        return len(imported)
+
+    @staticmethod
+    def _record_evidence(
+        connection: sqlite3.Connection,
+        experience_id: str,
+        positive: bool,
+        evidence: Optional[Dict],
+    ) -> None:
+        payload = dict(evidence or {})
+        seed = "|".join([
+            experience_id,
+            str(payload.get("source", "observation")),
+            str(payload.get("project_id", "")),
+            str(payload.get("chat_id", "")),
+            str(payload.get("run_id", "")),
+            str(time.time_ns() if not payload.get("run_id") else ""),
+        ])
+        evidence_id = hashlib.sha256(seed.encode("utf-8")).hexdigest()[:32]
+        connection.execute(
+            """
+            INSERT OR IGNORE INTO experience_evidence (
+                evidence_id, experience_id, project_id, chat_id, run_id, source,
+                positive, score, success, error_count, tokens, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                evidence_id,
+                experience_id,
+                str(payload.get("project_id", "")),
+                str(payload.get("chat_id", "")),
+                str(payload.get("run_id", "")),
+                str(payload.get("source", "observation")),
+                int(positive),
+                float(payload.get("score", 0) or 0),
+                int(bool(payload.get("success", positive))),
+                int(payload.get("error_count", 0) or 0),
+                int(payload.get("tokens", 0) or 0),
+                float(payload.get("created_at", time.time()) or time.time()),
+            ),
+        )
 
     def mark_applied(self, experience_ids: Iterable[str]) -> List[Experience]:
         """Record that verified experiences were actually placed in an Agent prompt."""
@@ -144,7 +371,10 @@ class ExperienceStore:
         with self._lock, closing(self._connect()) as connection, connection:
             for experience_id in dict.fromkeys(experience_ids):
                 row = connection.execute(
-                    "SELECT * FROM experiences WHERE experience_id = ? AND status = 'verified'",
+                    """
+                    SELECT * FROM experiences
+                    WHERE experience_id = ? AND status IN ('verified', 'canary')
+                    """,
                     (experience_id,),
                 ).fetchone()
                 if not row:
@@ -158,21 +388,426 @@ class ExperienceStore:
         return applied
 
     def record_application_outcome(
-        self, experience_ids: Iterable[str], *, positive: bool
+        self,
+        experience_ids: Iterable[str],
+        *,
+        positive: bool,
+        canary_min_trials: int = 5,
+        canary_max_failures: int = 2,
+        canary_min_success_rate: float = 0.8,
     ) -> List[Experience]:
         updated = []
         for experience_id in dict.fromkeys(experience_ids):
-            experience = self.record_feedback(experience_id, positive=positive)
+            current = next(
+                (item for item in self.all() if item.experience_id == experience_id),
+                None,
+            )
+            if current is not None and current.status == "canary":
+                experience = self.record_canary_outcome(
+                    experience_id,
+                    positive=positive,
+                    min_trials=canary_min_trials,
+                    max_failures=canary_max_failures,
+                    min_success_rate=canary_min_success_rate,
+                )
+            else:
+                experience = self.record_feedback(experience_id, positive=positive)
             if experience is not None:
                 updated.append(experience)
         return updated
 
-    def verified_for(self, query: str, limit: int = 5) -> List[Experience]:
-        query_words = _words(query)
-        now = time.time()
+    def record_canary_outcome(
+        self,
+        experience_id: str,
+        *,
+        positive: bool,
+        min_trials: int,
+        max_failures: int,
+        min_success_rate: float,
+    ) -> Optional[Experience]:
+        with self._lock, closing(self._connect()) as connection, connection:
+            row = connection.execute(
+                "SELECT * FROM experiences WHERE experience_id = ? AND status = 'canary'",
+                (experience_id,),
+            ).fetchone()
+            if not row:
+                return None
+            experience = self._from_row(row)
+            trial = connection.execute(
+                "SELECT * FROM canary_trials WHERE experience_id = ?", (experience_id,)
+            ).fetchone()
+            uses = int(trial["uses"] if trial else 0) + 1
+            successes = int(trial["successes"] if trial else 0) + int(positive)
+            failures = int(trial["failures"] if trial else 0) + int(not positive)
+            now = time.time()
+            connection.execute(
+                """
+                INSERT INTO canary_trials (
+                    experience_id, uses, successes, failures, started_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(experience_id) DO UPDATE SET
+                    uses=excluded.uses, successes=excluded.successes,
+                    failures=excluded.failures, updated_at=excluded.updated_at
+                """,
+                (
+                    experience_id, uses, successes, failures,
+                    float(trial["started_at"] if trial else now), now,
+                ),
+            )
+            if failures >= max_failures:
+                experience.status = "rejected"
+                experience.negative_evidence = max(
+                    experience.negative_evidence, self.REJECTION_EVIDENCE
+                )
+                self._record_version(connection, experience, "canary_rollback")
+            elif uses >= min_trials and successes / max(1, uses) >= min_success_rate:
+                experience.status = "verified"
+                self._record_version(connection, experience, "canary_promote")
+            experience.updated_at = now
+            self._update(connection, experience)
+            return experience
+
+    def canary_stats(self, experience_id: Optional[str] = None) -> List[Dict]:
+        query = "SELECT * FROM canary_trials"
+        params: tuple = ()
+        if experience_id:
+            query += " WHERE experience_id = ?"
+            params = (experience_id,)
+        with self._lock, closing(self._connect()) as connection:
+            rows = connection.execute(query, params).fetchall()
+        return [dict(row) for row in rows]
+
+    def save_replay_report(self, report: Dict) -> Dict:
+        with self._lock, closing(self._connect()) as connection, connection:
+            connection.execute(
+                """
+                INSERT INTO replay_reports (
+                    replay_id, experience_id, passed, report_json, created_at
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    report["replay_id"], report["experience_id"],
+                    int(bool(report["passed"])),
+                    json.dumps(report, ensure_ascii=False, sort_keys=True),
+                    float(report["created_at"]),
+                ),
+            )
+        return report
+
+    def replay_reports(self, limit: int = 100) -> List[Dict]:
         with self._lock, closing(self._connect()) as connection:
             rows = connection.execute(
-                "SELECT * FROM experiences WHERE status = 'verified' AND task_pattern != ''"
+                "SELECT report_json FROM replay_reports ORDER BY created_at DESC LIMIT ?",
+                (max(0, limit),),
+            ).fetchall()
+        return [json.loads(row["report_json"]) for row in rows]
+
+    def maintain_experiences(
+        self,
+        *,
+        now: float,
+        candidate_ttl_days: int,
+        verified_review_days: int,
+    ) -> Dict[str, int]:
+        archived = 0
+        review_due = 0
+        merged = 0
+        with self._lock, closing(self._connect()) as connection, connection:
+            rows = connection.execute("SELECT * FROM experiences").fetchall()
+            experiences = [self._from_row(row) for row in rows]
+            mergeable = [
+                item for item in experiences
+                if item.status in {"candidate", "pending_evaluation"}
+            ]
+            consumed = set()
+            for index, keeper in enumerate(mergeable):
+                if keeper.experience_id in consumed:
+                    continue
+                keeper_words = _words(keeper.lesson)
+                for duplicate in mergeable[index + 1:]:
+                    if duplicate.experience_id in consumed:
+                        continue
+                    if keeper.task_pattern != duplicate.task_pattern:
+                        continue
+                    duplicate_words = _words(duplicate.lesson)
+                    union = keeper_words | duplicate_words
+                    similarity = len(keeper_words & duplicate_words) / max(1, len(union))
+                    if similarity < 0.85:
+                        continue
+                    keeper.positive_evidence += duplicate.positive_evidence
+                    keeper.negative_evidence += duplicate.negative_evidence
+                    keeper.observations += duplicate.observations
+                    keeper.usage_count += duplicate.usage_count
+                    keeper.updated_at = now
+                    self._reclassify(keeper)
+                    duplicate.status = "archived"
+                    duplicate.updated_at = now
+                    self._update(connection, duplicate)
+                    consumed.add(duplicate.experience_id)
+                    merged += 1
+                self._update(connection, keeper)
+
+            candidate_cutoff = now - candidate_ttl_days * 86400
+            review_cutoff = now - verified_review_days * 86400
+            for experience in experiences:
+                if experience.experience_id in consumed:
+                    continue
+                if (
+                    experience.status in {"candidate", "rejected"}
+                    and experience.updated_at < candidate_cutoff
+                ):
+                    experience.status = "archived"
+                    experience.updated_at = now
+                    self._update(connection, experience)
+                    archived += 1
+                elif experience.status == "verified" and experience.last_used_at < review_cutoff:
+                    experience.status = "pending_evaluation"
+                    experience.updated_at = now
+                    self._update(connection, experience)
+                    review_due += 1
+        return {"merged": merged, "archived": archived, "review_due": review_due}
+
+    def save_maintenance_report(self, report: Dict) -> Dict:
+        with self._lock, closing(self._connect()) as connection, connection:
+            connection.execute(
+                "INSERT INTO maintenance_reports VALUES (?, ?, ?)",
+                (
+                    report["report_id"],
+                    json.dumps(report, ensure_ascii=False, sort_keys=True),
+                    float(report["created_at"]),
+                ),
+            )
+        return report
+
+    def maintenance_reports(self, limit: int = 100) -> List[Dict]:
+        with self._lock, closing(self._connect()) as connection:
+            rows = connection.execute(
+                "SELECT report_json FROM maintenance_reports ORDER BY created_at DESC LIMIT ?",
+                (max(0, limit),),
+            ).fetchall()
+        return [json.loads(row["report_json"]) for row in rows]
+
+    def apply_evaluation(self, report: Dict) -> Optional[Experience]:
+        experience_id = str(report.get("experience_id", ""))
+        with self._lock, closing(self._connect()) as connection, connection:
+            row = connection.execute(
+                "SELECT * FROM experiences WHERE experience_id = ?", (experience_id,)
+            ).fetchone()
+            if not row:
+                return None
+            experience = self._from_row(row)
+            target_status = str(report.get("target_status", "verified"))
+            experience.status = target_status if report.get("passed") else "candidate"
+            experience.updated_at = time.time()
+            self._update(connection, experience)
+            connection.execute(
+                """
+                INSERT INTO experience_evaluations (
+                    experience_id, passed, report_json, created_at
+                ) VALUES (?, ?, ?, ?)
+                """,
+                (
+                    experience_id,
+                    int(bool(report.get("passed"))),
+                    json.dumps(report, ensure_ascii=False, sort_keys=True),
+                    time.time(),
+                ),
+            )
+            if report.get("passed"):
+                action = "canary_start" if target_status == "canary" else "promote"
+                self._record_version(connection, experience, action)
+                if target_status == "canary":
+                    now = time.time()
+                    connection.execute(
+                        """
+                        INSERT OR REPLACE INTO canary_trials (
+                            experience_id, uses, successes, failures, started_at, updated_at
+                        ) VALUES (?, 0, 0, 0, ?, ?)
+                        """,
+                        (experience.experience_id, now, now),
+                    )
+            return experience
+
+    def rollback(self, experience_id: str) -> Optional[Experience]:
+        with self._lock, closing(self._connect()) as connection, connection:
+            row = connection.execute(
+                "SELECT * FROM experiences WHERE experience_id = ?", (experience_id,)
+            ).fetchone()
+            if not row:
+                return None
+            experience = self._from_row(row)
+            self._record_version(connection, experience, "rollback")
+            experience.status = "rejected"
+            experience.negative_evidence = max(
+                experience.negative_evidence, self.REJECTION_EVIDENCE
+            )
+            experience.updated_at = time.time()
+            self._reclassify(experience)
+            self._update(connection, experience)
+            return experience
+
+    def evaluations(self, limit: int = 100) -> List[Dict]:
+        with self._lock, closing(self._connect()) as connection:
+            rows = connection.execute(
+                """
+                SELECT evaluation_id, experience_id, passed, report_json, created_at
+                FROM experience_evaluations ORDER BY evaluation_id DESC LIMIT ?
+                """,
+                (max(0, limit),),
+            ).fetchall()
+        return [
+            {
+                "evaluation_id": row["evaluation_id"],
+                "experience_id": row["experience_id"],
+                "passed": bool(row["passed"]),
+                "report": json.loads(row["report_json"]),
+                "created_at": row["created_at"],
+            }
+            for row in rows
+        ]
+
+    def policy_versions(self, limit: int = 100) -> List[Dict]:
+        with self._lock, closing(self._connect()) as connection:
+            rows = connection.execute(
+                """
+                SELECT version, experience_id, action, snapshot_json, created_at
+                FROM policy_versions ORDER BY version DESC LIMIT ?
+                """,
+                (max(0, limit),),
+            ).fetchall()
+        return [
+            {
+                "version": row["version"],
+                "experience_id": row["experience_id"],
+                "action": row["action"],
+                "snapshot": json.loads(row["snapshot_json"]),
+                "created_at": row["created_at"],
+            }
+            for row in rows
+        ]
+
+    def save_reflection(self, proposal: Dict) -> Dict:
+        with self._lock, closing(self._connect()) as connection, connection:
+            connection.execute(
+                """
+                INSERT INTO experience_reflections (
+                    reflection_id, experience_id, situation, lesson, failure_pattern,
+                    scope_json, confidence, model, status, created_at, reviewed_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                """,
+                (
+                    proposal["reflection_id"], proposal["experience_id"],
+                    proposal["situation"], proposal["lesson"],
+                    proposal.get("failure_pattern", ""),
+                    json.dumps(proposal.get("scope", []), ensure_ascii=False),
+                    float(proposal.get("confidence", 0.5)), proposal.get("model", ""),
+                    "proposed", float(proposal.get("created_at", time.time())),
+                ),
+            )
+        return proposal
+
+    def reflections(self, status: Optional[str] = None, limit: int = 100) -> List[Dict]:
+        query = "SELECT * FROM experience_reflections"
+        params: List = []
+        if status:
+            query += " WHERE status = ?"
+            params.append(status)
+        query += " ORDER BY created_at DESC LIMIT ?"
+        params.append(max(0, limit))
+        with self._lock, closing(self._connect()) as connection:
+            rows = connection.execute(query, tuple(params)).fetchall()
+        return [
+            {
+                "reflection_id": row["reflection_id"],
+                "experience_id": row["experience_id"],
+                "situation": row["situation"],
+                "lesson": row["lesson"],
+                "failure_pattern": row["failure_pattern"],
+                "scope": json.loads(row["scope_json"]),
+                "confidence": row["confidence"],
+                "model": row["model"],
+                "status": row["status"],
+                "created_at": row["created_at"],
+                "reviewed_at": row["reviewed_at"],
+            }
+            for row in rows
+        ]
+
+    def review_reflection(
+        self, reflection_id: str, *, approve: bool
+    ) -> Optional[Experience]:
+        with self._lock, closing(self._connect()) as connection, connection:
+            reflection = connection.execute(
+                "SELECT * FROM experience_reflections WHERE reflection_id = ?",
+                (reflection_id,),
+            ).fetchone()
+            if not reflection or reflection["status"] != "proposed":
+                return None
+            row = connection.execute(
+                "SELECT * FROM experiences WHERE experience_id = ?",
+                (reflection["experience_id"],),
+            ).fetchone()
+            if not row:
+                return None
+            experience = self._from_row(row)
+            if approve:
+                self._record_version(connection, experience, "reflection_approved")
+                experience.situation = reflection["situation"]
+                experience.lesson = reflection["lesson"]
+                experience.failure_pattern = reflection["failure_pattern"]
+                experience.scope = json.loads(reflection["scope_json"])
+                experience.status = "pending_evaluation"
+                experience.updated_at = time.time()
+                self._update(connection, experience)
+            connection.execute(
+                """
+                UPDATE experience_reflections SET status = ?, reviewed_at = ?
+                WHERE reflection_id = ?
+                """,
+                ("approved" if approve else "rejected", time.time(), reflection_id),
+            )
+            return experience
+
+    @staticmethod
+    def _record_version(
+        connection: sqlite3.Connection,
+        experience: Experience,
+        action: str,
+    ) -> None:
+        connection.execute(
+            """
+            INSERT INTO policy_versions (
+                experience_id, action, snapshot_json, created_at
+            ) VALUES (?, ?, ?, ?)
+            """,
+            (
+                experience.experience_id,
+                action,
+                json.dumps(experience.__dict__, ensure_ascii=False, sort_keys=True),
+                time.time(),
+            ),
+        )
+
+    def verified_for(self, query: str, limit: int = 5) -> List[Experience]:
+        return self.search_for(query, statuses=("verified",), limit=limit)
+
+    def search_for(
+        self,
+        query: str,
+        *,
+        statuses: Iterable[str],
+        limit: int = 5,
+    ) -> List[Experience]:
+        query_words = _words(query)
+        now = time.time()
+        allowed = tuple(dict.fromkeys(statuses))
+        if not allowed:
+            return []
+        placeholders = ",".join("?" for _ in allowed)
+        with self._lock, closing(self._connect()) as connection:
+            rows = connection.execute(
+                f"SELECT * FROM experiences WHERE status IN ({placeholders}) AND task_pattern != ''",
+                allowed,
             ).fetchall()
         scored = []
         for row in rows:
@@ -217,7 +852,8 @@ class ExperienceStore:
             experience.positive_evidence >= ExperienceStore.PROMOTION_EVIDENCE
             and experience.positive_evidence > experience.negative_evidence * 2
         ):
-            experience.status = "verified"
+            if experience.status != "verified":
+                experience.status = "pending_evaluation"
         else:
             experience.status = "candidate"
 
@@ -288,7 +924,21 @@ class ExperienceEngine:
         candidate = self._candidate_from_trace(trace)
         if candidate is None:
             return None
-        return self.store.observe(candidate, positive=bool(trace.success and trace.score >= 0.95))
+        return self.store.observe(
+            candidate,
+            positive=bool(trace.success and trace.score >= 0.95),
+            evidence={
+                "source": "task_observation",
+                "project_id": trace.metadata.get("project_id", ""),
+                "chat_id": trace.chat_id,
+                "run_id": trace.run_id,
+                "score": trace.score,
+                "success": trace.success,
+                "error_count": len(trace.errors),
+                "tokens": trace.prompt_tokens + trace.completion_tokens,
+                "created_at": trace.ended_at or trace.started_at,
+            },
+        )
 
     @staticmethod
     def _candidate_from_trace(trace: EvolutionTrace) -> Optional[Experience]:

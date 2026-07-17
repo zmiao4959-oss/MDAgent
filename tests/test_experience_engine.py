@@ -20,9 +20,9 @@ def test_repeated_success_promotes_candidate(tmp_path):
         experience = engine.observe_trace(_successful_trace())
 
     assert experience is not None
-    assert experience.status == "verified"
+    assert experience.status == "pending_evaluation"
     assert experience.positive_evidence == 3
-    assert store.verified_for("read then execute input")[0].experience_id == experience.experience_id
+    assert store.verified_for("read then execute input") == []
 
 
 def test_negative_evidence_rejects_experience(tmp_path):
@@ -37,6 +37,21 @@ def test_negative_evidence_rejects_experience(tmp_path):
     assert rejected is not None
     assert rejected.status == "rejected"
     assert store.verified_for("read execute") == []
+
+
+def test_positive_feedback_is_persisted_even_before_promotion(tmp_path):
+    store = ExperienceStore(tmp_path / "experiences.db")
+    engine = ExperienceEngine(store)
+    experience = engine.observe_trace(_successful_trace())
+    assert experience is not None
+
+    updated = store.record_feedback(experience.experience_id, positive=True)
+
+    assert updated is not None
+    assert updated.positive_evidence == experience.positive_evidence + 1
+    assert updated.status == "candidate"
+    persisted = next(item for item in store.all() if item.experience_id == experience.experience_id)
+    assert persisted.positive_evidence == updated.positive_evidence
 
 
 def test_failure_creates_unverified_candidate(tmp_path):
@@ -106,7 +121,5 @@ def test_same_tools_in_different_task_contexts_do_not_merge(tmp_path):
 
     assert lammps is not None and web is not None
     assert lammps.experience_id != web.experience_id
-    assert lammps.status == web.status == "verified"
+    assert lammps.status == web.status == "pending_evaluation"
     assert len(store.all()) == 2
-    assert store.verified_for("LAMMPS simulation")[0].experience_id == lammps.experience_id
-    assert store.verified_for("browser accessibility")[0].experience_id == web.experience_id

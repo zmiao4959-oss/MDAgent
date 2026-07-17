@@ -50,6 +50,21 @@ evolution:
   inject_verified: true
   max_injected: 3
   auto_evaluate_applied: true
+  deep_reflection_enabled: false
+  deep_reflection_timeout_sec: 20
+  canary_enabled: false
+  canary_traffic_percent: 10
+  canary_min_trials: 5
+  canary_max_failures: 2
+  canary_min_success_rate: 0.8
+  replay_enabled: false
+  replay_timeout_sec: 120
+  maintenance_enabled: true
+  maintenance_interval_hours: 24
+  candidate_ttl_days: 90
+  verified_review_days: 180
+  trace_retention_days: 90
+  skill_min_experiences: 2
 
 channels:
   enabled:

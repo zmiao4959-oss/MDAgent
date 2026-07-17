@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 import uuid
@@ -128,6 +129,32 @@ class TraceStore:
             except (TypeError, ValueError, json.JSONDecodeError):
                 continue
         return traces
+
+    def prune_before(self, cutoff_timestamp: float) -> int:
+        if not self.path.exists():
+            return 0
+        with self._lock:
+            lines = self.path.read_text(encoding="utf-8").splitlines()
+            kept = []
+            removed = 0
+            for line in lines:
+                try:
+                    data = json.loads(line)
+                    timestamp = float(data.get("ended_at") or data.get("started_at") or 0)
+                except (ValueError, TypeError, json.JSONDecodeError):
+                    kept.append(line)
+                    continue
+                if timestamp and timestamp < cutoff_timestamp:
+                    removed += 1
+                else:
+                    kept.append(line)
+            if removed:
+                temporary = self.path.with_suffix(self.path.suffix + ".tmp")
+                temporary.write_text(
+                    "\n".join(kept) + ("\n" if kept else ""), encoding="utf-8"
+                )
+                os.replace(temporary, self.path)
+            return removed
 
 
 def _json_safe(value: Any) -> Any:

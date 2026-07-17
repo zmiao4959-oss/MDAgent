@@ -175,6 +175,21 @@ class EvolutionConfig:
     inject_verified: bool = True
     max_injected: int = 3
     auto_evaluate_applied: bool = True
+    deep_reflection_enabled: bool = False
+    deep_reflection_timeout_sec: int = 20
+    canary_enabled: bool = False
+    canary_traffic_percent: int = 10
+    canary_min_trials: int = 5
+    canary_max_failures: int = 2
+    canary_min_success_rate: float = 0.8
+    replay_enabled: bool = False
+    replay_timeout_sec: int = 120
+    maintenance_enabled: bool = True
+    maintenance_interval_hours: int = 24
+    candidate_ttl_days: int = 90
+    verified_review_days: int = 180
+    trace_retention_days: int = 90
+    skill_min_experiences: int = 2
 
 
 class Config:
@@ -260,6 +275,37 @@ class Config:
             inject_verified=bool(evolution_raw.get("inject_verified", True)),
             max_injected=max(0, min(10, int(evolution_raw.get("max_injected", 3)))),
             auto_evaluate_applied=bool(evolution_raw.get("auto_evaluate_applied", True)),
+            deep_reflection_enabled=bool(evolution_raw.get("deep_reflection_enabled", False)),
+            deep_reflection_timeout_sec=max(
+                1, min(120, int(evolution_raw.get("deep_reflection_timeout_sec", 20)))
+            ),
+            canary_enabled=bool(evolution_raw.get("canary_enabled", False)),
+            canary_traffic_percent=max(
+                0, min(100, int(evolution_raw.get("canary_traffic_percent", 10)))
+            ),
+            canary_min_trials=max(1, int(evolution_raw.get("canary_min_trials", 5))),
+            canary_max_failures=max(1, int(evolution_raw.get("canary_max_failures", 2))),
+            canary_min_success_rate=max(
+                0.0, min(1.0, float(evolution_raw.get("canary_min_success_rate", 0.8)))
+            ),
+            replay_enabled=bool(evolution_raw.get("replay_enabled", False)),
+            replay_timeout_sec=max(
+                5, min(1800, int(evolution_raw.get("replay_timeout_sec", 120)))
+            ),
+            maintenance_enabled=bool(evolution_raw.get("maintenance_enabled", True)),
+            maintenance_interval_hours=max(
+                1, int(evolution_raw.get("maintenance_interval_hours", 24))
+            ),
+            candidate_ttl_days=max(1, int(evolution_raw.get("candidate_ttl_days", 90))),
+            verified_review_days=max(
+                1, int(evolution_raw.get("verified_review_days", 180))
+            ),
+            trace_retention_days=max(
+                1, int(evolution_raw.get("trace_retention_days", 90))
+            ),
+            skill_min_experiences=max(
+                2, int(evolution_raw.get("skill_min_experiences", 2))
+            ),
         )
     """
     @classmethod 也是一个装饰器，它把方法变成类方法，与普通实例方法的区别在于：

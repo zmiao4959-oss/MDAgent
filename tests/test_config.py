@@ -41,3 +41,12 @@ def test_evolution_config_is_bounded(tmp_path: Path):
     assert loaded.evolution.enabled is True
     assert loaded.evolution.max_injected == 10
     assert loaded.evolution.auto_evaluate_applied is True
+    assert loaded.evolution.deep_reflection_enabled is False
+    assert loaded.evolution.deep_reflection_timeout_sec == 20
+    assert loaded.evolution.canary_enabled is False
+    assert loaded.evolution.canary_traffic_percent == 10
+    assert loaded.evolution.replay_enabled is False
+    assert loaded.evolution.replay_timeout_sec == 120
+    assert loaded.evolution.maintenance_enabled is True
+    assert loaded.evolution.trace_retention_days == 90
+    assert loaded.evolution.skill_min_experiences == 2

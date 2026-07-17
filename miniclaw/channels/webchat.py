@@ -596,7 +596,13 @@ class WebChatAdapter(BaseChannelAdapter):
             service = EvolutionService(workspace)
             experiences = service.list_experiences(status or None)
             all_experiences = service.list_experiences()
-            counts = {"candidate": 0, "verified": 0, "rejected": 0}
+            counts = {
+                "candidate": 0,
+                "pending_evaluation": 0,
+                "canary": 0,
+                "verified": 0,
+                "rejected": 0,
+            }
             for item in all_experiences:
                 item_status = item.get("status", "candidate")
                 counts[item_status] = counts.get(item_status, 0) + 1
@@ -623,9 +629,244 @@ class WebChatAdapter(BaseChannelAdapter):
             if project_id and project is None:
                 raise HTTPException(status_code=404, detail="project not found")
             workspace = adapter._workspace_for_project(project) if project else WORKSPACE_DIR
-            experience = EvolutionService(workspace).feedback(experience_id, positive)
+            service = EvolutionService(workspace)
+            experience = service.feedback(
+                experience_id,
+                positive,
+                project_id=project_id,
+                chat_id=project.chat_id if project else "",
+            )
             if experience is None:
                 raise HTTPException(status_code=404, detail="experience not found")
+            return {
+                "ok": True,
+                "experience": experience.__dict__,
+                "thresholds": {
+                    "promotion_evidence": service.experience_store.PROMOTION_EVIDENCE,
+                    "rejection_evidence": service.experience_store.REJECTION_EVIDENCE,
+                },
+            }
+
+        @app.post("/api/evolution/rollback")
+        async def evolution_rollback(request: Request):
+            from ..learning.service import EvolutionService
+
+            body = await request.json()
+            experience_id = str(body.get("experience_id", "")).strip()
+            project_id = str(body.get("project_id", "")).strip()
+            if not experience_id:
+                raise HTTPException(status_code=400, detail="experience_id is required")
+            project = adapter.projects.get(project_id) if project_id else None
+            if project_id and project is None:
+                raise HTTPException(status_code=404, detail="project not found")
+            workspace = adapter._workspace_for_project(project) if project else WORKSPACE_DIR
+            experience = EvolutionService(workspace).rollback(experience_id)
+            if experience is None:
+                raise HTTPException(status_code=404, detail="experience not found")
+            return {"ok": True, "experience": experience.__dict__}
+
+        @app.get("/api/evolution/evaluations")
+        async def evolution_evaluations(project_id: str = ""):
+            from ..learning.service import EvolutionService
+
+            project = adapter.projects.get(project_id) if project_id else None
+            if project_id and project is None:
+                raise HTTPException(status_code=404, detail="project not found")
+            workspace = adapter._workspace_for_project(project) if project else WORKSPACE_DIR
+            service = EvolutionService(workspace)
+            return {
+                "ok": True,
+                "evaluations": service.evaluations(),
+                "versions": service.policy_versions(),
+                "canary": service.canary_stats(),
+                "replays": service.replay_reports(),
+                "maintenance": service.maintenance_reports(),
+            }
+
+        @app.post("/api/evolution/maintenance")
+        async def run_evolution_maintenance(project_id: str = ""):
+            from ..learning.service import EvolutionService
+
+            project = adapter.projects.get(project_id) if project_id else None
+            if project_id and project is None:
+                raise HTTPException(status_code=404, detail="project not found")
+            workspace = adapter._workspace_for_project(project) if project else WORKSPACE_DIR
+            report = EvolutionService(workspace).maintain(
+                candidate_ttl_days=config.evolution.candidate_ttl_days,
+                verified_review_days=config.evolution.verified_review_days,
+                trace_retention_days=config.evolution.trace_retention_days,
+            )
+            return {"ok": True, "report": report}
+
+        @app.get("/api/evolution/governance")
+        async def evolution_governance(project_id: str = ""):
+            from ..learning.service import EvolutionService
+
+            project = adapter.projects.get(project_id) if project_id else None
+            if project_id and project is None:
+                raise HTTPException(status_code=404, detail="project not found")
+            workspace = adapter._workspace_for_project(project) if project else WORKSPACE_DIR
+            service = EvolutionService(workspace)
+            return {
+                "ok": True,
+                "backups": service.list_backups(),
+                "audit": service.audit_events(),
+            }
+
+        @app.get("/api/evolution/export")
+        async def export_evolution_data(project_id: str = ""):
+            from ..learning.service import EvolutionService
+
+            project = adapter.projects.get(project_id) if project_id else None
+            if project_id and project is None:
+                raise HTTPException(status_code=404, detail="project not found")
+            workspace = adapter._workspace_for_project(project) if project else WORKSPACE_DIR
+            return EvolutionService(workspace).export_data(redact=True)
+
+        @app.post("/api/evolution/backup")
+        async def backup_evolution_data(project_id: str = ""):
+            from ..learning.service import EvolutionService
+
+            project = adapter.projects.get(project_id) if project_id else None
+            if project_id and project is None:
+                raise HTTPException(status_code=404, detail="project not found")
+            workspace = adapter._workspace_for_project(project) if project else WORKSPACE_DIR
+            return {"ok": True, "backup": EvolutionService(workspace).backup_data()}
+
+        @app.post("/api/evolution/restore")
+        async def restore_evolution_data(request: Request):
+            from ..learning.service import EvolutionService
+
+            body = await request.json()
+            project_id = str(body.get("project_id", "")).strip()
+            backup_name = str(body.get("backup_name", "")).strip()
+            project = adapter.projects.get(project_id) if project_id else None
+            if project_id and project is None:
+                raise HTTPException(status_code=404, detail="project not found")
+            workspace = adapter._workspace_for_project(project) if project else WORKSPACE_DIR
+            try:
+                result = EvolutionService(workspace).restore_data(backup_name)
+            except (FileNotFoundError, ValueError) as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return {"ok": True, "restore": result}
+
+        @app.post("/api/evolution/purge")
+        async def purge_evolution_data(request: Request):
+            from ..learning.service import EvolutionService
+
+            body = await request.json()
+            project_id = str(body.get("project_id", "")).strip()
+            confirmation = str(body.get("confirmation", ""))
+            project = adapter.projects.get(project_id) if project_id else None
+            if project_id and project is None:
+                raise HTTPException(status_code=404, detail="project not found")
+            workspace = adapter._workspace_for_project(project) if project else WORKSPACE_DIR
+            try:
+                result = EvolutionService(workspace).purge_data(confirmation)
+            except PermissionError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return {"ok": True, "purge": result}
+
+        @app.get("/api/evolution/skill-drafts")
+        async def evolution_skill_drafts(project_id: str = ""):
+            from ..learning.service import EvolutionService
+
+            project = adapter.projects.get(project_id) if project_id else None
+            if project_id and project is None:
+                raise HTTPException(status_code=404, detail="project not found")
+            workspace = adapter._workspace_for_project(project) if project else WORKSPACE_DIR
+            return {"ok": True, "drafts": EvolutionService(workspace).list_skill_drafts()}
+
+        @app.post("/api/evolution/skill-drafts")
+        async def synthesize_evolution_skill(request: Request):
+            from ..learning.service import EvolutionService
+
+            body = await request.json()
+            project_id = str(body.get("project_id", "")).strip()
+            task_pattern = str(body.get("task_pattern", "")).strip()
+            if not task_pattern:
+                raise HTTPException(status_code=400, detail="task_pattern is required")
+            project = adapter.projects.get(project_id) if project_id else None
+            if project_id and project is None:
+                raise HTTPException(status_code=404, detail="project not found")
+            workspace = adapter._workspace_for_project(project) if project else WORKSPACE_DIR
+            try:
+                draft = EvolutionService(workspace).synthesize_skill(
+                    task_pattern, config.evolution.skill_min_experiences
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return {"ok": True, "draft": draft}
+
+        @app.post("/api/evolution/skill-drafts/{draft_id}/test")
+        async def test_evolution_skill_draft(draft_id: str, project_id: str = ""):
+            from ..learning.service import EvolutionService
+
+            project = adapter.projects.get(project_id) if project_id else None
+            if project_id and project is None:
+                raise HTTPException(status_code=404, detail="project not found")
+            workspace = adapter._workspace_for_project(project) if project else WORKSPACE_DIR
+            try:
+                result = EvolutionService(workspace).test_skill_draft(draft_id)
+            except FileNotFoundError as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+            return {"ok": True, "test": result}
+
+        @app.post("/api/evolution/skill-drafts/{draft_id}/review")
+        async def review_evolution_skill_draft(draft_id: str, request: Request):
+            from ..learning.service import EvolutionService
+
+            body = await request.json()
+            project_id = str(body.get("project_id", "")).strip()
+            approve = body.get("approve")
+            confirmation = str(body.get("confirmation", ""))
+            if not isinstance(approve, bool):
+                raise HTTPException(status_code=400, detail="boolean approve is required")
+            project = adapter.projects.get(project_id) if project_id else None
+            if project_id and project is None:
+                raise HTTPException(status_code=404, detail="project not found")
+            workspace = adapter._workspace_for_project(project) if project else WORKSPACE_DIR
+            try:
+                result = EvolutionService(workspace).review_skill_draft(
+                    draft_id, approve=approve, confirmation=confirmation
+                )
+            except (FileNotFoundError, FileExistsError) as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+            except (PermissionError, ValueError) as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return {"ok": True, "result": result}
+
+        @app.get("/api/evolution/reflections")
+        async def evolution_reflections(status: str = "proposed", project_id: str = ""):
+            from ..learning.service import EvolutionService
+
+            project = adapter.projects.get(project_id) if project_id else None
+            if project_id and project is None:
+                raise HTTPException(status_code=404, detail="project not found")
+            workspace = adapter._workspace_for_project(project) if project else WORKSPACE_DIR
+            return {
+                "ok": True,
+                "reflections": EvolutionService(workspace).reflections(status or None),
+            }
+
+        @app.post("/api/evolution/reflections/{reflection_id}/review")
+        async def review_evolution_reflection(reflection_id: str, request: Request):
+            from ..learning.service import EvolutionService
+
+            body = await request.json()
+            project_id = str(body.get("project_id", "")).strip()
+            approve = body.get("approve")
+            if not isinstance(approve, bool):
+                raise HTTPException(status_code=400, detail="boolean approve is required")
+            project = adapter.projects.get(project_id) if project_id else None
+            if project_id and project is None:
+                raise HTTPException(status_code=404, detail="project not found")
+            workspace = adapter._workspace_for_project(project) if project else WORKSPACE_DIR
+            experience = EvolutionService(workspace).review_reflection(
+                reflection_id, approve=approve
+            )
+            if experience is None:
+                raise HTTPException(status_code=404, detail="reflection not found or already reviewed")
             return {"ok": True, "experience": experience.__dict__}
 
         @app.get("/api/asset")

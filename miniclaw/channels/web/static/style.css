@@ -1064,7 +1064,7 @@ html, body {
 .diagnostic-dot[data-state="unavailable"] { background: #ff8b91; box-shadow: 0 0 8px rgba(255,139,145,.3); }
 .diagnostic-item strong { overflow: hidden; color: #d8e4f8; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .diagnostic-item small { grid-column: 2; overflow: hidden; color: #71819a; font-size: 9px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
-.evolution-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.evolution-metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
 .evolution-metrics > div { padding: 9px; border-radius: 9px; background: rgba(130,158,204,.07); text-align: center; }
 .evolution-metrics span { display: block; color: #71819a; font-size: 9px; }
 .evolution-metrics strong { display: block; margin-top: 3px; color: #d8e4f8; font-size: 14px; }
@@ -1076,10 +1076,16 @@ html, body {
 .evolution-card small { color: #71819a; font-size: 9px; }
 .evolution-badge { flex: 0 0 auto; padding: 2px 6px; border-radius: 999px; color: #f0c66c; background: rgba(142,101,24,.12); font-size: 9px; }
 .evolution-badge[data-status="verified"] { color: #71ddb0; background: rgba(35,139,99,.12); }
+.evolution-badge[data-status="pending_evaluation"] { color: #79b7ff; background: rgba(52,105,166,.12); }
+.evolution-badge[data-status="canary"] { color: #c29cff; background: rgba(105,65,166,.14); }
 .evolution-badge[data-status="rejected"] { color: #ff8b91; background: rgba(146,48,57,.12); }
 .evolution-actions { display: flex; justify-content: flex-end; gap: 6px; }
 .evolution-actions button { padding: 4px 8px; font-size: 9px; }
 .danger-btn { color: #ff9ca1; border-color: rgba(255,139,145,.22); }
+.reflection-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; }
+.reflection-heading > strong { color: #c7d5ea; font-size: 11px; }
+.reflection-list { max-height: 220px; }
+.reflection-card > strong { color: #d8e4f8; font-size: 11px; }
 
 .quick-actions[hidden] { display: none; }
 html[data-message-size="small"] .messages { font-size: 13px; }
