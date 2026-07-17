@@ -12,6 +12,10 @@ from .skill_evolution import SkillDraft, SkillSynthesizer
 from .strategy import SemanticStep, StructuredStrategy, build_strategy, render_strategy
 from .executable_policy import ExecutablePolicyDraft, ExecutablePolicyManager
 from .source_proposal import RepeatedFailureDetector, SourceProposal, SourceProposalStore
+from .source_experiment import (
+    PatchActionResult, SingleCandidateExperimentRunner, SourceExperiment,
+    SourceExperimentStore, SourcePatchPolicy,
+)
 
 __all__ = [
     "EvolutionTrace", "ToolTrace", "TraceStore",
@@ -26,4 +30,6 @@ __all__ = [
     "SemanticStep", "StructuredStrategy", "build_strategy", "render_strategy",
     "ExecutablePolicyDraft", "ExecutablePolicyManager",
     "RepeatedFailureDetector", "SourceProposal", "SourceProposalStore",
+    "PatchActionResult", "SingleCandidateExperimentRunner", "SourceExperiment",
+    "SourceExperimentStore", "SourcePatchPolicy",
 ]
