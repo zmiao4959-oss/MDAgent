@@ -48,6 +48,8 @@ class SourceExperiment:
     error: str = ""
     candidate_commit: str = ""
     promotion_commit: str = ""
+    rollback_commit: str = ""
+    evaluation_report: Dict = field(default_factory=dict)
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
 

@@ -192,6 +192,13 @@ class EvolutionConfig:
     skill_min_experiences: int = 2
     auto_skill_drafts_enabled: bool = True
     executable_policy_timeout_sec: int = 30
+    source_evolution_enabled: bool = False
+    source_repo_path: str = ""
+    source_failure_min_occurrences: int = 3
+    source_failure_min_projects: int = 2
+    source_patch_max_files: int = 8
+    source_patch_max_changed_lines: int = 500
+    source_test_timeout_sec: int = 300
 
 
 class Config:
@@ -313,6 +320,25 @@ class Config:
             ),
             executable_policy_timeout_sec=max(
                 1, int(evolution_raw.get("executable_policy_timeout_sec", 30))
+            ),
+            source_evolution_enabled=bool(
+                evolution_raw.get("source_evolution_enabled", False)
+            ),
+            source_repo_path=str(evolution_raw.get("source_repo_path", "")).strip(),
+            source_failure_min_occurrences=max(
+                2, int(evolution_raw.get("source_failure_min_occurrences", 3))
+            ),
+            source_failure_min_projects=max(
+                1, int(evolution_raw.get("source_failure_min_projects", 2))
+            ),
+            source_patch_max_files=max(
+                1, int(evolution_raw.get("source_patch_max_files", 8))
+            ),
+            source_patch_max_changed_lines=max(
+                1, int(evolution_raw.get("source_patch_max_changed_lines", 500))
+            ),
+            source_test_timeout_sec=max(
+                5, min(1800, int(evolution_raw.get("source_test_timeout_sec", 300)))
             ),
         )
     """

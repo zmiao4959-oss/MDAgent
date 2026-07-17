@@ -585,6 +585,115 @@ class WebChatAdapter(BaseChannelAdapter):
             with workspace_scope(adapter._workspace_for_project(project) if project else None):
                 return list_workspace_files(work_dir)
 
+        def configured_source_repo() -> Path:
+            if not config.evolution.source_evolution_enabled:
+                raise HTTPException(status_code=403, detail="source evolution is disabled")
+            value = config.evolution.source_repo_path
+            if not value:
+                raise HTTPException(status_code=400, detail="source_repo_path is not configured")
+            repo = Path(value).expanduser().resolve()
+            if not repo.is_dir() or not (repo / ".git").exists():
+                raise HTTPException(status_code=400, detail="source_repo_path is not a Git repository")
+            return repo
+
+        @app.get("/api/evolution/source/proposals")
+        async def list_source_proposals(status: str = ""):
+            from ..learning.service import EvolutionService
+
+            configured_source_repo()
+            return {
+                "ok": True,
+                "proposals": EvolutionService(WORKSPACE_DIR).list_source_proposals(status or None),
+            }
+
+        @app.post("/api/evolution/source/proposals/detect")
+        async def detect_source_proposals():
+            from ..learning.service import EvolutionService
+
+            repo = configured_source_repo()
+            proposals = EvolutionService(WORKSPACE_DIR).detect_source_proposals(
+                repo,
+                min_occurrences=config.evolution.source_failure_min_occurrences,
+                min_projects=config.evolution.source_failure_min_projects,
+            )
+            return {"ok": True, "proposals": proposals}
+
+        @app.post("/api/evolution/source/proposals/{proposal_id}/review")
+        async def review_source_proposal(proposal_id: str, request: Request):
+            from ..learning.service import EvolutionService
+
+            configured_source_repo()
+            body = await request.json()
+            approve = body.get("approve")
+            if not isinstance(approve, bool):
+                raise HTTPException(status_code=400, detail="boolean approve is required")
+            try:
+                proposal = EvolutionService(WORKSPACE_DIR).review_source_proposal(
+                    proposal_id, approve=approve
+                )
+            except FileNotFoundError as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return {"ok": True, "proposal": proposal}
+
+        @app.get("/api/evolution/source/experiments")
+        async def list_source_experiments(status: str = ""):
+            from ..learning.service import EvolutionService
+
+            configured_source_repo()
+            return {
+                "ok": True,
+                "experiments": EvolutionService(WORKSPACE_DIR).list_source_experiments(status or None),
+            }
+
+        @app.post("/api/evolution/source/experiments/{experiment_id}/evaluate")
+        async def evaluate_source_experiment(experiment_id: str):
+            from ..learning.service import EvolutionService
+
+            repo = configured_source_repo()
+            try:
+                experiment = EvolutionService(WORKSPACE_DIR).evaluate_source_experiment(
+                    experiment_id, repo
+                )
+            except FileNotFoundError as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+            except (PermissionError, RuntimeError, ValueError) as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return {"ok": True, "experiment": experiment}
+
+        @app.post("/api/evolution/source/experiments/{experiment_id}/promote")
+        async def promote_source_experiment(experiment_id: str, request: Request):
+            from ..learning.service import EvolutionService
+
+            repo = configured_source_repo()
+            confirmation = str((await request.json()).get("confirmation", ""))
+            try:
+                experiment = EvolutionService(WORKSPACE_DIR).promote_source_experiment(
+                    experiment_id, repo, confirmation
+                )
+            except FileNotFoundError as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+            except (PermissionError, RuntimeError, ValueError) as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return {"ok": True, "experiment": experiment}
+
+        @app.post("/api/evolution/source/experiments/{experiment_id}/rollback")
+        async def rollback_source_experiment(experiment_id: str, request: Request):
+            from ..learning.service import EvolutionService
+
+            repo = configured_source_repo()
+            confirmation = str((await request.json()).get("confirmation", ""))
+            try:
+                experiment = EvolutionService(WORKSPACE_DIR).rollback_source_experiment(
+                    experiment_id, repo, confirmation
+                )
+            except FileNotFoundError as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+            except (PermissionError, RuntimeError, ValueError) as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return {"ok": True, "experiment": experiment}
+
         @app.get("/api/evolution/experiences")
         async def list_evolution_experiences(status: str = "", project_id: str = ""):
             from ..learning.service import EvolutionService

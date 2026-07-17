@@ -16,6 +16,7 @@ from .source_experiment import (
     PatchActionResult, SingleCandidateExperimentRunner, SourceExperiment,
     SourceExperimentStore, SourcePatchPolicy,
 )
+from .source_promotion import SourceCandidateEvaluator, SourceCandidatePromoter
 
 __all__ = [
     "EvolutionTrace", "ToolTrace", "TraceStore",
@@ -32,4 +33,5 @@ __all__ = [
     "RepeatedFailureDetector", "SourceProposal", "SourceProposalStore",
     "PatchActionResult", "SingleCandidateExperimentRunner", "SourceExperiment",
     "SourceExperimentStore", "SourcePatchPolicy",
+    "SourceCandidateEvaluator", "SourceCandidatePromoter",
 ]

@@ -15,6 +15,12 @@ from .governance import GovernanceManager
 from .skill_evolution import SkillSynthesizer
 from .strategy import render_strategy
 from .executable_policy import ExecutablePolicyManager, PolicyExecutor
+from .source_proposal import RepeatedFailureDetector, SourceProposalStore
+from .source_experiment import (
+    SingleCandidateExperimentRunner, SourceExperimentStore, SourcePatchAgent,
+    SourcePatchPolicy,
+)
+from .source_promotion import SourceCandidateEvaluator, SourceCandidatePromoter
 
 
 class EvolutionService:
@@ -359,6 +365,98 @@ class EvolutionService:
             timeout_sec=timeout_sec,
         )
 
+    def detect_source_proposals(
+        self,
+        repo_root: Path | str,
+        *,
+        min_occurrences: int = 3,
+        min_projects: int = 2,
+    ) -> List[Dict]:
+        proposals = RepeatedFailureDetector(
+            self._source_proposals(),
+            repo_root,
+            min_occurrences=min_occurrences,
+            min_projects=min_projects,
+        ).scan(self._evaluation_traces())
+        return [proposal.to_dict() for proposal in proposals]
+
+    def list_source_proposals(self, status: Optional[str] = None) -> List[Dict]:
+        return self._source_proposals().list(status)
+
+    def review_source_proposal(self, proposal_id: str, *, approve: bool) -> Dict:
+        store = self._source_proposals()
+        proposal = store.get(proposal_id)
+        if proposal is None:
+            raise FileNotFoundError("source proposal not found")
+        if proposal.status != "open":
+            raise ValueError("only an open source proposal can be reviewed")
+        reviewed = store.update_status(
+            proposal_id, "approved" if approve else "rejected"
+        )
+        return reviewed.to_dict()
+
+    def run_source_experiment(
+        self,
+        proposal_id: str,
+        repo_root: Path | str,
+        patch_agent: SourcePatchAgent,
+    ) -> Dict:
+        from ..config import config
+
+        policy = SourcePatchPolicy(
+            max_files=config.evolution.source_patch_max_files,
+            max_changed_lines=config.evolution.source_patch_max_changed_lines,
+        )
+        experiment = SingleCandidateExperimentRunner(
+            repo_root,
+            self.shared_root / "source-evolution",
+            self._source_proposals(),
+            self._source_experiments(),
+            policy=policy,
+            command_timeout_sec=config.evolution.source_test_timeout_sec,
+        ).run(proposal_id, patch_agent)
+        return experiment.to_dict()
+
+    def list_source_experiments(self, status: Optional[str] = None) -> List[Dict]:
+        return self._source_experiments().list(status)
+
+    def evaluate_source_experiment(
+        self,
+        experiment_id: str,
+        repo_root: Path | str,
+        *,
+        full_commands: Optional[List[List[str]]] = None,
+    ) -> Dict:
+        from ..config import config
+
+        experiment = SourceCandidateEvaluator(
+            repo_root,
+            self._source_proposals(),
+            self._source_experiments(),
+            policy=SourcePatchPolicy(
+                max_files=config.evolution.source_patch_max_files,
+                max_changed_lines=config.evolution.source_patch_max_changed_lines,
+            ),
+            command_timeout_sec=config.evolution.source_test_timeout_sec,
+        ).evaluate(experiment_id, full_commands=full_commands)
+        return experiment.to_dict()
+
+    def promote_source_experiment(
+        self, experiment_id: str, repo_root: Path | str, confirmation: str
+    ) -> Dict:
+        experiment = SourceCandidatePromoter(
+            repo_root, self._source_proposals(), self._source_experiments()
+        ).promote(experiment_id, confirmation)
+        return experiment.to_dict()
+
+    def rollback_source_experiment(
+        self, experiment_id: str, repo_root: Path | str, confirmation: str
+    ) -> Dict:
+        experiment = SourceCandidatePromoter(
+            repo_root, self._source_proposals(), self._source_experiments()
+        ).rollback(experiment_id, confirmation)
+        return experiment.to_dict()
+
     def _governance(self) -> GovernanceManager:
         return GovernanceManager(self.shared_root, self.experience_store, self.trace_store)
 
@@ -367,6 +465,12 @@ class EvolutionService:
 
     def _executables(self) -> ExecutablePolicyManager:
         return ExecutablePolicyManager(self.shared_workspace)
+
+    def _source_proposals(self) -> SourceProposalStore:
+        return SourceProposalStore(self.shared_root / "source-evolution.db")
+
+    def _source_experiments(self) -> SourceExperimentStore:
+        return SourceExperimentStore(self.shared_root / "source-evolution.db")
 
     async def generate_reflection(
         self,

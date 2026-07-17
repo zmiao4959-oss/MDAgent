@@ -115,6 +115,20 @@ def test_evolution_executable_policy_routes_exist():
         assert route in source
 
 
+def test_source_evolution_routes_exist():
+    source = (Path(__file__).parents[1] / "miniclaw" / "channels" / "webchat.py").read_text(encoding="utf-8")
+    for route in (
+        "/api/evolution/source/proposals",
+        "/api/evolution/source/proposals/detect",
+        "/api/evolution/source/proposals/{proposal_id}/review",
+        "/api/evolution/source/experiments",
+        "/api/evolution/source/experiments/{experiment_id}/evaluate",
+        "/api/evolution/source/experiments/{experiment_id}/promote",
+        "/api/evolution/source/experiments/{experiment_id}/rollback",
+    ):
+        assert route in source
+
+
 def test_settings_css_has_light_theme_and_accessibility_states():
     css = (STATIC / "style.css").read_text(encoding="utf-8")
     assert 'html[data-theme="light"]' in css
