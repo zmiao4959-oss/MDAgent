@@ -1,5 +1,7 @@
 # MiniClaw 项目交接
 
+> 自我进化系统已经完成阶段 1–20。完整架构、数据位置、配置、API、验收和源代码进化流程见 [`evolution.md`](evolution.md)。当前测试基线为 134 项通过；源代码进化默认关闭，必须显式配置源码 Git 仓库。
+
 AI Agent 工作台 — 多轮工具调用 Agent，面向科学计算（LAMMPS/GPUMD 分子动力学、OVITO 可视化、领域知识检索），多渠道接入（WebChat / Telegram / WebSocket）。
 
 ## 速览

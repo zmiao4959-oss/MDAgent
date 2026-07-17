@@ -1,5 +1,7 @@
 # Agent 核心引擎
 
+> Agent 主循环已接入 `EvolutionService`：任务结束记录 Trace、积累候选经验，并在后续请求中注入匹配的 verified 策略。源代码补丁生成通过进程内 `SourcePatchAgent` 协议接入，不允许任意 Web 请求直接获得源码写权限。详见 [`evolution.md`](evolution.md)。
+
 **文件**: `miniclaw/agent.py`
 
 ## 核心循环 (`_process_message`)

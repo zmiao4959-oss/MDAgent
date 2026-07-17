@@ -1,5 +1,7 @@
 # 架构
 
+> `miniclaw/learning/` 现在包含从 Trace、经验、语义策略、Skill、可执行策略到源代码候选分支的阶段 1–20 自我进化闭环。验证经验全局共享、原始 Trace 项目本地；源码补丁只在独立 Git worktree 中生成。详见 [`evolution.md`](evolution.md)。
+
 ## 组件关系
 
 ```
