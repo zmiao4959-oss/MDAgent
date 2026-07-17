@@ -14,6 +14,7 @@ from .maintenance import MaintenanceManager
 from .governance import GovernanceManager
 from .skill_evolution import SkillSynthesizer
 from .strategy import render_strategy
+from .executable_policy import ExecutablePolicyManager, PolicyExecutor
 
 
 class EvolutionService:
@@ -304,14 +305,68 @@ class EvolutionService:
         confirmation: str = "",
     ) -> Dict:
         if approve:
-            return self._skills().approve(draft_id, confirmation)
+            result = self._skills().approve(draft_id, confirmation)
+            task_pattern = result["draft"]["task_pattern"]
+            executable = self._executables().compile(
+                self.experience_store.all(),
+                task_pattern=task_pattern,
+            )
+            result["executable_policy_draft"] = executable.to_dict()
+            return result
         return self._skills().reject(draft_id)
+
+    def compile_executable_policy(
+        self, task_pattern: str, min_experiences: int = 2
+    ) -> Dict:
+        return self._executables().compile(
+            self.experience_store.all(),
+            task_pattern=task_pattern,
+            min_experiences=min_experiences,
+        ).to_dict()
+
+    def list_executable_policies(self, *, approved: bool = False) -> List[Dict]:
+        manager = self._executables()
+        return manager.list_approved() if approved else manager.list_drafts()
+
+    async def test_executable_policy(self, policy_id: str) -> Dict:
+        return await self._executables().isolated_test(policy_id)
+
+    async def review_executable_policy(
+        self,
+        policy_id: str,
+        *,
+        approve: bool,
+        confirmation: str = "",
+    ) -> Dict:
+        if approve:
+            return await self._executables().approve(policy_id, confirmation)
+        return self._executables().reject(policy_id)
+
+    async def run_executable_policy(
+        self,
+        policy_id: str,
+        bindings: Dict[str, Dict],
+        executor: PolicyExecutor,
+        *,
+        workspace: Path | str,
+        timeout_sec: float = 30,
+    ) -> Dict:
+        return await self._executables().run(
+            policy_id,
+            bindings,
+            executor,
+            workspace=workspace,
+            timeout_sec=timeout_sec,
+        )
 
     def _governance(self) -> GovernanceManager:
         return GovernanceManager(self.shared_root, self.experience_store, self.trace_store)
 
     def _skills(self) -> SkillSynthesizer:
         return SkillSynthesizer(self.shared_workspace)
+
+    def _executables(self) -> ExecutablePolicyManager:
+        return ExecutablePolicyManager(self.shared_workspace)
 
     async def generate_reflection(
         self,

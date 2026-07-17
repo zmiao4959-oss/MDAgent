@@ -191,6 +191,7 @@ class EvolutionConfig:
     trace_retention_days: int = 90
     skill_min_experiences: int = 2
     auto_skill_drafts_enabled: bool = True
+    executable_policy_timeout_sec: int = 30
 
 
 class Config:
@@ -309,6 +310,9 @@ class Config:
             ),
             auto_skill_drafts_enabled=bool(
                 evolution_raw.get("auto_skill_drafts_enabled", True)
+            ),
+            executable_policy_timeout_sec=max(
+                1, int(evolution_raw.get("executable_policy_timeout_sec", 30))
             ),
         )
     """

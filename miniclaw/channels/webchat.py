@@ -836,6 +836,80 @@ class WebChatAdapter(BaseChannelAdapter):
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
             return {"ok": True, "result": result}
 
+        @app.get("/api/evolution/executable-policies")
+        async def evolution_executable_policies(
+            approved: bool = False, project_id: str = ""
+        ):
+            from ..learning.service import EvolutionService
+
+            project = adapter.projects.get(project_id) if project_id else None
+            if project_id and project is None:
+                raise HTTPException(status_code=404, detail="project not found")
+            workspace = adapter._workspace_for_project(project) if project else WORKSPACE_DIR
+            return {
+                "ok": True,
+                "policies": EvolutionService(workspace).list_executable_policies(
+                    approved=approved
+                ),
+            }
+
+        @app.post("/api/evolution/executable-policies")
+        async def compile_evolution_executable_policy(request: Request):
+            from ..learning.service import EvolutionService
+
+            body = await request.json()
+            project_id = str(body.get("project_id", "")).strip()
+            task_pattern = str(body.get("task_pattern", "")).strip()
+            if not task_pattern:
+                raise HTTPException(status_code=400, detail="task_pattern is required")
+            project = adapter.projects.get(project_id) if project_id else None
+            if project_id and project is None:
+                raise HTTPException(status_code=404, detail="project not found")
+            workspace = adapter._workspace_for_project(project) if project else WORKSPACE_DIR
+            try:
+                policy = EvolutionService(workspace).compile_executable_policy(task_pattern)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return {"ok": True, "policy": policy}
+
+        @app.post("/api/evolution/executable-policies/{policy_id}/test")
+        async def test_evolution_executable_policy(policy_id: str, project_id: str = ""):
+            from ..learning.service import EvolutionService
+
+            project = adapter.projects.get(project_id) if project_id else None
+            if project_id and project is None:
+                raise HTTPException(status_code=404, detail="project not found")
+            workspace = adapter._workspace_for_project(project) if project else WORKSPACE_DIR
+            try:
+                result = await EvolutionService(workspace).test_executable_policy(policy_id)
+            except FileNotFoundError as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+            return {"ok": True, "test": result}
+
+        @app.post("/api/evolution/executable-policies/{policy_id}/review")
+        async def review_evolution_executable_policy(policy_id: str, request: Request):
+            from ..learning.service import EvolutionService
+
+            body = await request.json()
+            project_id = str(body.get("project_id", "")).strip()
+            approve = body.get("approve")
+            confirmation = str(body.get("confirmation", ""))
+            if not isinstance(approve, bool):
+                raise HTTPException(status_code=400, detail="boolean approve is required")
+            project = adapter.projects.get(project_id) if project_id else None
+            if project_id and project is None:
+                raise HTTPException(status_code=404, detail="project not found")
+            workspace = adapter._workspace_for_project(project) if project else WORKSPACE_DIR
+            try:
+                result = await EvolutionService(workspace).review_executable_policy(
+                    policy_id, approve=approve, confirmation=confirmation
+                )
+            except (FileNotFoundError, FileExistsError) as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+            except (PermissionError, ValueError) as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return {"ok": True, "result": result}
+
         @app.get("/api/evolution/reflections")
         async def evolution_reflections(status: str = "proposed", project_id: str = ""):
             from ..learning.service import EvolutionService

@@ -66,6 +66,7 @@ evolution:
   trace_retention_days: 90
   skill_min_experiences: 2
   auto_skill_drafts_enabled: true
+  executable_policy_timeout_sec: 30
 
 channels:
   enabled:

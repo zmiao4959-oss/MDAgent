@@ -10,6 +10,7 @@ from .maintenance import MaintenanceManager, MaintenanceReport
 from .governance import GovernanceManager
 from .skill_evolution import SkillDraft, SkillSynthesizer
 from .strategy import SemanticStep, StructuredStrategy, build_strategy, render_strategy
+from .executable_policy import ExecutablePolicyDraft, ExecutablePolicyManager
 
 __all__ = [
     "EvolutionTrace", "ToolTrace", "TraceStore",
@@ -22,4 +23,5 @@ __all__ = [
     "GovernanceManager",
     "SkillDraft", "SkillSynthesizer",
     "SemanticStep", "StructuredStrategy", "build_strategy", "render_strategy",
+    "ExecutablePolicyDraft", "ExecutablePolicyManager",
 ]

@@ -105,6 +105,16 @@ def test_evolution_skill_draft_routes_exist():
         assert route in source
 
 
+def test_evolution_executable_policy_routes_exist():
+    source = (Path(__file__).parents[1] / "miniclaw" / "channels" / "webchat.py").read_text(encoding="utf-8")
+    for route in (
+        "/api/evolution/executable-policies",
+        "/api/evolution/executable-policies/{policy_id}/test",
+        "/api/evolution/executable-policies/{policy_id}/review",
+    ):
+        assert route in source
+
+
 def test_settings_css_has_light_theme_and_accessibility_states():
     css = (STATIC / "style.css").read_text(encoding="utf-8")
     assert 'html[data-theme="light"]' in css

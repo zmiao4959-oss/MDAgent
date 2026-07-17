@@ -51,3 +51,4 @@ def test_evolution_config_is_bounded(tmp_path: Path):
     assert loaded.evolution.trace_retention_days == 90
     assert loaded.evolution.skill_min_experiences == 2
     assert loaded.evolution.auto_skill_drafts_enabled is True
+    assert loaded.evolution.executable_policy_timeout_sec == 30
