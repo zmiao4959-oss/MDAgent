@@ -9,6 +9,7 @@ from .replay import IsolatedReplayRunner, ReplayCase, ReplayReport
 from .maintenance import MaintenanceManager, MaintenanceReport
 from .governance import GovernanceManager
 from .skill_evolution import SkillDraft, SkillSynthesizer
+from .strategy import SemanticStep, StructuredStrategy, build_strategy, render_strategy
 
 __all__ = [
     "EvolutionTrace", "ToolTrace", "TraceStore",
@@ -20,4 +21,5 @@ __all__ = [
     "MaintenanceManager", "MaintenanceReport",
     "GovernanceManager",
     "SkillDraft", "SkillSynthesizer",
+    "SemanticStep", "StructuredStrategy", "build_strategy", "render_strategy",
 ]

@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional
 
 from .trace import EvolutionTrace
+from .strategy import build_strategy
 
 
 @dataclass
@@ -23,6 +24,7 @@ class Experience:
     situation: str
     lesson: str
     task_pattern: str = ""
+    strategy: Dict = field(default_factory=dict)
     scope: List[str] = field(default_factory=list)
     failure_pattern: str = ""
     status: str = "candidate"
@@ -88,6 +90,10 @@ class ExperienceStore:
             if "task_pattern" not in columns:
                 connection.execute(
                     "ALTER TABLE experiences ADD COLUMN task_pattern TEXT NOT NULL DEFAULT ''"
+                )
+            if "strategy_json" not in columns:
+                connection.execute(
+                    "ALTER TABLE experiences ADD COLUMN strategy_json TEXT NOT NULL DEFAULT '{}'"
                 )
                 connection.execute(
                     """
@@ -865,6 +871,7 @@ class ExperienceStore:
             situation=row["situation"],
             lesson=row["lesson"],
             task_pattern=row["task_pattern"],
+            strategy=json.loads(row["strategy_json"] or "{}"),
             scope=json.loads(row["scope_json"]),
             failure_pattern=row["failure_pattern"],
             status=row["status"],
@@ -886,8 +893,8 @@ class ExperienceStore:
                 experience_id, fingerprint, situation, lesson, scope_json,
                 failure_pattern, status, positive_evidence, negative_evidence,
                 observations, confidence, created_at, updated_at, last_used_at,
-                usage_count, task_pattern
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                usage_count, task_pattern, strategy_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             _values(experience),
         )
@@ -899,7 +906,8 @@ class ExperienceStore:
             UPDATE experiences SET
                 situation=?, lesson=?, scope_json=?, failure_pattern=?, status=?,
                 positive_evidence=?, negative_evidence=?, observations=?, confidence=?,
-                created_at=?, updated_at=?, last_used_at=?, usage_count=?, task_pattern=?
+                created_at=?, updated_at=?, last_used_at=?, usage_count=?, task_pattern=?,
+                strategy_json=?
             WHERE experience_id=?
             """,
             (
@@ -909,6 +917,7 @@ class ExperienceStore:
                 experience.created_at, experience.updated_at, experience.last_used_at,
                 experience.usage_count,
                 experience.task_pattern,
+                json.dumps(experience.strategy, ensure_ascii=False, sort_keys=True),
                 experience.experience_id,
             ),
         )
@@ -944,16 +953,17 @@ class ExperienceEngine:
     def _candidate_from_trace(trace: EvolutionTrace) -> Optional[Experience]:
         tool_names = [item.name for item in trace.tool_calls]
         task_pattern = _task_pattern(trace.objective)
+        strategy = build_strategy(trace, task_pattern)
         context_label = task_pattern or "general"
         if trace.success and tool_names:
-            signature = " -> ".join(tool_names)
-            situation = f"successful task pattern [{context_label}] using {signature}"
+            signature = strategy.semantic_signature
+            situation = f"successful task pattern [{context_label}] using semantic workflow {signature}"
             lesson = (
-                f"For tasks matching [{context_label}], the tool sequence {signature} "
+                f"For tasks matching [{context_label}], the semantic workflow {signature} "
                 "produced a successful result."
             )
             failure_pattern = ""
-            key = f"success|{task_pattern}|{signature}"
+            key = f"success-v2|{task_pattern}|{signature}"
         elif trace.errors:
             failed_tool = next((item.name for item in reversed(trace.tool_calls) if not item.success), "agent")
             situation = f"failure for task pattern [{context_label}] while using {failed_tool}"
@@ -962,7 +972,7 @@ class ExperienceEngine:
                 f"When {failed_tool} fails with this pattern, inspect the error and change "
                 "the approach instead of repeating identical actions."
             )
-            key = f"failure|{task_pattern}|{failed_tool}|{failure_pattern}"
+            key = f"failure-v2|{task_pattern}|{strategy.semantic_signature}|{failure_pattern}"
         else:
             return None
 
@@ -973,6 +983,7 @@ class ExperienceEngine:
             situation=situation,
             lesson=lesson,
             task_pattern=task_pattern,
+            strategy=strategy.to_dict(),
             scope=sorted(set(tool_names)),
             failure_pattern=failure_pattern,
         )
@@ -986,6 +997,7 @@ def _values(experience: Experience) -> tuple:
         experience.observations, experience.confidence, experience.created_at,
         experience.updated_at, experience.last_used_at, experience.usage_count,
         experience.task_pattern,
+        json.dumps(experience.strategy, ensure_ascii=False, sort_keys=True),
     )
 
 

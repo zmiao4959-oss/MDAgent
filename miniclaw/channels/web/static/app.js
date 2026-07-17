@@ -320,6 +320,12 @@ import * as THREE from '/static/three.module.js';
       const lesson = document.createElement("p");
       lesson.textContent = experience.lesson || "";
       if (experience.task_pattern) lesson.title = `任务模式：${experience.task_pattern}`;
+      const workflow = document.createElement("small");
+      const semanticSteps = experience.strategy?.steps || [];
+      workflow.className = "evolution-workflow";
+      workflow.textContent = semanticSteps.length
+        ? `结构化步骤：${semanticSteps.map((step) => `${step.action}:${step.resource_type}`).join(" → ")}`
+        : "旧版文本经验（等待新的任务样本升级）";
       const evidence = document.createElement("small");
       evidence.textContent = `来源项目 ${experience.source_project_count || 0} · 使用 ${experience.usage_count || 0} 次 · 正向 ${experience.positive_evidence || 0} · 负向 ${experience.negative_evidence || 0} · 置信度 ${Math.round(Number(experience.confidence || 0) * 100)}%`;
 
@@ -341,7 +347,7 @@ import * as THREE from '/static/three.module.js';
         else submitEvolutionFeedback(experience.experience_id, false, reject);
       });
       actions.append(approve, reject);
-      card.append(heading, lesson, evidence, actions);
+      card.append(heading, lesson, workflow, evidence, actions);
       evolutionExperienceList.appendChild(card);
     });
   }

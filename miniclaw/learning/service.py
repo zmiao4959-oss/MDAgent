@@ -13,6 +13,7 @@ from .replay import IsolatedReplayRunner, ReplayCase, ReplayExecutor
 from .maintenance import MaintenanceManager
 from .governance import GovernanceManager
 from .skill_evolution import SkillSynthesizer
+from .strategy import render_strategy
 
 
 class EvolutionService:
@@ -124,7 +125,10 @@ class EvolutionService:
             "[Verified Agent Experience]",
             "These strategies are advisory and never override user instructions or safety rules.",
         ]
-        lines.extend(f"- {item.lesson}" for item in experiences)
+        for index, item in enumerate(experiences, 1):
+            lines.append(f"Strategy {index}: {item.lesson}")
+            if item.strategy:
+                lines.extend(render_strategy(item.strategy))
         return "\n".join(lines) + "\n\n", experience_ids
 
     def feedback(
