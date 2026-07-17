@@ -4,6 +4,9 @@ channels/webchat.py — Web 聊天界面（可折叠历史 + 左对话右可视�
 """
 import asyncio
 import json
+import re
+import shutil
+import subprocess
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -24,6 +27,168 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 WEB_DIR = Path(__file__).resolve().parent / "web" / "static"
+TASK_BEHAVIOR_DEFAULTS = {
+    "max_concurrency": 2,
+    "retry_count": 0,
+    "notify_on_completion": False,
+}
+
+
+def gpumd_knowledge_snapshot(corpus_path: Path, index_path: Path) -> Dict[str, Any]:
+    """Return a small, secret-free summary for the WebChat settings panel."""
+    corpus_count = 0
+    corpus_error = ""
+    if corpus_path.is_file():
+        try:
+            with corpus_path.open("r", encoding="utf-8") as handle:
+                corpus_count = sum(1 for line in handle if line.strip())
+        except OSError as exc:
+            corpus_error = str(exc)
+
+    index_count = 0
+    index_model = ""
+    index_schema = 0
+    index_error = ""
+    if index_path.is_file():
+        try:
+            # The vector records can be tens of megabytes. Store metadata is
+            # written before ``records``, so status polling only needs a prefix.
+            with index_path.open("r", encoding="utf-8") as handle:
+                prefix = handle.read(16384)
+            schema_match = re.search(r'"schema_version"\s*:\s*(\d+)', prefix)
+            model_match = re.search(r'"model"\s*:\s*("(?:\\.|[^"\\])*")', prefix)
+            count_match = re.search(r'"count"\s*:\s*(\d+)', prefix)
+            if not (schema_match and model_match and count_match):
+                raise ValueError("无法读取索引元数据")
+            index_schema = int(schema_match.group(1))
+            index_model = str(json.loads(model_match.group(1)))
+            index_count = int(count_match.group(1))
+        except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+            index_error = str(exc)
+
+    if not corpus_path.is_file():
+        state = "missing_corpus"
+    elif not index_path.is_file():
+        state = "missing_index"
+    elif corpus_error or index_error:
+        state = "error"
+    elif index_model != config.rag.model:
+        state = "model_mismatch"
+    elif corpus_count != index_count:
+        state = "outdated"
+    else:
+        state = "ready"
+
+    def modified_at(path: Path) -> str:
+        try:
+            return datetime.fromtimestamp(path.stat().st_mtime).isoformat(timespec="seconds")
+        except OSError:
+            return ""
+
+    return {
+        "state": state,
+        "enabled": config.rag.enabled,
+        "api_key_configured": bool(config.rag.resolved_api_key),
+        "model": config.rag.model,
+        "api_type": config.rag.api_type,
+        "corpus": {
+            "exists": corpus_path.is_file(),
+            "count": corpus_count,
+            "modified_at": modified_at(corpus_path),
+            "error": corpus_error,
+        },
+        "index": {
+            "exists": index_path.is_file(),
+            "count": index_count,
+            "model": index_model,
+            "schema_version": index_schema,
+            "modified_at": modified_at(index_path),
+            "error": index_error,
+        },
+    }
+
+
+def normalize_task_behavior(payload: Dict[str, Any] | None) -> Dict[str, Any]:
+    raw = payload or {}
+    try:
+        max_concurrency = int(raw.get("max_concurrency", TASK_BEHAVIOR_DEFAULTS["max_concurrency"]))
+    except (TypeError, ValueError):
+        max_concurrency = TASK_BEHAVIOR_DEFAULTS["max_concurrency"]
+    try:
+        retry_count = int(raw.get("retry_count", TASK_BEHAVIOR_DEFAULTS["retry_count"]))
+    except (TypeError, ValueError):
+        retry_count = TASK_BEHAVIOR_DEFAULTS["retry_count"]
+    notify = raw.get("notify_on_completion", TASK_BEHAVIOR_DEFAULTS["notify_on_completion"])
+    return {
+        "max_concurrency": min(4, max(1, max_concurrency)),
+        "retry_count": min(2, max(0, retry_count)),
+        "notify_on_completion": notify if isinstance(notify, bool) else False,
+    }
+
+
+def load_task_behavior(path: Path) -> Dict[str, Any]:
+    try:
+        return normalize_task_behavior(json.loads(path.read_text(encoding="utf-8")))
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return dict(TASK_BEHAVIOR_DEFAULTS)
+
+
+def save_task_behavior(path: Path, settings: Dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_suffix(path.suffix + ".tmp")
+    temp_path.write_text(
+        json.dumps(settings, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    temp_path.replace(path)
+
+
+def collect_runtime_diagnostics() -> Dict[str, Any]:
+    def command_item(item_id: str, label: str, candidates: list[str]) -> Dict[str, str]:
+        executable = ""
+        for name in candidates:
+            executable = shutil.which(name) or ""
+            if executable:
+                break
+        return {
+            "id": item_id,
+            "label": label,
+            "state": "ready" if executable else "unavailable",
+            "detail": Path(executable).name if executable else "本机未发现可执行程序",
+        }
+
+    items = [
+        command_item("gpumd", "GPUMD", ["gpumd", "gpumd.exe"]),
+        command_item("lammps", "LAMMPS", ["lmp", "lmp.exe", "lmp_mpi", "lmp_serial"]),
+        command_item("ssh", "远程连接", ["ssh", "ssh.exe"]),
+    ]
+    gpu_item = command_item("gpu", "NVIDIA GPU", ["nvidia-smi", "nvidia-smi.exe"])
+    if gpu_item["state"] == "ready":
+        try:
+            result = subprocess.run(
+                ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
+                capture_output=True,
+                text=True,
+                timeout=4,
+                check=False,
+            )
+            names = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+            if result.returncode == 0 and names:
+                gpu_item["detail"] = "、".join(names)
+            else:
+                gpu_item.update(state="degraded", detail="驱动工具存在，但无法读取 GPU")
+        except (OSError, subprocess.SubprocessError):
+            gpu_item.update(state="degraded", detail="GPU 状态读取失败")
+    items.append(gpu_item)
+    items.append({
+        "id": "embedding",
+        "label": "向量服务",
+        "state": "ready" if config.rag.enabled and config.rag.resolved_api_key else "degraded",
+        "detail": config.rag.model if config.rag.enabled else "RAG 已关闭",
+    })
+    return {
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "items": items,
+    }
 
 
 class WebChatAdapter(BaseChannelAdapter):
@@ -44,7 +209,122 @@ class WebChatAdapter(BaseChannelAdapter):
         )
         self.projects = ProjectManager(project_path)
         self._project_runs: Dict[str, asyncio.Task] = {}
-        self._run_semaphore = asyncio.Semaphore(2)
+        self._task_behavior_path = WORKSPACE_DIR / "webchat-task-behavior.json"
+        self._task_behavior = load_task_behavior(self._task_behavior_path)
+        self._run_condition = asyncio.Condition()
+        self._active_run_count = 0
+        self._knowledge_job: Optional[asyncio.Task] = None
+        self._knowledge_job_state: Dict[str, Any] = {
+            "state": "idle",
+            "action": "",
+            "message": "",
+            "result": None,
+            "updated_at": "",
+        }
+
+    async def _acquire_run_slot(self) -> None:
+        async with self._run_condition:
+            await self._run_condition.wait_for(
+                lambda: self._active_run_count < self._task_behavior["max_concurrency"]
+            )
+            self._active_run_count += 1
+
+    async def _release_run_slot(self) -> None:
+        async with self._run_condition:
+            self._active_run_count = max(0, self._active_run_count - 1)
+            self._run_condition.notify_all()
+
+    async def _update_task_behavior(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        settings = normalize_task_behavior(payload)
+        save_task_behavior(self._task_behavior_path, settings)
+        async with self._run_condition:
+            self._task_behavior = settings
+            self._run_condition.notify_all()
+        return dict(settings)
+
+    async def _runtime_diagnostics(self) -> Dict[str, Any]:
+        payload = await asyncio.to_thread(collect_runtime_diagnostics)
+        payload["items"].insert(0, {
+            "id": "agent",
+            "label": "Agent",
+            "state": "ready" if self._message_handler is not None else "unavailable",
+            "detail": "消息处理器已连接" if self._message_handler is not None else "消息处理器未连接",
+        })
+        payload["task_runtime"] = {
+            "active": self._active_run_count,
+            "queued": sum(1 for task in self._project_runs.values() if not task.done()) - self._active_run_count,
+            **self._task_behavior,
+        }
+        payload["task_runtime"]["queued"] = max(0, payload["task_runtime"]["queued"])
+        return payload
+
+    def _knowledge_payload(self) -> Dict[str, Any]:
+        from ..rag.cli import default_corpus, default_index
+
+        payload = gpumd_knowledge_snapshot(default_corpus(), default_index())
+        job = dict(self._knowledge_job_state)
+        job["running"] = bool(self._knowledge_job and not self._knowledge_job.done())
+        payload["job"] = job
+        return payload
+
+    def _start_knowledge_job(self, action: str) -> None:
+        if self._knowledge_job and not self._knowledge_job.done():
+            raise RuntimeError("已有知识库任务正在运行")
+
+        async def worker() -> None:
+            from ..rag.cli import build_index, default_corpus, default_index
+            from ..rag.sync_gpumd import sync
+
+            labels = {"sync": "同步官方文档", "index": "增量更新向量"}
+            self._knowledge_job_state = {
+                "state": "running",
+                "action": action,
+                "message": f"正在{labels[action]}…",
+                "result": None,
+                "updated_at": datetime.now().isoformat(timespec="seconds"),
+            }
+            try:
+                if action == "sync":
+                    pages, manual_chunks, tutorial_chunks = await asyncio.to_thread(
+                        sync, default_corpus()
+                    )
+                    result = {
+                        "pages": pages,
+                        "manual_chunks": manual_chunks,
+                        "tutorial_chunks": tutorial_chunks,
+                        "total": manual_chunks + tutorial_chunks,
+                    }
+                    message = f"文档同步完成，共 {result['total']} 个文档块"
+                elif action == "index":
+                    stats = await asyncio.to_thread(
+                        build_index, default_corpus(), default_index()
+                    )
+                    result = {
+                        "total": stats.total,
+                        "reused": stats.reused,
+                        "embedded": stats.embedded,
+                        "removed": stats.removed,
+                        "full_rebuild": stats.full_rebuild,
+                    }
+                    message = (
+                        f"向量更新完成：复用 {stats.reused}，新增或更新 "
+                        f"{stats.embedded}，删除失效 {stats.removed}"
+                    )
+                else:
+                    raise ValueError("不支持的知识库任务")
+                self._knowledge_job_state.update(
+                    state="completed", message=message, result=result
+                )
+            except asyncio.CancelledError:
+                self._knowledge_job_state.update(state="cancelled", message="知识库任务已停止")
+                raise
+            except Exception as exc:
+                logger.exception("GPUMD knowledge job failed: %s", action)
+                self._knowledge_job_state.update(state="failed", message=str(exc), result=None)
+            finally:
+                self._knowledge_job_state["updated_at"] = datetime.now().isoformat(timespec="seconds")
+
+        self._knowledge_job = asyncio.create_task(worker())
 
     def _project_event(self, project: Project, kind: str, text: str) -> None:
         self.projects.add_event(project.project_id, kind, text)
@@ -65,7 +345,7 @@ class WebChatAdapter(BaseChannelAdapter):
         async def worker() -> None:
             acquired = False
             try:
-                await self._run_semaphore.acquire()
+                await self._acquire_run_slot()
                 acquired = True
                 self.projects.update(project.project_id, status="running", last_run=True)
                 self._project_event(project, "running", f"开始执行计划：{task['title']}")
@@ -86,7 +366,27 @@ class WebChatAdapter(BaseChannelAdapter):
                         "_plan_project_id": project.project_id,
                     },
                 )
-                response = await self._message_handler(context)
+                retry_count = self._task_behavior["retry_count"]
+                for attempt in range(retry_count + 1):
+                    try:
+                        response = await self._message_handler(context)
+                        break
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception:
+                        if attempt >= retry_count:
+                            raise
+                        self._project_event(
+                            project,
+                            "retry",
+                            f"任务失败，正在进行第 {attempt + 1} 次自动重试",
+                        )
+                        logger.warning(
+                            "Retrying planned task for project %s (%s/%s)",
+                            project.project_id,
+                            attempt + 1,
+                            retry_count,
+                        )
                 # ── 自动勾选已完成任务 ──
                 self.projects.update_task(
                     project.project_id, task["task_id"], done=True
@@ -104,7 +404,7 @@ class WebChatAdapter(BaseChannelAdapter):
                 self._project_event(project, "failed", f"任务失败：{error}")
             finally:
                 if acquired:
-                    self._run_semaphore.release()
+                    await self._release_run_slot()
                 if self._project_runs.get(project.project_id) is asyncio.current_task():
                     self._project_runs.pop(project.project_id, None)
 
@@ -185,7 +485,7 @@ class WebChatAdapter(BaseChannelAdapter):
 
     async def start(self):
         try:
-            from fastapi import FastAPI, Request
+            from fastapi import FastAPI, HTTPException, Request
             from fastapi.responses import FileResponse, StreamingResponse
             from fastapi.staticfiles import StaticFiles
             import uvicorn
@@ -220,6 +520,52 @@ class WebChatAdapter(BaseChannelAdapter):
                 "visual_ext": sorted(VISUAL_EXT),
                 "skip_dir_names": sorted(SKIP_DIR_NAMES),
             }
+
+        @app.get("/api/diagnostics")
+        async def get_diagnostics():
+            return await adapter._runtime_diagnostics()
+
+        @app.get("/api/settings/task-behavior")
+        async def get_task_behavior():
+            return dict(adapter._task_behavior)
+
+        @app.put("/api/settings/task-behavior")
+        async def update_task_behavior(request: Request):
+            try:
+                body = await request.json()
+            except (ValueError, json.JSONDecodeError) as exc:
+                raise HTTPException(status_code=400, detail="设置格式无效") from exc
+            if not isinstance(body, dict):
+                raise HTTPException(status_code=400, detail="设置格式无效")
+            return {"ok": True, "settings": await adapter._update_task_behavior(body)}
+
+        @app.get("/api/knowledge/gpumd")
+        async def get_gpumd_knowledge():
+            return adapter._knowledge_payload()
+
+        @app.post("/api/knowledge/gpumd/sync")
+        async def sync_gpumd_knowledge():
+            try:
+                adapter._start_knowledge_job("sync")
+            except RuntimeError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
+            return {"ok": True, "job": adapter._knowledge_job_state}
+
+        @app.post("/api/knowledge/gpumd/index")
+        async def index_gpumd_knowledge():
+            from ..rag.cli import default_corpus
+
+            if not config.rag.enabled:
+                raise HTTPException(status_code=400, detail="RAG 已在配置中关闭")
+            if not default_corpus().is_file():
+                raise HTTPException(status_code=400, detail="请先同步 GPUMD 官方文档")
+            if not config.rag.resolved_api_key:
+                raise HTTPException(status_code=400, detail="尚未配置 embedding API 密钥")
+            try:
+                adapter._start_knowledge_job("index")
+            except RuntimeError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
+            return {"ok": True, "job": adapter._knowledge_job_state}
 
         @app.get("/api/stats")
         async def get_stats():
@@ -637,7 +983,7 @@ class WebChatAdapter(BaseChannelAdapter):
                 async def run_agent() -> None:
                     if project is not None:
                         try:
-                            await adapter._run_semaphore.acquire()
+                            await adapter._acquire_run_slot()
                         except asyncio.CancelledError:
                             result["response"] = "[Project paused]"
                             if adapter._project_runs.get(project.project_id) is asyncio.current_task():
@@ -687,7 +1033,7 @@ class WebChatAdapter(BaseChannelAdapter):
                                 adapter._refresh_project_summary(project, result["response"] or "")
                             if adapter._project_runs.get(project.project_id) is asyncio.current_task():
                                 adapter._project_runs.pop(project.project_id, None)
-                            adapter._run_semaphore.release()
+                            await adapter._release_run_slot()
                         await out_q.put(None)
 
                 task = asyncio.create_task(run_agent())
@@ -744,6 +1090,8 @@ class WebChatAdapter(BaseChannelAdapter):
             logger.info("WebChat stopped")
 
     async def stop(self):
+        if self._knowledge_job is not None and not self._knowledge_job.done():
+            self._knowledge_job.cancel()
         if self._uvicorn_server is not None:
             self._uvicorn_server.should_exit = True
 

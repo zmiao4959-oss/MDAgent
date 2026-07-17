@@ -18,18 +18,98 @@ class FakeEmbeddingClient:
         return [[float(text.count("NVT")), float(len(text))] for text in texts]
 
 
+class TrackingEmbeddingClient(FakeEmbeddingClient):
+    def __init__(self, model="fake-embedding", fail=False):
+        self.model = model
+        self.calls = []
+        self.fail = fail
+
+    def embed(self, texts):
+        self.calls.extend(texts)
+        if self.fail:
+            raise RuntimeError("embedding failed")
+        return super().embed(texts)
+
+
 def test_vector_store_build_and_search(tmp_path: Path):
     docs = [
         RagDocument("nvt", "NVT 系综", "使用 ensemble nvt_nhc", "official"),
         RagDocument("run", "运行", "使用 run 指定步数", "official"),
     ]
     store = JsonVectorStore(tmp_path / "index.json")
-    assert store.build(docs, FakeEmbeddingClient()) == 2
+    stats = store.build(docs, FakeEmbeddingClient())
+    assert stats.total == 2
+    assert stats.embedded == 2
 
     results = store.search("NVT", FakeEmbeddingClient(), top_k=1)
 
     assert results[0].document.id == "nvt"
     assert results[0].mode == "vector"
+
+
+def test_incremental_build_reuses_updates_adds_and_removes(tmp_path: Path):
+    store = JsonVectorStore(tmp_path / "index.json")
+    first_docs = [
+        RagDocument("keep", "Keep", "same", "source-a"),
+        RagDocument("change", "Change", "old", "source-b"),
+        RagDocument("remove", "Remove", "gone", "source-c"),
+    ]
+    first_client = TrackingEmbeddingClient()
+    first = store.build(first_docs, first_client, batch_size=2)
+    assert first.embedded == 3
+
+    second_docs = [
+        RagDocument("keep", "Keep", "same", "source-a", metadata={"fresh": True}),
+        RagDocument("change", "Change", "new", "source-b"),
+        RagDocument("add", "Add", "brand new", "source-d"),
+    ]
+    second_client = TrackingEmbeddingClient()
+    second = store.build(second_docs, second_client, batch_size=2)
+
+    assert second.total == 3
+    assert second.reused == 1
+    assert second.embedded == 2
+    assert second.removed == 1
+    assert len(second_client.calls) == 2
+    payload = __import__("json").loads(store.index_path.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == 2
+    assert {record["document"]["id"] for record in payload["records"]} == {
+        "keep", "change", "add"
+    }
+    kept = next(record for record in payload["records"] if record["document"]["id"] == "keep")
+    assert kept["document"]["metadata"] == {"fresh": True}
+
+
+def test_incremental_build_model_change_forces_full_rebuild(tmp_path: Path):
+    store = JsonVectorStore(tmp_path / "index.json")
+    docs = [RagDocument("one", "One", "content", "source")]
+    store.build(docs, TrackingEmbeddingClient("model-a"))
+    client = TrackingEmbeddingClient("model-b")
+
+    stats = store.build(docs, client)
+
+    assert stats.full_rebuild is True
+    assert stats.reused == 0
+    assert stats.embedded == 1
+
+
+def test_incremental_build_failure_preserves_previous_index(tmp_path: Path):
+    store = JsonVectorStore(tmp_path / "index.json")
+    docs = [RagDocument("one", "One", "old", "source")]
+    store.build(docs, TrackingEmbeddingClient())
+    before = store.index_path.read_bytes()
+
+    try:
+        store.build(
+            [RagDocument("one", "One", "changed", "source")],
+            TrackingEmbeddingClient(fail=True),
+        )
+    except RuntimeError as exc:
+        assert str(exc) == "embedding failed"
+    else:
+        raise AssertionError("expected build failure")
+
+    assert store.index_path.read_bytes() == before
 
 
 def test_load_documents_and_keyword_fallback(tmp_path: Path):

@@ -7,6 +7,8 @@ main.py
 ├── LLMRouter           → llm/router.py     多 Provider 路由 + fallback
 ├── SessionManager      → memory/session.py  对话持久化
 ├── Agent               → agent.py          核心循环（LLM + 工具执行）
+├── SkillLoader         → skills/loader.py  技能发现与渐进加载
+├── GPUMD RAG           → rag/ + rag_tool.py 官方知识库与向量检索
 ├── GatewayServer       → gateway/server.py  WebSocket 协议
 ├── WebChatAdapter      → channels/webchat.py FastAPI + SSE
 ├── TelegramAdapter     → channels/telegram.py
@@ -14,6 +16,25 @@ main.py
 ├── CronScheduler       → cron_scheduler.py Cron 任务
 └── SubAgentManager     → subagent.py       子 Agent
 ```
+
+## GPUMD RAG 数据流
+
+```
+gpumd.org sitemap + GPUMD-Tutorials ZIP
+    └─► rag/sync_gpumd.py
+          ├─ 修复稳定版 sitemap URL
+          ├─ 提取正文、标题、代码和表格
+          ├─ 按章节切块（最大约 2800 字符，重叠 240）
+          └─► ~/.miniclaw/workspace/skills/gpumd-script/references/corpus.jsonl
+                  └─► rag/cli.py + rag/store.py
+                        ├─ ID + 内容哈希 + 模型名增量判断
+                        ├─ rag/embedding.py 调用远程 embedding
+                        └─► ~/.miniclaw/workspace/rag/gpumd-script/index.json
+                                └─► tools/rag_tool.py
+                                      └─► Agent 工具 search_gpumd_docs
+```
+
+索引为 JSON v2 格式，写入时先生成同目录临时文件，再用 `os.replace` 原子替换。构建失败不会破坏旧索引。详见 [`rag.md`](rag.md)。
 
 ## 一条消息的完整链路
 
@@ -59,3 +80,5 @@ Agent 的 system prompt 分三层构建（`agent.py:64-172`）：
 | **Stable** | `SOUL.md` + `IDENTITY.md` + 工具描述 + 技能列表 | 文件指纹缓存（极少重建） |
 | **Context** | `AGENTS.md` + `USER.md` + `MEMORY.md` | 文件指纹缓存 |
 | **Volatile** | 当前时间、工作区路径 | 每轮动态注入 |
+
+技能列表位于 Stable 层，只注入名称和短描述。Agent 需要使用某个 Skill 时调用 `read_skill` 加载完整 `SKILL.md`。`SkillLoader` 同时兼容标准 YAML frontmatter 和项目历史遗留的 `<name>/<description>` 标签格式。

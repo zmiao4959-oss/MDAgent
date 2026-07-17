@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import math
+import os
 import re
+import tempfile
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable, Sequence
@@ -27,6 +30,15 @@ class SearchResult:
     document: RagDocument
     score: float
     mode: str
+
+
+@dataclass
+class BuildStats:
+    total: int
+    reused: int
+    embedded: int
+    removed: int
+    full_rebuild: bool
 
 
 def load_documents(path: Path) -> list[RagDocument]:
@@ -53,21 +65,124 @@ class JsonVectorStore:
         *,
         batch_size: int = 16,
         on_progress: Callable[[int, int], None] | None = None,
-    ) -> int:
-        records: list[dict] = []
-        for start in range(0, len(documents), batch_size):
-            batch = documents[start:start + batch_size]
-            vectors = client.embed([self._embedding_text(doc) for doc in batch])
-            for document, vector in zip(batch, vectors):
-                records.append({"document": asdict(document), "vector": vector})
+        force_full: bool = False,
+    ) -> BuildStats:
+        if batch_size < 1:
+            raise ValueError("batch_size 必须大于 0")
+        document_ids = [document.id for document in documents]
+        if len(document_ids) != len(set(document_ids)):
+            duplicates = sorted(
+                doc_id for doc_id in set(document_ids) if document_ids.count(doc_id) > 1
+            )
+            raise ValueError(f"知识库存在重复文档 ID：{', '.join(duplicates[:10])}")
+
+        previous = self._load_existing_index() if not force_full else None
+        same_model = bool(previous and previous.get("model") == client.model)
+        previous_records = {
+            record.get("document", {}).get("id"): record
+            for record in (previous or {}).get("records", [])
+            if record.get("document", {}).get("id")
+        }
+
+        records: list[dict | None] = [None] * len(documents)
+        pending: list[tuple[int, RagDocument, str]] = []
+        reused = 0
+        for index, document in enumerate(documents):
+            content_hash = self._content_hash(document)
+            old = previous_records.get(document.id) if same_model else None
+            if old and self._record_hash(old) == content_hash and old.get("vector"):
+                records[index] = {
+                    "document": asdict(document),
+                    "content_hash": content_hash,
+                    "vector": old["vector"],
+                }
+                reused += 1
+            else:
+                pending.append((index, document, content_hash))
+
+        if on_progress and reused:
+            on_progress(reused, len(documents))
+        embedded = 0
+        for start in range(0, len(pending), batch_size):
+            batch = pending[start:start + batch_size]
+            vectors = client.embed(
+                [self._embedding_text(document) for _, document, _ in batch]
+            )
+            if len(vectors) != len(batch):
+                raise RuntimeError("embedding 返回数量与待更新文档数量不一致")
+            for (record_index, document, content_hash), vector in zip(batch, vectors):
+                records[record_index] = {
+                    "document": asdict(document),
+                    "content_hash": content_hash,
+                    "vector": vector,
+                }
+                embedded += 1
             if on_progress:
-                on_progress(len(records), len(documents))
-        payload = {"model": client.model, "count": len(records), "records": records}
+                on_progress(reused + embedded, len(documents))
+
+        final_records = [record for record in records if record is not None]
+        if len(final_records) != len(documents):
+            raise RuntimeError("索引构建未覆盖全部文档")
+        removed = len(set(previous_records) - set(document_ids)) if same_model else 0
+        payload = {
+            "schema_version": 2,
+            "model": client.model,
+            "count": len(final_records),
+            "records": final_records,
+        }
         self.index_path.parent.mkdir(parents=True, exist_ok=True)
-        self.index_path.write_text(
-            json.dumps(payload, ensure_ascii=False), encoding="utf-8"
+        self._atomic_write_json(payload)
+        return BuildStats(
+            total=len(final_records),
+            reused=reused,
+            embedded=embedded,
+            removed=removed,
+            full_rebuild=force_full or not same_model,
         )
-        return len(records)
+
+    def _load_existing_index(self) -> dict | None:
+        if not self.index_path.exists():
+            return None
+        try:
+            payload = json.loads(self.index_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        return payload if isinstance(payload, dict) else None
+
+    def _atomic_write_json(self, payload: dict) -> None:
+        temp_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=self.index_path.parent,
+                prefix=self.index_path.name + ".",
+                suffix=".tmp",
+                delete=False,
+            ) as handle:
+                temp_path = Path(handle.name)
+                json.dump(payload, handle, ensure_ascii=False)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temp_path, self.index_path)
+        finally:
+            if temp_path is not None and temp_path.exists():
+                temp_path.unlink()
+
+    def _record_hash(self, record: dict) -> str:
+        stored = record.get("content_hash")
+        if stored:
+            return str(stored)
+        # 兼容没有 content_hash 的 v1 索引，首次增量运行可直接复用旧向量。
+        try:
+            document = RagDocument(**record["document"])
+        except (KeyError, TypeError):
+            return ""
+        return self._content_hash(document)
+
+    @classmethod
+    def _content_hash(cls, document: RagDocument) -> str:
+        return hashlib.sha256(cls._embedding_text(document).encode("utf-8")).hexdigest()
 
     def search(
         self,

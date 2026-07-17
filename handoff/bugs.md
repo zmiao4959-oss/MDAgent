@@ -1,6 +1,6 @@
 # 近期 Bug 修复记录
 
-这里记录了 2026-06 期间修复的 Bug。**修改前务必阅读**，避免踩坑或撤销已有的修复。
+这里记录了 2026-06 至 2026-07 期间修复的 Bug。**修改前务必阅读**，避免踩坑或撤销已有的修复。
 
 ---
 
@@ -90,3 +90,38 @@
 - `<label for>` 修复指向错误的 `id`（`for="project-objective"` → `for="project-objective-input"`）
 - 添加 `X-Content-Type-Options: nosniff` 响应头 middleware
 - CSS 添加 `-webkit-user-select` / `-webkit-backdrop-filter` 前缀
+
+---
+
+## 7. Doubao vision embedding 调错接口
+
+**症状**：构建 GPUMD 向量索引时报 `400 InvalidParameter`，服务端提示 `doubao-embedding-vision-251215 does not support this api`。
+
+**原因**：原实现通过 OpenAI SDK 调用文本接口 `/embeddings`；带日期的 `doubao-embedding-vision-*` 是火山方舟多模态向量模型，必须调用 `/embeddings/multimodal`，纯文本也要包装为 `[{"type":"text","text":"..."}]`。
+
+**修复**：
+- 新增 `VolcengineMultimodalEmbeddingClient`
+- `api_type: auto` 根据带日期的 vision 模型名选择多模态端点
+- 保留普通 OpenAI-compatible 客户端供其他 embedding 模型使用
+- 增加 429/5xx 重试和并发控制
+- 用真实 API 验证返回 2048 维向量，并修正配置维度
+
+**影响文件**：`rag/embedding.py`, `rag/cli.py`, `tools/rag_tool.py`, `config.py`, `config.yaml`
+
+---
+
+## 8. 向量索引重复全量计费
+
+**症状**：语料只增加少量文档时，`build` 仍重新向量化全部 703 块。
+
+**原因**：v1 索引没有内容哈希，构建器每次从空记录开始。
+
+**修复**：
+- 索引升级为 schema v2，每条记录保存 SHA-256 内容哈希
+- 默认按文档 ID、内容哈希和模型名复用旧向量
+- 新增/正文变化才调用 embedding，已删除 ID 自动从新索引剔除
+- 模型变化或 `--full` 时全量重建
+- 使用临时文件和 `os.replace` 原子更新，失败时保留旧索引
+- v1 索引可通过旧文档计算哈希无成本迁移；现有 703 条已全部复用迁移
+
+**影响文件**：`rag/store.py`, `rag/cli.py`

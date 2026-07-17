@@ -6,6 +6,7 @@ import * as THREE from '/static/three.module.js';
   const VIZ_REMOVED_KEY = "miniclaw_viz_removed";
   const SIDEBAR_COLLAPSED_KEY = "miniclaw_sidebar_collapsed";
   const VIZ_COLLAPSED_KEY = "miniclaw_viz_collapsed";
+  const SETTINGS_STORAGE_KEY = "miniclaw_webchat_settings_v1";
 
   const msgs = document.getElementById("messages");
   const convList = document.getElementById("conv-list");
@@ -44,6 +45,30 @@ import * as THREE from '/static/three.module.js';
   const projectForm = document.getElementById("project-form");
   const projectTitleInput = document.getElementById("project-title");
   const projectObjectiveInput = document.getElementById("project-objective-input");
+  const quickActions = document.getElementById("quick-actions");
+  const settingsDialog = document.getElementById("settings-dialog");
+  const settingsForm = document.getElementById("settings-form");
+  const settingTheme = document.getElementById("setting-theme");
+  const settingMessageSize = document.getElementById("setting-message-size");
+  const settingCodeWrap = document.getElementById("setting-code-wrap");
+  const settingAutoScroll = document.getElementById("setting-auto-scroll");
+  const settingEnterToSend = document.getElementById("setting-enter-to-send");
+  const settingShowQuickActions = document.getElementById("setting-show-quick-actions");
+  const gpumdKnowledgeStatus = document.getElementById("gpumd-knowledge-status");
+  const gpumdCorpusCount = document.getElementById("gpumd-corpus-count");
+  const gpumdIndexCount = document.getElementById("gpumd-index-count");
+  const gpumdModel = document.getElementById("gpumd-model");
+  const gpumdKnowledgeMessage = document.getElementById("gpumd-knowledge-message");
+  const gpumdSyncDocs = document.getElementById("gpumd-sync-docs");
+  const gpumdUpdateIndex = document.getElementById("gpumd-update-index");
+  const runtimeDiagnosticStatus = document.getElementById("runtime-diagnostic-status");
+  const runtimeDiagnosticGrid = document.getElementById("runtime-diagnostic-grid");
+  const refreshRuntimeDiagnosticsButton = document.getElementById("refresh-runtime-diagnostics");
+  const exportRuntimeDiagnosticsButton = document.getElementById("export-runtime-diagnostics");
+  const settingTaskConcurrency = document.getElementById("setting-task-concurrency");
+  const settingTaskRetries = document.getElementById("setting-task-retries");
+  const settingTaskNotifications = document.getElementById("setting-task-notifications");
+  const taskBehaviorMessage = document.getElementById("task-behavior-message");
 
   let currentChatId = localStorage.getItem(CHAT_STORAGE_KEY) || "webchat:default";
   let currentProjectId = localStorage.getItem(PROJECT_STORAGE_KEY) || "";
@@ -60,6 +85,281 @@ import * as THREE from '/static/three.module.js';
   const structureScenes = [];
   const savedMedia = [];
   const savedStructures = [];
+  let gpumdStatusTimer = null;
+  let latestRuntimeDiagnostics = null;
+  const DEFAULT_TASK_BEHAVIOR = Object.freeze({
+    max_concurrency: 2,
+    retry_count: 0,
+    notify_on_completion: false,
+  });
+  let taskBehaviorSettings = { ...DEFAULT_TASK_BEHAVIOR };
+
+  const DEFAULT_SETTINGS = Object.freeze({
+    theme: "dark",
+    messageSize: "medium",
+    codeWrap: false,
+    autoScroll: true,
+    enterToSend: true,
+    showQuickActions: true,
+  });
+
+  function loadSettings() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || "{}");
+      return {
+        theme: ["dark", "light", "system"].includes(stored.theme) ? stored.theme : DEFAULT_SETTINGS.theme,
+        messageSize: ["small", "medium", "large"].includes(stored.messageSize) ? stored.messageSize : DEFAULT_SETTINGS.messageSize,
+        codeWrap: typeof stored.codeWrap === "boolean" ? stored.codeWrap : DEFAULT_SETTINGS.codeWrap,
+        autoScroll: typeof stored.autoScroll === "boolean" ? stored.autoScroll : DEFAULT_SETTINGS.autoScroll,
+        enterToSend: typeof stored.enterToSend === "boolean" ? stored.enterToSend : DEFAULT_SETTINGS.enterToSend,
+        showQuickActions: typeof stored.showQuickActions === "boolean" ? stored.showQuickActions : DEFAULT_SETTINGS.showQuickActions,
+      };
+    } catch (_) {
+      return { ...DEFAULT_SETTINGS };
+    }
+  }
+
+  let webchatSettings = loadSettings();
+  const systemThemeQuery = window.matchMedia("(prefers-color-scheme: light)");
+
+  function updateInputPlaceholder() {
+    if (planMode) {
+      inp.placeholder = "描述你的目标，Agent 会先制定执行计划...";
+    } else if (webchatSettings.enterToSend) {
+      inp.placeholder = "输入消息... (Enter 发送, Shift+Enter 换行)";
+    } else {
+      inp.placeholder = "输入消息... (Ctrl/Cmd+Enter 发送)";
+    }
+  }
+
+  function applySettings() {
+    const resolvedTheme = webchatSettings.theme === "system"
+      ? (systemThemeQuery.matches ? "light" : "dark")
+      : webchatSettings.theme;
+    document.documentElement.dataset.theme = resolvedTheme;
+    document.documentElement.dataset.messageSize = webchatSettings.messageSize;
+    document.documentElement.dataset.codeWrap = webchatSettings.codeWrap ? "true" : "false";
+    if (quickActions) quickActions.hidden = !webchatSettings.showQuickActions;
+    updateInputPlaceholder();
+  }
+
+  function saveSettings() {
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(webchatSettings));
+    applySettings();
+  }
+
+  function fillSettingsForm() {
+    settingTheme.value = webchatSettings.theme;
+    settingMessageSize.value = webchatSettings.messageSize;
+    settingCodeWrap.checked = webchatSettings.codeWrap;
+    settingAutoScroll.checked = webchatSettings.autoScroll;
+    settingEnterToSend.checked = webchatSettings.enterToSend;
+    settingShowQuickActions.checked = webchatSettings.showQuickActions;
+    settingTaskConcurrency.value = String(taskBehaviorSettings.max_concurrency);
+    settingTaskRetries.value = String(taskBehaviorSettings.retry_count);
+    settingTaskNotifications.checked = taskBehaviorSettings.notify_on_completion;
+  }
+
+  function openSettingsDialog() {
+    fillSettingsForm();
+    settingsDialog.hidden = false;
+    settingTheme.focus();
+    refreshGpumdKnowledgeStatus();
+    refreshRuntimeDiagnostics();
+    loadTaskBehaviorSettings();
+  }
+
+  function closeSettingsDialog() {
+    settingsDialog.hidden = true;
+    if (gpumdStatusTimer) clearTimeout(gpumdStatusTimer);
+    gpumdStatusTimer = null;
+  }
+
+  function renderGpumdKnowledgeStatus(data) {
+    const jobRunning = Boolean(data.job?.running);
+    const labels = {
+      ready: ["已就绪", "ready"],
+      missing_corpus: ["缺少文档", "warning"],
+      missing_index: ["待建索引", "warning"],
+      model_mismatch: ["模型已变化", "warning"],
+      outdated: ["索引待更新", "warning"],
+      error: ["状态异常", "error"],
+    };
+    const [label, visualState] = jobRunning
+      ? ["更新中", "running"]
+      : (labels[data.state] || ["未知", "warning"]);
+    gpumdKnowledgeStatus.textContent = label;
+    gpumdKnowledgeStatus.dataset.state = visualState;
+    gpumdCorpusCount.textContent = Number(data.corpus?.count || 0).toLocaleString("zh-CN");
+    gpumdIndexCount.textContent = Number(data.index?.count || 0).toLocaleString("zh-CN");
+    gpumdModel.textContent = data.model || "未配置";
+    gpumdModel.title = data.model || "";
+
+    let message = data.job?.message || "";
+    if (!message && !data.api_key_configured) {
+      message = "向量服务密钥未配置；可先同步文档，配置后再更新向量。";
+    } else if (!message && data.state === "model_mismatch") {
+      message = "当前模型与旧索引不同，下一次更新会使用新模型重新向量化。";
+    } else if (!message && data.state === "outdated") {
+      message = "文档块数量已变化，建议执行增量更新。";
+    } else if (!message && data.state === "ready") {
+      message = "文档与向量索引数量一致。";
+    }
+    gpumdKnowledgeMessage.textContent = message || "尚未建立 GPUMD 知识库。";
+    gpumdSyncDocs.disabled = jobRunning;
+    gpumdUpdateIndex.disabled = jobRunning || !data.enabled || !data.api_key_configured || !data.corpus?.exists;
+  }
+
+  async function refreshGpumdKnowledgeStatus() {
+    if (!settingsDialog || settingsDialog.hidden) return;
+    try {
+      const response = await fetch("/api/knowledge/gpumd");
+      if (!response.ok) throw new Error("无法读取知识库状态");
+      const data = await response.json();
+      renderGpumdKnowledgeStatus(data);
+      if (data.job?.running) {
+        gpumdStatusTimer = setTimeout(refreshGpumdKnowledgeStatus, 1200);
+      }
+    } catch (error) {
+      gpumdKnowledgeStatus.textContent = "读取失败";
+      gpumdKnowledgeStatus.dataset.state = "error";
+      gpumdKnowledgeMessage.textContent = error.message || "无法读取知识库状态";
+    }
+  }
+
+  async function runGpumdKnowledgeAction(action) {
+    gpumdSyncDocs.disabled = true;
+    gpumdUpdateIndex.disabled = true;
+    gpumdKnowledgeStatus.textContent = "正在启动";
+    gpumdKnowledgeStatus.dataset.state = "running";
+    gpumdKnowledgeMessage.textContent = action === "sync" ? "正在启动文档同步…" : "正在启动增量向量更新…";
+    try {
+      const response = await fetch(`/api/knowledge/gpumd/${action}`, { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "任务启动失败");
+      await refreshGpumdKnowledgeStatus();
+    } catch (error) {
+      gpumdKnowledgeStatus.textContent = "启动失败";
+      gpumdKnowledgeStatus.dataset.state = "error";
+      gpumdKnowledgeMessage.textContent = error.message || "任务启动失败";
+      gpumdSyncDocs.disabled = false;
+    }
+  }
+
+  async function loadTaskBehaviorSettings() {
+    try {
+      const response = await fetch("/api/settings/task-behavior");
+      if (!response.ok) throw new Error("无法读取任务设置");
+      const data = await response.json();
+      taskBehaviorSettings = {
+        max_concurrency: Number(data.max_concurrency || 2),
+        retry_count: Number(data.retry_count || 0),
+        notify_on_completion: Boolean(data.notify_on_completion),
+      };
+      fillSettingsForm();
+      taskBehaviorMessage.textContent = "";
+    } catch (error) {
+      taskBehaviorMessage.textContent = error.message || "无法读取任务设置";
+    }
+  }
+
+  async function saveTaskBehaviorSettings() {
+    let notifyOnCompletion = settingTaskNotifications.checked;
+    if (notifyOnCompletion) {
+      if (!("Notification" in window)) {
+        notifyOnCompletion = false;
+        settingTaskNotifications.checked = false;
+        taskBehaviorMessage.textContent = "当前浏览器不支持系统通知。";
+      } else if (Notification.permission !== "granted") {
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          notifyOnCompletion = false;
+          settingTaskNotifications.checked = false;
+          taskBehaviorMessage.textContent = "浏览器未允许通知，已保持关闭。";
+        }
+      }
+    }
+    const payload = {
+      max_concurrency: Number(settingTaskConcurrency.value),
+      retry_count: Number(settingTaskRetries.value),
+      notify_on_completion: notifyOnCompletion,
+    };
+    const response = await fetch("/api/settings/task-behavior", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.ok) throw new Error(data.detail || "任务设置保存失败");
+    taskBehaviorSettings = { ...data.settings };
+    return taskBehaviorSettings;
+  }
+
+  function renderRuntimeDiagnostics(data) {
+    latestRuntimeDiagnostics = data;
+    runtimeDiagnosticGrid.innerHTML = "";
+    const items = data.items || [];
+    items.forEach((item) => {
+      const card = document.createElement("div");
+      card.className = "diagnostic-item";
+      const dot = document.createElement("span");
+      dot.className = "diagnostic-dot";
+      dot.dataset.state = item.state || "unavailable";
+      const title = document.createElement("strong");
+      title.textContent = item.label || item.id;
+      const detail = document.createElement("small");
+      detail.textContent = item.detail || "无状态信息";
+      detail.title = detail.textContent;
+      card.append(dot, title, detail);
+      runtimeDiagnosticGrid.appendChild(card);
+    });
+    const unavailable = items.filter((item) => item.state === "unavailable").length;
+    const degraded = items.filter((item) => item.state === "degraded").length;
+    runtimeDiagnosticStatus.textContent = unavailable ? `${unavailable} 项不可用` : (degraded ? `${degraded} 项需注意` : "全部可用");
+    runtimeDiagnosticStatus.dataset.state = unavailable ? "error" : (degraded ? "warning" : "ready");
+    exportRuntimeDiagnosticsButton.disabled = false;
+  }
+
+  async function refreshRuntimeDiagnostics() {
+    runtimeDiagnosticStatus.textContent = "检查中";
+    runtimeDiagnosticStatus.dataset.state = "running";
+    refreshRuntimeDiagnosticsButton.disabled = true;
+    try {
+      const response = await fetch("/api/diagnostics");
+      if (!response.ok) throw new Error("运行诊断暂不可用");
+      renderRuntimeDiagnostics(await response.json());
+    } catch (error) {
+      runtimeDiagnosticStatus.textContent = "检查失败";
+      runtimeDiagnosticStatus.dataset.state = "error";
+      runtimeDiagnosticGrid.innerHTML = "";
+      const message = document.createElement("p");
+      message.className = "knowledge-message";
+      message.textContent = error.message || "运行诊断暂不可用";
+      runtimeDiagnosticGrid.appendChild(message);
+    } finally {
+      refreshRuntimeDiagnosticsButton.disabled = false;
+    }
+  }
+
+  function exportRuntimeDiagnostics() {
+    if (!latestRuntimeDiagnostics) return;
+    const blob = new Blob([JSON.stringify(latestRuntimeDiagnostics, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `miniclaw-diagnostics-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function scrollMessagesToBottom(force = false) {
+    if (force || webchatSettings.autoScroll) msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  applySettings();
+  systemThemeQuery.addEventListener?.("change", () => {
+    if (webchatSettings.theme === "system") applySettings();
+  });
 
   let SKIP_BROWSE_DIRS = new Set([".idea", "__pycache__", ".git", "web", "node_modules", ".venv", "sessions"]);
   const STRUCTURE_EXTS = new Set(["xyz", "dump", "lammpstrj", "lmp", "data", "xsf"]);
@@ -281,7 +581,7 @@ import * as THREE from '/static/three.module.js';
       d.textContent = text;
     }
     msgs.appendChild(d);
-    msgs.scrollTop = msgs.scrollHeight;
+    scrollMessagesToBottom();
   }
 
   function setChatProgress(active, text, percent, projectId = currentProjectId) {
@@ -1300,12 +1600,34 @@ import * as THREE from '/static/three.module.js';
     }
   }
 
+  function notifyCompletedProjects(previousProjects, projects) {
+    projects.forEach((project) => {
+      const previous = previousProjects.get(project.project_id);
+      if (!previous) return;
+      const wasRunning = previous.is_running || ["queued", "running"].includes(previous.status);
+      const isRunning = project.is_running || ["queued", "running"].includes(project.status);
+      if (!wasRunning || isRunning) return;
+      showTaskCompletionNotification(project, project.status === "failed");
+    });
+  }
+
+  function showTaskCompletionNotification(project, failed = false) {
+    if (!taskBehaviorSettings.notify_on_completion || !("Notification" in window)) return;
+    if (Notification.permission !== "granted" || document.visibilityState === "visible") return;
+    new Notification(failed ? "MiniClaw 任务需要处理" : "MiniClaw 任务已完成", {
+      body: project?.title || "后台项目任务",
+      tag: `miniclaw-project-${project?.project_id || "current"}`,
+    });
+  }
+
   async function loadSidebar() {
     const r = await fetch("/api/projects");
     const data = await r.json();
     const list = data.projects || [];
+    const previousProjects = new Map(projectsById);
     projectsById.clear();
     list.forEach((project) => projectsById.set(project.project_id, project));
+    notifyCompletedProjects(previousProjects, list);
     convList.innerHTML = "";
     list.forEach((project) => {
       const btn = document.createElement("button");
@@ -1391,7 +1713,7 @@ import * as THREE from '/static/three.module.js';
         msgs.appendChild(d);
       }
     });
-    msgs.scrollTop = msgs.scrollHeight;
+    scrollMessagesToBottom(true);
     // 恢复 SSE 断连期间服务端已完成的渲染产物（GIF / 结构 3D）
     if (data.viz_done) {
       await restoreVizFromServer(data.viz_done);
@@ -1470,12 +1792,13 @@ import * as THREE from '/static/three.module.js';
     thinkingEl.innerHTML = '<span>思考中</span><span class="thinking-dot"></span><span class="thinking-dot"></span><span class="thinking-dot"></span>';
     agDiv.appendChild(thinkingEl);
     msgs.appendChild(agDiv);
-    msgs.scrollTop = msgs.scrollHeight;
+    scrollMessagesToBottom(true);
     setChatProgress(true, "等待响应…", undefined, projectId);
 
     let rawContent = "";
     let firstContent = false;
     let receivedDone = false;
+    let taskFailed = false;
 
     // ── 统一渲染 agent 消息卡片 ──
     function finalizeAgentDiv(finalText) {
@@ -1491,7 +1814,7 @@ import * as THREE from '/static/three.module.js';
       } else if (!agDiv.textContent && !agDiv.innerHTML.trim()) {
         agDiv.textContent = "（模型未返回文本）";
       }
-      msgs.scrollTop = msgs.scrollHeight;
+      scrollMessagesToBottom();
     }
 
     try {
@@ -1536,7 +1859,7 @@ import * as THREE from '/static/three.module.js';
             } else {
               agDiv.textContent = rawContent;
             }
-            msgs.scrollTop = msgs.scrollHeight;
+            scrollMessagesToBottom();
           } else if (payload.done) {
             receivedDone = true;
             // 服务端返回的 full 是权威完整结果，始终用它
@@ -1545,7 +1868,7 @@ import * as THREE from '/static/three.module.js';
             if (planMode) {
               planMode = false;
               planModeCheckbox.checked = false;
-              inp.placeholder = "输入消息... (Enter 发送, Shift+Enter 换行)";
+              updateInputPlaceholder();
             }
           }
         });
@@ -1582,6 +1905,7 @@ import * as THREE from '/static/three.module.js';
         }
       }
     } catch (e) {
+      taskFailed = true;
       if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
       if (!rawContent.trim()) {
         agDiv.textContent = "Error: " + e.message;
@@ -1614,6 +1938,8 @@ import * as THREE from '/static/three.module.js';
     }
 
     await loadSidebar();
+    const completedProject = projectsById.get(projectId);
+    showTaskCompletionNotification(completedProject, taskFailed || completedProject?.status === "failed");
     updateCurrentChatLabel();
     setActiveInSidebar();
     await refreshArtifacts();
@@ -1785,16 +2111,61 @@ import * as THREE from '/static/three.module.js';
 
   planModeCheckbox?.addEventListener("change", () => {
     planMode = planModeCheckbox.checked;
-    if (planMode) {
-      inp.placeholder = "描述你的目标，Agent 会先制定执行计划...";
-    } else {
-      inp.placeholder = "输入消息... (Enter 发送, Shift+Enter 换行)";
+    updateInputPlaceholder();
+  });
+
+  document.getElementById("btn-settings").addEventListener("click", openSettingsDialog);
+  document.getElementById("settings-dialog-close").addEventListener("click", closeSettingsDialog);
+  document.getElementById("settings-dialog-cancel").addEventListener("click", closeSettingsDialog);
+  settingsDialog?.addEventListener("click", (event) => {
+    if (event.target === settingsDialog) closeSettingsDialog();
+  });
+  settingsForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    webchatSettings = {
+      theme: settingTheme.value,
+      messageSize: settingMessageSize.value,
+      codeWrap: settingCodeWrap.checked,
+      autoScroll: settingAutoScroll.checked,
+      enterToSend: settingEnterToSend.checked,
+      showQuickActions: settingShowQuickActions.checked,
+    };
+    try {
+      await saveTaskBehaviorSettings();
+      saveSettings();
+      closeSettingsDialog();
+    } catch (error) {
+      taskBehaviorMessage.textContent = error.message || "设置保存失败";
+    }
+  });
+  document.getElementById("settings-reset").addEventListener("click", async () => {
+    webchatSettings = { ...DEFAULT_SETTINGS };
+    taskBehaviorSettings = { ...DEFAULT_TASK_BEHAVIOR };
+    saveSettings();
+    fillSettingsForm();
+    try {
+      await saveTaskBehaviorSettings();
+      taskBehaviorMessage.textContent = "任务行为已恢复默认。";
+    } catch (error) {
+      taskBehaviorMessage.textContent = error.message || "默认设置保存失败";
+    }
+  });
+  gpumdSyncDocs?.addEventListener("click", () => runGpumdKnowledgeAction("sync"));
+  gpumdUpdateIndex?.addEventListener("click", () => runGpumdKnowledgeAction("index"));
+  refreshRuntimeDiagnosticsButton?.addEventListener("click", refreshRuntimeDiagnostics);
+  exportRuntimeDiagnosticsButton?.addEventListener("click", exportRuntimeDiagnostics);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && settingsDialog && !settingsDialog.hidden) {
+      closeSettingsDialog();
     }
   });
 
   sendBtn.addEventListener("click", send);
   inp.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+    const enterShortcut = webchatSettings.enterToSend
+      ? e.key === "Enter" && !e.shiftKey
+      : e.key === "Enter" && (e.ctrlKey || e.metaKey);
+    if (enterShortcut) { e.preventDefault(); send(); }
   });
   // 自动调整 textarea 高度
   inp.addEventListener("input", () => {

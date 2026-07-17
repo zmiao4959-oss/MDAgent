@@ -10,6 +10,8 @@
 | 结构解析失败 | `parseStructureFile` 回退到 `parseDumpFirstFrame`，检查文件内容是否匹配已知格式 |
 | 黑屏 | `typeof THREE` 是否为 undefined、WebGL 上下文数（Chrome ~8-16 上限） |
 | Token 用量 | `session.metadata["total_tokens"]` + `last_run_tokens` |
+| GPUMD 检索 | 调用 `search_gpumd_docs`；返回首行会标明“向量检索”或“关键词检索” |
+| RAG 索引状态 | 查看 `~/.miniclaw/workspace/rag/gpumd-script/index.json` 的 `model`、`count`、`schema_version` |
 
 ## 兼容性注意事项
 
@@ -22,6 +24,8 @@
 | **Three.js ESM** | `import * as THREE from '/static/three.module.js'` — 硬编码路径，勿改 import map |
 | **SSE vs WebSocket** | WebChat 用 SSE（单向流），Gateway 用 WebSocket（双向）。两者独立，不共享连接 |
 | **asyncio.create_task** | viz 渲染用 `create_task` 启动，不阻塞 agent 循环。`finally` 中 `gather` 等待 |
+| **火山 vision embedding** | 带日期的 `doubao-embedding-vision-*` 必须走 `/embeddings/multimodal`，文本输入格式为 `[{"type":"text","text":"..."}]` |
+| **embedding 密钥** | 优先使用用户配置 `~/.miniclaw/config.yaml` 的 `rag.api_key`；也支持 `MINICLAW_EMBEDDING_API_KEY`、`ARK_API_KEY`，不要提交到 Git |
 
 ## 常见修改场景
 
@@ -49,6 +53,31 @@
 1. 新建 `channels/xxx.py`，继承 `BaseChannelAdapter`
 2. 实现 `start()` / `stop()` / `send_message()`
 3. `main.py` 中注册 adapter
+
+### 更新 GPUMD 知识库
+
+```powershell
+# 1. 全量同步语料；这一步不调用 embedding API
+python -m miniclaw.rag.sync_gpumd
+
+# 2. 增量更新索引；只向量化新增和正文变化的块
+python -m miniclaw.rag.cli build
+```
+
+构建结果会报告 `总计 / 复用 / 新增或更新 / 删除失效`。只有更换模型或显式排障时使用：
+
+```powershell
+python -m miniclaw.rag.cli build --full
+```
+
+增量键由 `文档 ID + SHA-256(标题、章节、正文) + embedding 模型名` 组成。仅来源或 metadata 变化时会更新索引记录但复用向量。索引采用临时文件原子替换，API 失败后旧索引仍可用。
+
+### 修改 GPUMD Skill
+
+- Skill 文件：`~/.miniclaw/workspace/skills/gpumd-script/SKILL.md`
+- 语料文件：`~/.miniclaw/workspace/skills/gpumd-script/references/corpus.jsonl`
+- 修改后运行 Skill 校验，并重启长期运行的 MiniClaw 进程以刷新工具和技能缓存。
+- 不要手工维护大批官方正文；优先修改 `rag/sync_gpumd.py` 后重新同步。
 
 ## Workspace 安全模型
 

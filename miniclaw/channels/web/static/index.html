@@ -52,6 +52,7 @@
             <span id="runtime-summary">系统就绪，等待任务</span>
           </div>
           <div class="chat-actions">
+            <button type="button" id="btn-settings" class="ghost-btn" title="WebChat 设置">⚙ 设置</button>
             <button type="button" id="btn-fork" class="ghost-btn" title="暂停或恢复项目">Ⅱ 暂停</button>
             <button type="button" id="btn-complete" class="ghost-btn" title="标记项目完成">✓ 完成</button>
             <button type="button" id="btn-export" class="ghost-btn" title="导出当前对话">📥 导出</button>
@@ -161,6 +162,132 @@
       <div class="project-dialog-actions">
         <button id="project-dialog-cancel" class="ghost-btn" type="button">取消</button>
         <button class="primary-btn" type="submit">创建并开始</button>
+      </div>
+    </form>
+  </div>
+  <div id="settings-dialog" class="project-dialog" hidden>
+    <form id="settings-form" class="project-dialog-card settings-dialog-card">
+      <div class="project-dialog-heading">
+        <div>
+          <span class="eyebrow">WEBCHAT PREFERENCES</span>
+          <h2>设置</h2>
+        </div>
+        <button id="settings-dialog-close" class="icon-btn" type="button" aria-label="关闭设置">×</button>
+      </div>
+
+      <div class="settings-section">
+        <h3>外观</h3>
+        <label class="settings-field" for="setting-theme">
+          <span>主题</span>
+          <select id="setting-theme" name="theme">
+            <option value="dark">深色</option>
+            <option value="light">浅色</option>
+            <option value="system">跟随系统</option>
+          </select>
+        </label>
+        <label class="settings-field" for="setting-message-size">
+          <span>消息字号</span>
+          <select id="setting-message-size" name="messageSize">
+            <option value="small">较小</option>
+            <option value="medium">标准</option>
+            <option value="large">较大</option>
+          </select>
+        </label>
+        <label class="settings-switch">
+          <input type="checkbox" id="setting-code-wrap" name="codeWrap" />
+          <span><strong>代码块自动换行</strong><small>长命令不再横向滚动</small></span>
+        </label>
+      </div>
+
+      <div class="settings-section">
+        <h3>交互</h3>
+        <label class="settings-switch">
+          <input type="checkbox" id="setting-auto-scroll" name="autoScroll" />
+          <span><strong>新消息自动滚动</strong><small>流式回复时保持在最新内容</small></span>
+        </label>
+        <label class="settings-switch">
+          <input type="checkbox" id="setting-enter-to-send" name="enterToSend" />
+          <span><strong>Enter 发送消息</strong><small>关闭后使用 Ctrl/Cmd+Enter 发送</small></span>
+        </label>
+        <label class="settings-switch">
+          <input type="checkbox" id="setting-show-quick-actions" name="showQuickActions" />
+          <span><strong>显示快速开始</strong><small>显示对话区上方的常用任务</small></span>
+        </label>
+      </div>
+
+      <div class="settings-section settings-knowledge">
+        <div class="settings-section-heading">
+          <div>
+            <h3>GPUMD 知识库</h3>
+            <p>同步官方手册与教程，并只向量化新增或变化的文档块。</p>
+          </div>
+          <span id="gpumd-knowledge-status" class="knowledge-status">读取中</span>
+        </div>
+        <div class="knowledge-metrics">
+          <div><span>文档块</span><strong id="gpumd-corpus-count">—</strong></div>
+          <div><span>已索引</span><strong id="gpumd-index-count">—</strong></div>
+          <div class="knowledge-model"><span>向量模型</span><strong id="gpumd-model">—</strong></div>
+        </div>
+        <p id="gpumd-knowledge-message" class="knowledge-message" role="status">正在读取知识库状态…</p>
+        <div class="knowledge-actions">
+          <button id="gpumd-sync-docs" class="ghost-btn" type="button">同步官方文档</button>
+          <button id="gpumd-update-index" class="primary-btn" type="button">增量更新向量</button>
+        </div>
+      </div>
+
+      <div class="settings-section settings-diagnostics">
+        <div class="settings-section-heading">
+          <div>
+            <h3>运行诊断</h3>
+            <p>检查 Agent、模拟程序、GPU、远程连接和向量服务是否可用。</p>
+          </div>
+          <span id="runtime-diagnostic-status" class="knowledge-status">待读取</span>
+        </div>
+        <div id="runtime-diagnostic-grid" class="diagnostic-grid" aria-live="polite">
+          <p class="knowledge-message">打开设置后自动检查运行环境。</p>
+        </div>
+        <div class="knowledge-actions">
+          <button id="refresh-runtime-diagnostics" class="ghost-btn" type="button">刷新诊断</button>
+          <button id="export-runtime-diagnostics" class="ghost-btn" type="button" disabled>导出诊断</button>
+        </div>
+      </div>
+
+      <div class="settings-section settings-task-behavior">
+        <div class="settings-section-heading">
+          <div>
+            <h3>任务行为</h3>
+            <p>控制后台项目任务的并发、失败重试和完成提醒。</p>
+          </div>
+        </div>
+        <label class="settings-field" for="setting-task-concurrency">
+          <span>最大并发任务数</span>
+          <select id="setting-task-concurrency" name="taskConcurrency">
+            <option value="1">1 个</option>
+            <option value="2">2 个</option>
+            <option value="3">3 个</option>
+            <option value="4">4 个</option>
+          </select>
+        </label>
+        <label class="settings-field" for="setting-task-retries">
+          <span>失败自动重试</span>
+          <select id="setting-task-retries" name="taskRetries">
+            <option value="0">不重试</option>
+            <option value="1">重试 1 次</option>
+            <option value="2">重试 2 次</option>
+          </select>
+        </label>
+        <label class="settings-switch">
+          <input type="checkbox" id="setting-task-notifications" name="taskNotifications" />
+          <span><strong>任务完成后通知</strong><small>页面在后台时使用系统通知提醒</small></span>
+        </label>
+        <p id="task-behavior-message" class="knowledge-message" role="status"></p>
+      </div>
+
+      <div class="project-dialog-actions settings-dialog-actions">
+        <button id="settings-reset" class="ghost-btn" type="button">恢复默认</button>
+        <span class="settings-actions-spacer"></span>
+        <button id="settings-dialog-cancel" class="ghost-btn" type="button">取消</button>
+        <button class="primary-btn" type="submit">保存设置</button>
       </div>
     </form>
   </div>

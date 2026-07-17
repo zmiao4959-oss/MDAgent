@@ -6,7 +6,7 @@ from pathlib import Path
 
 from ..config import WORKSPACE_DIR, config
 from .embedding import create_embedding_client
-from .store import JsonVectorStore, load_documents
+from .store import BuildStats, JsonVectorStore, load_documents
 
 
 def default_corpus() -> Path:
@@ -17,7 +17,7 @@ def default_index() -> Path:
     return WORKSPACE_DIR / "rag" / "gpumd-script" / "index.json"
 
 
-def build_index(corpus: Path, index: Path) -> int:
+def build_index(corpus: Path, index: Path, *, full: bool = False) -> BuildStats:
     if not config.rag.enabled:
         raise RuntimeError("RAG 已在配置中禁用")
     client = create_embedding_client(
@@ -32,7 +32,8 @@ def build_index(corpus: Path, index: Path) -> int:
         documents,
         client,
         batch_size=config.rag.batch_size,
-        on_progress=lambda done, total: print(f"向量化进度：{done}/{total}", flush=True),
+        on_progress=lambda done, total: print(f"索引处理进度：{done}/{total}", flush=True),
+        force_full=full,
     )
 
 
@@ -41,9 +42,15 @@ def main() -> None:
     parser.add_argument("build", nargs="?", default="build")
     parser.add_argument("--corpus", type=Path, default=default_corpus())
     parser.add_argument("--index", type=Path, default=default_index())
+    parser.add_argument("--full", action="store_true", help="忽略旧索引，强制重新向量化全部文档")
     args = parser.parse_args()
-    count = build_index(args.corpus, args.index)
-    print(f"已建立 GPUMD 向量索引，共 {count} 个文档块：{args.index}")
+    stats = build_index(args.corpus, args.index, full=args.full)
+    mode = "全量" if stats.full_rebuild else "增量"
+    print(
+        f"已完成 GPUMD {mode}索引：总计 {stats.total}，复用 {stats.reused}，"
+        f"新增或更新 {stats.embedded}，删除失效 {stats.removed}。"
+    )
+    print(f"索引文件：{args.index}")
 
 
 if __name__ == "__main__":

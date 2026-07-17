@@ -1,6 +1,6 @@
 # MiniClaw 项目交接
 
-AI Agent 工作台 — 多轮工具调用 Agent，面向科学计算（LAMMPS 分子动力学 + OVITO 可视化），多渠道接入（WebChat / Telegram / WebSocket）。
+AI Agent 工作台 — 多轮工具调用 Agent，面向科学计算（LAMMPS/GPUMD 分子动力学、OVITO 可视化、领域知识检索），多渠道接入（WebChat / Telegram / WebSocket）。
 
 ## 速览
 
@@ -22,6 +22,7 @@ AI Agent 工作台 — 多轮工具调用 Agent，面向科学计算（LAMMPS �
 | [`architecture.md`](architecture.md) | 需要理解整体架构、组件关系、数据流 |
 | [`webchat.md`](webchat.md) | 修改 WebChat 界面、SSE 流、前后端交互 |
 | [`agent.md`](agent.md) | 修改 Agent 循环、工具执行、LLM 调用 |
+| [`rag.md`](rag.md) | 修改 GPUMD 知识库、文档同步、embedding 与增量索引 |
 | [`viz.md`](viz.md) | 修改可视化（OVITO GIF、3D 结构、新文件检测） |
 | [`frontend.md`](frontend.md) | 修改 app.js（~1700 行），前端状态、localStorage |
 | [`api.md`](api.md) | 查阅 API 端点定义 |
@@ -61,7 +62,15 @@ miniclaw/
 │           └── style.css
 ├── tools/
 │   ├── registry.py
+│   ├── rag_tool.py            # GPUMD 文档检索工具
 │   └── paths.py               # 工作区路径安全解析
+├── rag/
+│   ├── embedding.py           # OpenAI/火山多模态 embedding 客户端
+│   ├── store.py               # JSON 向量索引、检索、增量构建
+│   ├── cli.py                 # 向量索引构建命令
+│   └── sync_gpumd.py          # 官方手册与 Tutorials 同步器
+├── skills/
+│   └── loader.py              # 标准 YAML + 旧 XML Skill 加载
 ├── memory/
 │   ├── session.py
 │   └── session_store.py
@@ -72,3 +81,18 @@ miniclaw/
 │   └── constants.py
 └── gateway/server.py          # WebSocket Gateway
 ```
+
+## GPUMD RAG 速查
+
+```powershell
+# 同步 GPUMD 5.5 官方手册和 Tutorials 语料
+python -m miniclaw.rag.sync_gpumd
+
+# 默认增量更新向量索引
+python -m miniclaw.rag.cli build
+
+# 更换模型或需要彻底重建时
+python -m miniclaw.rag.cli build --full
+```
+
+当前语料为 703 块，向量模型为 `doubao-embedding-vision-251215`，实际向量维度 2048。完整运维与实现说明见 [`rag.md`](rag.md)。

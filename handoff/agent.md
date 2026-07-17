@@ -92,3 +92,14 @@ WebChat 将这些回调桥接到 SSE 流（见 [`webchat.md`](webchat.md)）。
 - system prompt 替换为 planning 专用 prompt
 - 工具集受限（排除 execution/shell/browser/communication）
 - 用于将用户目标分解为可执行步骤
+
+## Skill 与 GPUMD RAG
+
+- `SkillLoader` 启动时扫描工作区技能根目录，只把名称和描述加入 Stable prompt。
+- 匹配 GPUMD 脚本、`run.in`、`model.xyz`、热输运、扩散、声子等任务时，Agent 应先调用 `read_skill(name="gpumd-script")`。
+- `gpumd-script` 要求在生成或修改输入文件前调用 `search_gpumd_docs`，不得用 LAMMPS 语法猜测 GPUMD 命令。
+- `search_gpumd_docs` 在索引、密钥和 RAG 开关均可用时执行向量检索；否则自动降级为关键词检索。
+- 中文查询会扩展为常见 GPUMD 英文命令，例如“热导率”扩展到 `compute_hac`、`compute_hnemd`，“扩散”扩展到 `compute_msd`、`compute_sdc`。
+- 检索结果会轻量重排并限制同一来源最多占两个结果；普通语法问题优先手册，明确询问示例时提高 Tutorial 权重。
+
+实现与运维细节见 [`rag.md`](rag.md)。
