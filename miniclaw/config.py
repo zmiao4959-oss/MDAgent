@@ -203,6 +203,7 @@ class EvolutionConfig:
     source_context_max_files: int = 6
     source_context_max_chars: int = 30000
     source_llm_timeout_sec: int = 120
+    artifact_retention_days: int = 90
 
 
 class Config:
@@ -355,6 +356,9 @@ class Config:
             ),
             source_llm_timeout_sec=max(
                 5, min(600, int(evolution_raw.get("source_llm_timeout_sec", 120)))
+            ),
+            artifact_retention_days=max(
+                1, int(evolution_raw.get("artifact_retention_days", 90))
             ),
         )
     """

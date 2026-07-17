@@ -96,6 +96,7 @@ def test_evolution_governance_routes_exist():
         "/api/evolution/restore",
         "/api/evolution/purge",
         "/api/evolution/governance",
+        "/api/evolution/governance/cleanup",
     ):
         assert route in source
 

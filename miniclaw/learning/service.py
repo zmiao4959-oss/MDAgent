@@ -279,6 +279,26 @@ class EvolutionService:
     def audit_events(self, limit: int = 100) -> List[Dict]:
         return self._governance().audit_events(limit)
 
+    def managed_evolution_artifacts(self) -> List[Dict]:
+        return self._governance().managed_artifacts()
+
+    def cleanup_evolution_artifacts(
+        self,
+        *,
+        retention_days: int = 90,
+        dry_run: bool = True,
+        confirmation: str = "",
+        source_repo: Optional[Path | str] = None,
+        now: Optional[float] = None,
+    ) -> Dict:
+        return self._governance().cleanup(
+            retention_days=retention_days,
+            dry_run=dry_run,
+            confirmation=confirmation,
+            source_repo=source_repo,
+            now=now,
+        )
+
     def synthesize_skill(self, task_pattern: str, min_experiences: int = 2) -> Dict:
         return self._skills().synthesize(
             self.experience_store.all(),

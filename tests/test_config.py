@@ -63,3 +63,4 @@ def test_evolution_config_is_bounded(tmp_path: Path):
     assert loaded.evolution.source_context_max_files == 6
     assert loaded.evolution.source_context_max_chars == 30000
     assert loaded.evolution.source_llm_timeout_sec == 120
+    assert loaded.evolution.artifact_retention_days == 90

@@ -266,7 +266,31 @@ def register_evolution_routes(app, adapter) -> None:
             "ok": True,
             "backups": service.list_backups(),
             "audit": service.audit_events(),
+            "artifacts": service.managed_evolution_artifacts(),
         }
+
+    @app.post("/api/evolution/governance/cleanup")
+    async def cleanup_evolution_artifacts(request: Request):
+        from ...learning.service import EvolutionService
+
+        body = await request.json()
+        dry_run = body.get("dry_run", True)
+        if not isinstance(dry_run, bool):
+            raise HTTPException(status_code=400, detail="boolean dry_run is required")
+        confirmation = str(body.get("confirmation", ""))
+        source_repo = None
+        if config.evolution.source_evolution_enabled and config.evolution.source_repo_path:
+            source_repo = configured_source_repo()
+        try:
+            report = EvolutionService(WORKSPACE_DIR).cleanup_evolution_artifacts(
+                retention_days=config.evolution.artifact_retention_days,
+                dry_run=dry_run,
+                confirmation=confirmation,
+                source_repo=source_repo,
+            )
+        except PermissionError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {"ok": True, "cleanup": report}
 
     @app.get("/api/evolution/export")
     async def export_evolution_data(project_id: str = ""):

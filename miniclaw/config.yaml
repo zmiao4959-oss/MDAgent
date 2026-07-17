@@ -79,6 +79,7 @@ evolution:
     source_context_max_files: 6
     source_context_max_chars: 30000
     source_llm_timeout_sec: 120
+    artifact_retention_days: 90
 
 channels:
   enabled:
