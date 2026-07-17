@@ -17,10 +17,11 @@ from .strategy import render_strategy
 from .executable_policy import ExecutablePolicyManager, PolicyExecutor
 from .source_proposal import RepeatedFailureDetector, SourceProposalStore
 from .source_experiment import (
-    SingleCandidateExperimentRunner, SourceExperimentStore, SourcePatchAgent,
-    SourcePatchPolicy,
+    AsyncSingleCandidateExperimentRunner, SingleCandidateExperimentRunner,
+    SourceExperimentStore, SourcePatchAgent, SourcePatchPolicy,
 )
 from .source_promotion import SourceCandidateEvaluator, SourceCandidatePromoter
+from .source_agent import LLMSourcePatchAgent
 
 
 class EvolutionService:
@@ -419,6 +420,34 @@ class EvolutionService:
 
     def list_source_experiments(self, status: Optional[str] = None) -> List[Dict]:
         return self._source_experiments().list(status)
+
+    async def run_automated_source_experiment(
+        self,
+        proposal_id: str,
+        repo_root: Path | str,
+        llm,
+    ) -> Dict:
+        from ..config import config
+
+        policy = SourcePatchPolicy(
+            max_files=config.evolution.source_patch_max_files,
+            max_changed_lines=config.evolution.source_patch_max_changed_lines,
+        )
+        patch_agent = LLMSourcePatchAgent(
+            llm,
+            max_context_files=config.evolution.source_context_max_files,
+            max_context_chars=config.evolution.source_context_max_chars,
+            timeout_sec=config.evolution.source_llm_timeout_sec,
+        )
+        experiment = await AsyncSingleCandidateExperimentRunner(
+            repo_root,
+            self.shared_root / "source-evolution",
+            self._source_proposals(),
+            self._source_experiments(),
+            policy=policy,
+            command_timeout_sec=config.evolution.source_test_timeout_sec,
+        ).run_async(proposal_id, patch_agent)
+        return experiment.to_dict()
 
     def evaluate_source_experiment(
         self,

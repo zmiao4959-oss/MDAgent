@@ -197,11 +197,13 @@ class WebChatAdapter(BaseChannelAdapter):
         host: str = "127.0.0.1",
         port: int = 8000,
         session_manager: Optional["SessionManager"] = None,
+        source_patch_llm=None,
     ):
         super().__init__("webchat")
         self.host = host
         self.port = port
         self.session_manager = session_manager
+        self.source_patch_llm = source_patch_llm
         self._uvicorn_server = None
         project_path = (
             session_manager.save_dir.parent / "projects.json"

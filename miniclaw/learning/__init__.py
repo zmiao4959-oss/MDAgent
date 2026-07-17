@@ -13,10 +13,12 @@ from .strategy import SemanticStep, StructuredStrategy, build_strategy, render_s
 from .executable_policy import ExecutablePolicyDraft, ExecutablePolicyManager
 from .source_proposal import RepeatedFailureDetector, SourceProposal, SourceProposalStore
 from .source_experiment import (
-    PatchActionResult, SingleCandidateExperimentRunner, SourceExperiment,
-    SourceExperimentStore, SourcePatchPolicy,
+    AsyncSingleCandidateExperimentRunner, PatchActionResult,
+    SingleCandidateExperimentRunner, SourceExperiment, SourceExperimentStore,
+    SourcePatchPolicy,
 )
 from .source_promotion import SourceCandidateEvaluator, SourceCandidatePromoter
+from .source_agent import LLMSourcePatchAgent
 
 __all__ = [
     "EvolutionTrace", "ToolTrace", "TraceStore",
@@ -32,6 +34,7 @@ __all__ = [
     "ExecutablePolicyDraft", "ExecutablePolicyManager",
     "RepeatedFailureDetector", "SourceProposal", "SourceProposalStore",
     "PatchActionResult", "SingleCandidateExperimentRunner", "SourceExperiment",
-    "SourceExperimentStore", "SourcePatchPolicy",
+    "AsyncSingleCandidateExperimentRunner", "SourceExperimentStore", "SourcePatchPolicy",
+    "LLMSourcePatchAgent",
     "SourceCandidateEvaluator", "SourceCandidatePromoter",
 ]

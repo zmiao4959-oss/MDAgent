@@ -59,3 +59,7 @@ def test_evolution_config_is_bounded(tmp_path: Path):
     assert loaded.evolution.source_patch_max_files == 8
     assert loaded.evolution.source_patch_max_changed_lines == 500
     assert loaded.evolution.source_test_timeout_sec == 300
+    assert loaded.evolution.source_auto_patch_enabled is False
+    assert loaded.evolution.source_context_max_files == 6
+    assert loaded.evolution.source_context_max_chars == 30000
+    assert loaded.evolution.source_llm_timeout_sec == 120

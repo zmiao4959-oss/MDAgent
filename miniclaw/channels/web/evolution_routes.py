@@ -59,6 +59,30 @@ def register_evolution_routes(app, adapter) -> None:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return {"ok": True, "proposal": proposal}
 
+    @app.post("/api/evolution/source/proposals/{proposal_id}/run")
+    async def run_source_proposal(proposal_id: str, request: Request):
+        from ...learning.service import EvolutionService
+
+        repo = configured_source_repo()
+        if not config.evolution.source_auto_patch_enabled:
+            raise HTTPException(status_code=403, detail="automatic source patching is disabled")
+        if adapter.source_patch_llm is None:
+            raise HTTPException(status_code=503, detail="source patch LLM is unavailable")
+        confirmation = str((await request.json()).get("confirmation", ""))
+        if confirmation != f"RUN {proposal_id}":
+            raise HTTPException(status_code=400, detail="run confirmation phrase does not match")
+        try:
+            experiment = await EvolutionService(
+                WORKSPACE_DIR
+            ).run_automated_source_experiment(
+                proposal_id, repo, adapter.source_patch_llm
+            )
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except (PermissionError, RuntimeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {"ok": True, "experiment": experiment}
+
     @app.get("/api/evolution/source/experiments")
     async def list_source_experiments(status: str = ""):
         from ...learning.service import EvolutionService

@@ -199,6 +199,10 @@ class EvolutionConfig:
     source_patch_max_files: int = 8
     source_patch_max_changed_lines: int = 500
     source_test_timeout_sec: int = 300
+    source_auto_patch_enabled: bool = False
+    source_context_max_files: int = 6
+    source_context_max_chars: int = 30000
+    source_llm_timeout_sec: int = 120
 
 
 class Config:
@@ -339,6 +343,18 @@ class Config:
             ),
             source_test_timeout_sec=max(
                 5, min(1800, int(evolution_raw.get("source_test_timeout_sec", 300)))
+            ),
+            source_auto_patch_enabled=bool(
+                evolution_raw.get("source_auto_patch_enabled", False)
+            ),
+            source_context_max_files=max(
+                1, min(20, int(evolution_raw.get("source_context_max_files", 6)))
+            ),
+            source_context_max_chars=max(
+                1000, min(100000, int(evolution_raw.get("source_context_max_chars", 30000)))
+            ),
+            source_llm_timeout_sec=max(
+                5, min(600, int(evolution_raw.get("source_llm_timeout_sec", 120)))
             ),
         )
     """

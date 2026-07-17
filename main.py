@@ -76,7 +76,12 @@ async def main():
     adapters = []
 
     if config.channels.enabled.get("webchat", True):
-        webchat = WebChatAdapter(host="127.0.0.1", port=8000, session_manager=session_mgr)
+        webchat = WebChatAdapter(
+            host="127.0.0.1",
+            port=8000,
+            session_manager=session_mgr,
+            source_patch_llm=router,
+        )
         webchat.set_message_handler(agent.process_message)
         adapters.append(webchat)
         register_plan_project_manager(webchat.projects)

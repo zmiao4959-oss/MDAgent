@@ -75,6 +75,10 @@ evolution:
     source_patch_max_files: 8
     source_patch_max_changed_lines: 500
     source_test_timeout_sec: 300
+    source_auto_patch_enabled: false
+    source_context_max_files: 6
+    source_context_max_chars: 30000
+    source_llm_timeout_sec: 120
 
 channels:
   enabled:

@@ -27,6 +27,16 @@ class SourcePatchAgent(Protocol):
         self, worktree: Path, proposal: SourceProposal
     ) -> PatchActionResult: ...
 
+
+class AsyncSourcePatchAgent(Protocol):
+    async def write_reproduction_test(
+        self, worktree: Path, proposal: SourceProposal
+    ) -> PatchActionResult: ...
+
+    async def implement_patch(
+        self, worktree: Path, proposal: SourceProposal
+    ) -> PatchActionResult: ...
+
     def implement_patch(
         self, worktree: Path, proposal: SourceProposal
     ) -> PatchActionResult: ...
@@ -327,6 +337,97 @@ class SingleCandidateExperimentRunner:
             raise ValueError("source repository is not a Git worktree")
         if _git(self.repo_root, "status", "--porcelain").strip():
             raise RuntimeError("source repository must be clean before evolution")
+
+
+class AsyncSingleCandidateExperimentRunner(SingleCandidateExperimentRunner):
+    """Async variant that preserves the same test-first and policy gates."""
+
+    async def run_async(
+        self, proposal_id: str, patch_agent: AsyncSourcePatchAgent
+    ) -> SourceExperiment:
+        proposal = self.proposal_store.get(proposal_id)
+        if proposal is None:
+            raise FileNotFoundError("source proposal not found")
+        if proposal.status != "approved":
+            raise PermissionError("source proposal must be approved before an experiment")
+        if self.experiment_store.active():
+            raise RuntimeError("another source evolution experiment is active")
+        self._preflight_repo()
+        baseline = _git(self.repo_root, "rev-parse", "HEAD").strip()
+        experiment_id = uuid.uuid4().hex
+        branch = f"codex/evolution-{proposal_id[:12]}-{experiment_id[:6]}"
+        worktree = (self.storage_root / "worktrees" / experiment_id).resolve()
+        expected_parent = (self.storage_root / "worktrees").resolve()
+        if worktree.parent != expected_parent:
+            raise ValueError("invalid worktree target")
+        worktree.parent.mkdir(parents=True, exist_ok=True)
+        _git(self.repo_root, "worktree", "add", "-b", branch, str(worktree), baseline)
+        experiment = SourceExperiment(
+            experiment_id=experiment_id,
+            proposal_id=proposal_id,
+            baseline_commit=baseline,
+            branch=branch,
+            worktree=str(worktree),
+            status="created",
+        )
+        self.experiment_store.save(experiment, "worktree_created")
+        self.proposal_store.update_status(
+            proposal_id, "experimenting", experiment_id=experiment_id
+        )
+        try:
+            reproduction = await patch_agent.write_reproduction_test(worktree, proposal)
+            errors = self.policy.validate_reproduction_test(worktree)
+            if errors:
+                raise ValueError("; ".join(errors))
+            commands = _validate_test_commands(reproduction.test_commands)
+            experiment.reproduction_commands = commands
+            experiment.reproduction_results = [
+                _run_command(worktree, command, self.command_timeout_sec)
+                for command in commands
+            ]
+            if not experiment.reproduction_results or all(
+                result["returncode"] == 0 for result in experiment.reproduction_results
+            ):
+                raise ValueError(
+                    "reproduction test must fail against the unchanged implementation"
+                )
+            experiment.status = "reproduction_failed"
+            self.experiment_store.save(experiment, "reproduction_confirmed")
+
+            experiment.status = "patching"
+            self.experiment_store.save(experiment, "patch_started")
+            await patch_agent.implement_patch(worktree, proposal)
+            validation = self.policy.validate_patch(worktree)
+            if not validation["valid"]:
+                raise PermissionError("; ".join(validation["errors"]))
+            experiment.changed_files = validation["files"]
+            experiment.diff_stat = {
+                "files": len(validation["files"]),
+                "added": validation["added"],
+                "deleted": validation["deleted"],
+            }
+            experiment.targeted_results = [
+                _run_command(worktree, command, self.command_timeout_sec)
+                for command in commands
+            ]
+            if any(result["returncode"] != 0 for result in experiment.targeted_results):
+                raise ValueError("candidate patch does not pass its reproduction tests")
+            experiment.status = "patched"
+            self.experiment_store.save(experiment, "patch_validated", validation)
+            return experiment
+        except Exception as exc:
+            experiment.status = "failed"
+            experiment.error = str(exc)[:1000]
+            self.experiment_store.save(
+                experiment, "experiment_failed", {"error": experiment.error}
+            )
+            self.proposal_store.update_status(
+                proposal_id,
+                "failed",
+                experiment_id=experiment_id,
+                detail={"error": experiment.error},
+            )
+            raise
 
 
 def _git(repo: Path, *args: str) -> str:
