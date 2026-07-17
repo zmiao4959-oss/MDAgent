@@ -12,6 +12,10 @@ from miniclaw.config import config
 
 
 STATIC = Path(__file__).parents[1] / "miniclaw" / "channels" / "web" / "static"
+EVOLUTION_JS = STATIC / "evolution.js"
+EVOLUTION_ROUTES = (
+    Path(__file__).parents[1] / "miniclaw" / "channels" / "web" / "evolution_routes.py"
+)
 
 
 def test_settings_dialog_and_controls_exist():
@@ -56,6 +60,7 @@ def test_settings_dialog_and_controls_exist():
 
 def test_settings_are_persisted_and_applied_by_frontend():
     js = (STATIC / "app.js").read_text(encoding="utf-8")
+    evolution_js = EVOLUTION_JS.read_text(encoding="utf-8")
     assert 'miniclaw_webchat_settings_v1' in js
     assert "localStorage.setItem(SETTINGS_STORAGE_KEY" in js
     assert "document.documentElement.dataset.theme" in js
@@ -69,22 +74,22 @@ def test_settings_are_persisted_and_applied_by_frontend():
     assert "Notification.requestPermission()" in js
     assert "notifyCompletedProjects" in js
     assert "showTaskCompletionNotification" in js
-    assert 'fetch(`/api/evolution/experiences?' in js
-    assert 'fetch("/api/evolution/feedback"' in js
-    assert 'fetch("/api/evolution/rollback"' in js
-    assert "submitEvolutionFeedback" in js
-    assert "evolutionFeedbackMessage" in js
-    assert "refreshEvolutionExperiences({ preserveMessage: true })" in js
-    assert "thresholds.promotion_evidence" in js
-    assert "refreshEvolutionExperiences" in js
-    assert "experience.usage_count" in js
-    assert "experience.task_pattern" in js
-    assert "/api/evolution/reflections" in js
-    assert "reviewReflectionProposal" in js
+    assert "createEvolutionPanel" in js
+    assert 'fetch(`/api/evolution/experiences?' in evolution_js
+    assert 'fetch("/api/evolution/feedback"' in evolution_js
+    assert 'fetch("/api/evolution/rollback"' in evolution_js
+    assert "submitEvolutionFeedback" in evolution_js
+    assert "evolutionFeedbackMessage" in evolution_js
+    assert "refreshEvolutionExperiences({ preserveMessage: true })" in evolution_js
+    assert "thresholds.promotion_evidence" in evolution_js
+    assert "experience.usage_count" in evolution_js
+    assert "experience.task_pattern" in evolution_js
+    assert "/api/evolution/reflections" in evolution_js
+    assert "reviewReflectionProposal" in evolution_js
 
 
 def test_evolution_governance_routes_exist():
-    source = (Path(__file__).parents[1] / "miniclaw" / "channels" / "webchat.py").read_text(encoding="utf-8")
+    source = EVOLUTION_ROUTES.read_text(encoding="utf-8")
     for route in (
         "/api/evolution/export",
         "/api/evolution/backup",
@@ -96,7 +101,7 @@ def test_evolution_governance_routes_exist():
 
 
 def test_evolution_skill_draft_routes_exist():
-    source = (Path(__file__).parents[1] / "miniclaw" / "channels" / "webchat.py").read_text(encoding="utf-8")
+    source = EVOLUTION_ROUTES.read_text(encoding="utf-8")
     for route in (
         "/api/evolution/skill-drafts",
         "/api/evolution/skill-drafts/{draft_id}/test",
@@ -106,7 +111,7 @@ def test_evolution_skill_draft_routes_exist():
 
 
 def test_evolution_executable_policy_routes_exist():
-    source = (Path(__file__).parents[1] / "miniclaw" / "channels" / "webchat.py").read_text(encoding="utf-8")
+    source = EVOLUTION_ROUTES.read_text(encoding="utf-8")
     for route in (
         "/api/evolution/executable-policies",
         "/api/evolution/executable-policies/{policy_id}/test",
@@ -116,7 +121,7 @@ def test_evolution_executable_policy_routes_exist():
 
 
 def test_source_evolution_routes_exist():
-    source = (Path(__file__).parents[1] / "miniclaw" / "channels" / "webchat.py").read_text(encoding="utf-8")
+    source = EVOLUTION_ROUTES.read_text(encoding="utf-8")
     for route in (
         "/api/evolution/source/proposals",
         "/api/evolution/source/proposals/detect",
@@ -127,6 +132,18 @@ def test_source_evolution_routes_exist():
         "/api/evolution/source/experiments/{experiment_id}/rollback",
     ):
         assert route in source
+
+
+def test_evolution_modules_are_registered_without_duplicate_implementations():
+    webchat = (
+        Path(__file__).parents[1] / "miniclaw" / "channels" / "webchat.py"
+    ).read_text(encoding="utf-8")
+    app_js = (STATIC / "app.js").read_text(encoding="utf-8")
+
+    assert "register_evolution_routes(app, self)" in webchat
+    assert '@app.get("/api/evolution/' not in webchat
+    assert "createEvolutionPanel" in app_js
+    assert 'fetch("/api/evolution/feedback"' not in app_js
 
 
 def test_settings_css_has_light_theme_and_accessibility_states():
