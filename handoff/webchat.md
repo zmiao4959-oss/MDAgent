@@ -55,7 +55,7 @@ async def event_stream():
 
 ## 前端
 
-**文件**: `miniclaw/channels/web/static/app.js` (~1700 行)
+**文件**: `miniclaw/channels/web/static/app.js`（主逻辑）与 `evolution.js`（经验和反思面板）。进化 API 位于 `miniclaw/channels/web/evolution_routes.py`。
 
 详见 [`frontend.md`](frontend.md)。
 

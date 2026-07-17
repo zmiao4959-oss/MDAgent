@@ -2,7 +2,7 @@
 
 > `/api/evolution/*` 已包含经验反馈、评估、反思、治理、Skill、可执行策略和源代码候选管理接口。完整端点与启用条件见 [`evolution.md`](evolution.md#web-管理-api)。源代码进化默认返回 403，必须显式启用并配置 Git 仓库。
 
-所有端点定义在 `miniclaw/channels/webchat.py` 的 `event_stream()` 闭包内。
+聊天、项目和文件端点主要定义在 `miniclaw/channels/webchat.py`；`/api/evolution/*` 端点集中定义在 `miniclaw/channels/web/evolution_routes.py`，由 WebChat 启动时注册。
 
 ## 对话
 

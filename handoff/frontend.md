@@ -1,11 +1,12 @@
 # 前端代码地图
 
-**文件**: `miniclaw/channels/web/static/app.js` (~1700 行，ES Module)
+**文件**: `miniclaw/channels/web/static/app.js`（主模块）和 `evolution.js`（经验/反思面板），均为 ES Module。
 
 ## 架构
 
 ```
 import * as THREE from '/static/three.module.js';  // 行1
+import { createEvolutionPanel } from '/static/evolution.js';
 
 // 全局状态 (~60 行)
 // marked.js 配置 (~20 行)
@@ -14,6 +15,7 @@ import * as THREE from '/static/three.module.js';  // 行1
 // 侧栏: loadSidebar, selectChat, createNewChat
 // 对话: loadHistory, send, parseSseBuffer
 // 项目: refreshPlan, refreshArtifacts, refreshTimeline
+// 进化面板: evolution.js，通过 getProjectId 依赖注入获取当前项目
 // 事件绑定 + init()
 ```
 

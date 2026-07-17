@@ -7,9 +7,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def main() -> None:
     html = (ROOT / "miniclaw/channels/web/static/index.html").read_text(encoding="utf-8")
-    js = (ROOT / "miniclaw/channels/web/static/app.js").read_text(encoding="utf-8")
+    js = (ROOT / "miniclaw/channels/web/static/evolution.js").read_text(encoding="utf-8")
     css = (ROOT / "miniclaw/channels/web/static/style.css").read_text(encoding="utf-8")
-    server = (ROOT / "miniclaw/channels/webchat.py").read_text(encoding="utf-8")
+    server = (ROOT / "miniclaw/channels/web/evolution_routes.py").read_text(encoding="utf-8")
 
     for element_id in (
         "evolution-status",

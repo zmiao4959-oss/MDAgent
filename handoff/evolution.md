@@ -1,15 +1,16 @@
 # 自我进化系统交接
 
-本文记录阶段 1–20 完成的整套受控自我进化能力。它不只是向 prompt 注入经验，而是包含运行轨迹、证据晋升、跨项目共享、结构化策略、Skill、受限可执行策略，以及源代码候选分支的完整闭环。
+本文记录阶段 1–23 完成的整套受控自我进化能力。它不只是向 prompt 注入经验，而是包含运行轨迹、证据晋升、跨项目共享、结构化策略、Skill、受限可执行策略，以及源代码候选分支的完整闭环。
 
 ## 当前状态
 
-- 阶段 1–20 已实现并通过验收。
-- 全量测试基线：`134 passed`。
-- `scripts/acceptance_stage1.py` 至 `scripts/acceptance_stage20.py` 全部通过。
-- 前端 `app.js` 语法检查与 `git diff --check` 通过。
+- 阶段 1–23 已实现并通过验收。
+- 全量测试基线：`146 passed`。
+- `scripts/acceptance_stage1.py` 至 `scripts/acceptance_stage23.py` 全部通过。
+- 前端 `app.js`、`evolution.js` 语法检查与 `git diff --check` 通过。
 - 关键 Git 节点：`fab9fbb`（阶段 1–6）、`e9dfeb4`（阶段 7–14）、`9dd65a9`（阶段 15）、`bef8bcb`（阶段 16）、`58686e3`（阶段 17）、`041530e`（阶段 18）、`8cc1087`（阶段 19）、`f321250`（阶段 20）。
 - 源代码进化计划：`docs/SOURCE_EVOLUTION_SINGLE_CANDIDATE_PLAN.md`，计划提交为 `be8e326`。
+- 平台化加固任务书：`docs/EVOLUTION_PLATFORM_HARDENING_PLAN.md`；阶段 21–23 提交为 `3025d77`、`37595ab`、`d9c53f4`。
 
 ## 能力全景
 
@@ -30,7 +31,7 @@ Agent 对话与工具调用
 
 经验层和源代码层是两条不同路径：经验层影响后续 Agent 的上下文、工作流、Skill 与受限工具编排；源代码层产生真实 Git 分支、测试、提交、合并提交和回滚提交。
 
-## 阶段 1–20
+## 阶段 1–23
 
 | 阶段 | 完成内容 |
 |---|---|
@@ -54,6 +55,9 @@ Agent 对话与工具调用
 | 18 | 聚合跨项目重复失败，脱敏后生成可审计的源代码提案。 |
 | 19 | 在独立 Git worktree 中先生成失败测试，再允许修改实现。 |
 | 20 | 运行受保护评估，创建候选提交，精确确认晋升，并用 revert 回滚。 |
+| 21 | 将进化路由和前端进化面板从巨型 WebChat 文件拆成独立模块。 |
+| 22 | 接入受限 LLM 补丁编排器，自动生成失败测试和精确源码替换。 |
+| 23 | 统一治理经验、提案、实验、Skill 和可执行策略的备份、恢复与清理。 |
 
 ## 核心模块
 
@@ -74,6 +78,7 @@ Agent 对话与工具调用
 | `executable_policy.py` | 受限可执行工作流的编译、测试、审批和执行。 |
 | `source_proposal.py` | 重复缺陷检测、脱敏和源代码提案库。 |
 | `source_experiment.py` | 单候选 worktree、测试优先约束和补丁策略。 |
+| `source_agent.py` | 受限 LLM JSON 计划、上下文脱敏和精确文件编辑。 |
 | `source_promotion.py` | 全量评估、候选提交、合并晋升和 revert 回滚。 |
 
 ## 数据位置与共享范围
@@ -89,6 +94,8 @@ Agent 对话与工具调用
 | 源代码 worktree | `<WORKSPACE_DIR>/.miniclaw/evolution/source-evolution/worktrees/` | 每个实验一个独立目录。 |
 
 共享验证经验和聚合证据不等于复制原始对话。原始 Trace 仍留在各项目目录，`EvolutionService._evaluation_traces()` 在需要评估时联邦读取。
+
+阶段 23 的统一治理会列出并备份经验数据库、Trace、审计日志、源代码提案/实验数据库、Skill 草案、由 approved 草案安装的 Skill，以及可执行策略。用户手工安装且没有 approved 草案来源的普通 Skill 不会被覆盖。Git worktree 不进入备份；已结束实验的 worktree 可在保留候选分支的前提下清理。清理默认只预览，实际执行要求精确输入 `CLEAN EVOLUTION ARTIFACTS`。
 
 ## 经验状态与反哺
 
@@ -153,7 +160,9 @@ class SourcePatchAgent(Protocol):
     def implement_patch(self, worktree, proposal) -> PatchActionResult: ...
 ```
 
-Web API 提供检测、审阅、查询、评估、晋升和回滚。实际生成测试和补丁需由进程内代码调用 `EvolutionService.run_source_experiment(..., patch_agent)`；没有暴露“让任意 HTTP 请求直接改源码”的入口，这是有意保留的安全边界。
+阶段 22 后，`LLMSourcePatchAgent` 会先请求结构化回归测试，确认旧实现失败后才请求实现补丁。模型只能返回 JSON 中的“创建生成测试”或“在可疑源码文件中精确替换唯一文本”；不能执行 shell、安装依赖或自由写文件。运行 API 还要求功能开关、已批准提案和精确口令 `RUN <proposal_id>`。自动运行只产生 `patched` 实验，不会绕过评估或自动合并。
+
+WebChat 的进化路由位于 `miniclaw/channels/web/evolution_routes.py`，经验与反思前端位于 `miniclaw/channels/web/static/evolution.js`；`webchat.py` 和 `app.js` 只负责注册和调用。
 
 ## 配置
 
@@ -181,6 +190,11 @@ evolution:
   source_patch_max_files: 8
   source_patch_max_changed_lines: 500
   source_test_timeout_sec: 300
+  source_auto_patch_enabled: false
+  source_context_max_files: 6
+  source_context_max_chars: 30000
+  source_llm_timeout_sec: 120
+  artifact_retention_days: 90
 ```
 
 启用源代码进化至少需要：
@@ -188,6 +202,7 @@ evolution:
 ```yaml
 evolution:
   source_evolution_enabled: true
+  source_auto_patch_enabled: true
   source_repo_path: "C:/absolute/path/to/git/repository"
 ```
 
@@ -208,6 +223,7 @@ evolution:
 治理、Skill 与策略：
 
 - `GET /api/evolution/governance`
+- `POST /api/evolution/governance/cleanup`
 - `GET /api/evolution/export`
 - `POST /api/evolution/backup|restore|purge`
 - `GET|POST /api/evolution/skill-drafts`
@@ -220,6 +236,7 @@ evolution:
 - `GET /api/evolution/source/proposals`
 - `POST /api/evolution/source/proposals/detect`
 - `POST /api/evolution/source/proposals/{proposal_id}/review`
+- `POST /api/evolution/source/proposals/{proposal_id}/run`
 - `GET /api/evolution/source/experiments`
 - `POST /api/evolution/source/experiments/{experiment_id}/evaluate`
 - `POST /api/evolution/source/experiments/{experiment_id}/promote`
@@ -240,6 +257,7 @@ foreach ($script in $scripts) {
 }
 
 node --check miniclaw/channels/web/static/app.js
+node --check miniclaw/channels/web/static/evolution.js
 git diff --check
 ```
 
@@ -249,6 +267,6 @@ git diff --check
 
 - 当前是单候选搜索，不会并行生成多个补丁后择优。
 - 当前是本地 PR 型流程：worktree、候选分支、候选提交和非快进合并；尚未自动创建远程 GitHub/GitLab PR。
-- 补丁模型通过 `SourcePatchAgent` 注入，尚未由 Web 请求直接启动。
+- 自动补丁默认关闭，且只支持可疑文件中的精确文本替换；复杂跨文件重构仍需要人工开发流程。
 - 源代码晋升仍需要人工或外部控制器提供精确确认口令。
-- 后续可增加远程 CI 验证、真实 PR 发布、候选资源清理和多候选锦标赛，但不能削弱现有保护边界。
+- 后续可增加远程 CI 验证、真实 PR 发布和多候选锦标赛，但不能削弱现有保护边界。

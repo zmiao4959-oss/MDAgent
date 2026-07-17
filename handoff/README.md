@@ -1,6 +1,6 @@
 # MiniClaw 项目交接
 
-> 自我进化系统已经完成阶段 1–20。完整架构、数据位置、配置、API、验收和源代码进化流程见 [`evolution.md`](evolution.md)。当前测试基线为 134 项通过；源代码进化默认关闭，必须显式配置源码 Git 仓库。
+> 自我进化系统已经完成阶段 1–23。完整架构、数据位置、配置、API、验收和源代码进化流程见 [`evolution.md`](evolution.md)。当前测试基线为 146 项通过；自动源码补丁默认关闭，必须显式配置源码 Git 仓库并启用开关。
 
 AI Agent 工作台 — 多轮工具调用 Agent，面向科学计算（LAMMPS/GPUMD 分子动力学、OVITO 可视化、领域知识检索），多渠道接入（WebChat / Telegram / WebSocket）。
 
@@ -26,7 +26,7 @@ AI Agent 工作台 — 多轮工具调用 Agent，面向科学计算（LAMMPS/GP
 | [`agent.md`](agent.md) | 修改 Agent 循环、工具执行、LLM 调用 |
 | [`rag.md`](rag.md) | 修改 GPUMD 知识库、文档同步、embedding 与增量索引 |
 | [`viz.md`](viz.md) | 修改可视化（OVITO GIF、3D 结构、新文件检测） |
-| [`frontend.md`](frontend.md) | 修改 app.js（~1700 行），前端状态、localStorage |
+| [`frontend.md`](frontend.md) | 修改 app.js、evolution.js，前端状态与 localStorage |
 | [`api.md`](api.md) | 查阅 API 端点定义 |
 | [`bugs.md`](bugs.md) | 理解近期修过的 Bug 和改动的上下文 |
 
@@ -58,9 +58,11 @@ miniclaw/
 │   ├── telegram.py
 │   └── web/
 │       ├── files.py           # 文件浏览 API
+│       ├── evolution_routes.py # 进化管理 API
 │       └── static/
 │           ├── index.html
-│           ├── app.js         # 前端全部逻辑
+│           ├── app.js         # 对话、项目和可视化主逻辑
+│           ├── evolution.js   # 经验与反思管理面板
 │           └── style.css
 ├── tools/
 │   ├── registry.py
