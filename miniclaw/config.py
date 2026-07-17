@@ -190,6 +190,7 @@ class EvolutionConfig:
     verified_review_days: int = 180
     trace_retention_days: int = 90
     skill_min_experiences: int = 2
+    auto_skill_drafts_enabled: bool = True
 
 
 class Config:
@@ -305,6 +306,9 @@ class Config:
             ),
             skill_min_experiences=max(
                 2, int(evolution_raw.get("skill_min_experiences", 2))
+            ),
+            auto_skill_drafts_enabled=bool(
+                evolution_raw.get("auto_skill_drafts_enabled", True)
             ),
         )
     """

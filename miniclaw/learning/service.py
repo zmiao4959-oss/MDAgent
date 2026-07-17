@@ -91,6 +91,8 @@ class EvolutionService:
             )
         if learned is not None and learned.status == "pending_evaluation":
             learned = self._evaluate_if_ready(learned)
+        if learned is not None and learned.status == "verified":
+            self._synthesize_skill_if_ready(learned.task_pattern)
         return learned
 
     def relevant(self, query: str, limit: int = 3) -> List[Experience]:
@@ -165,7 +167,9 @@ class EvolutionService:
             },
         )
         if experience is not None and experience.status == "pending_evaluation":
-            return self._evaluate_if_ready(experience)
+            experience = self._evaluate_if_ready(experience)
+        if experience is not None and experience.status == "verified":
+            self._synthesize_skill_if_ready(experience.task_pattern)
         return experience
 
     def rollback(self, experience_id: str) -> Optional[Experience]:
@@ -274,6 +278,18 @@ class EvolutionService:
             min_experiences=min_experiences,
         ).to_dict()
 
+    def _synthesize_skill_if_ready(self, task_pattern: str) -> Optional[Dict]:
+        from ..config import config
+
+        if not config.evolution.auto_skill_drafts_enabled:
+            return None
+        draft = self._skills().synthesize_if_ready(
+            self.experience_store.all(),
+            task_pattern=task_pattern,
+            min_experiences=config.evolution.skill_min_experiences,
+        )
+        return draft.to_dict() if draft is not None else None
+
     def list_skill_drafts(self) -> List[Dict]:
         return self._skills().list_drafts()
 
@@ -322,7 +338,9 @@ class EvolutionService:
             reflection_id, approve=approve
         )
         if approve and experience is not None and experience.status == "pending_evaluation":
-            return self._evaluate_if_ready(experience)
+            experience = self._evaluate_if_ready(experience)
+        if approve and experience is not None and experience.status == "verified":
+            self._synthesize_skill_if_ready(experience.task_pattern)
         return experience
 
     def list_experiences(self, status: Optional[str] = None) -> List[Dict]:

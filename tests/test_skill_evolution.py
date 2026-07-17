@@ -33,7 +33,10 @@ def test_verified_experiences_create_reviewable_skill_draft(tmp_path):
     assert path.parent.parent.name == "skill-drafts"
     assert not (path.parent / "README.md").exists()
     assert text.startswith("---\nname: handle-")
-    assert "Apply this validated strategy:" in text
+    assert "## Conditions" in text
+    assert "## Validation" in text
+    assert "## Failure recovery" in text
+    assert "Read the markdown-document." in text
     assert service.test_skill_draft(draft["draft_id"])["passed"] is True
 
 

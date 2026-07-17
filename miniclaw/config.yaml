@@ -65,6 +65,7 @@ evolution:
   verified_review_days: 180
   trace_retention_days: 90
   skill_min_experiences: 2
+  auto_skill_drafts_enabled: true
 
 channels:
   enabled:

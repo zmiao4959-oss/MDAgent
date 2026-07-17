@@ -23,6 +23,7 @@ class SkillDraft:
     path: str
     status: str = "draft"
     conflicts: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
     draft_id: str = field(default_factory=lambda: uuid.uuid4().hex)
     created_at: float = field(default_factory=time.time)
 
@@ -50,14 +51,18 @@ class SkillSynthesizer:
         task_pattern: str,
         min_experiences: int = 2,
     ) -> SkillDraft:
-        selected = [
+        selected = sorted([
             item for item in experiences
-            if item.status == "verified" and item.task_pattern == task_pattern
-        ]
+            if item.status == "verified" and item.task_pattern == task_pattern and item.strategy
+        ], key=lambda item: item.experience_id)
         if len(selected) < min_experiences:
             raise ValueError(
-                f"requires at least {min_experiences} verified experiences for one task pattern"
+                f"requires at least {min_experiences} verified structured experiences for one task pattern"
             )
+        experience_ids = [item.experience_id for item in selected]
+        existing = self._matching_draft(task_pattern, experience_ids)
+        if existing is not None:
+            return existing
         name = _skill_name(task_pattern)
         description = (
             f"Apply validated MiniClaw workflows for {task_pattern}. "
@@ -66,7 +71,10 @@ class SkillSynthesizer:
         conflicts = self.detect_conflicts(name)
         draft_id = uuid.uuid4().hex
         path = self.drafts_root / draft_id / "SKILL.md"
-        lessons = list(dict.fromkeys(item.lesson.strip() for item in selected if item.lesson.strip()))
+        conditions = _unique_values(selected, "conditions")
+        validation = _unique_values(selected, "validation")
+        fallback = _unique_values(selected, "fallback")
+        steps, warnings = _merged_steps(selected)
         body = [
             "---",
             f"name: {name}",
@@ -75,13 +83,24 @@ class SkillSynthesizer:
             "",
             f"# {name}",
             "",
-            "## Workflow",
+            "## Conditions",
             "",
         ]
-        body.extend(
-            f"{index}. Apply this validated strategy: {lesson}"
-            for index, lesson in enumerate(lessons, 1)
-        )
+        body.extend(f"- Use this workflow when {item}." for item in conditions)
+        body.extend(["", "## Workflow", ""])
+        for index, step in enumerate(steps, 1):
+            intent = str(step.get("intent", "Perform the validated operation.")).rstrip(".")
+            constraints = ", ".join(str(item) for item in step.get("constraints", [])[:4])
+            body.append(
+                f"{index}. {intent}." + (f" Keep these constraints: {constraints}." if constraints else "")
+            )
+        body.extend(["", "## Validation", ""])
+        body.extend(f"- {item[:1].upper() + item[1:].rstrip('.')}." for item in validation)
+        body.extend(["", "## Failure recovery", ""])
+        body.extend(f"- {item[:1].upper() + item[1:].rstrip('.')}." for item in fallback)
+        if warnings:
+            body.extend(["", "## Alternatives", ""])
+            body.extend(f"- Review this workflow variation during execution: {item}." for item in warnings)
         body.extend([
             "",
             "## Safety",
@@ -98,12 +117,29 @@ class SkillSynthesizer:
             name=name,
             description=description,
             task_pattern=task_pattern,
-            experience_ids=[item.experience_id for item in selected],
+            experience_ids=experience_ids,
             path=str(path),
             conflicts=conflicts,
+            warnings=warnings,
         )
         self._save_metadata(draft)
         return draft
+
+    def synthesize_if_ready(
+        self,
+        experiences: List[Experience],
+        *,
+        task_pattern: str,
+        min_experiences: int = 2,
+    ) -> Optional[SkillDraft]:
+        try:
+            return self.synthesize(
+                experiences,
+                task_pattern=task_pattern,
+                min_experiences=min_experiences,
+            )
+        except ValueError:
+            return None
 
     def validate(self, draft_id: str) -> Dict:
         draft = self.get(draft_id)
@@ -126,6 +162,11 @@ class SkillSynthesizer:
                 errors.append("frontmatter must contain only name and description")
         if len(text.splitlines()) > 500:
             errors.append("SKILL.md exceeds 500 lines")
+        for heading in ("## Conditions", "## Workflow", "## Validation", "## Failure recovery", "## Safety"):
+            if heading not in text:
+                errors.append(f"missing required section: {heading}")
+        if not re.search(r"(?m)^1\.\s+[A-Z]", text):
+            errors.append("workflow must contain imperative numbered steps")
         if self.FORBIDDEN.search(text):
             errors.append("skill contains unsafe instructions")
         if draft.conflicts:
@@ -202,6 +243,19 @@ class SkillSynthesizer:
             return None
         return SkillDraft(**json.loads(metadata.read_text(encoding="utf-8")))
 
+    def _matching_draft(
+        self, task_pattern: str, experience_ids: List[str]
+    ) -> Optional[SkillDraft]:
+        expected = sorted(experience_ids)
+        for payload in self.list_drafts():
+            if payload.get("status") == "rejected":
+                continue
+            if payload.get("task_pattern") != task_pattern:
+                continue
+            if sorted(payload.get("experience_ids", [])) == expected:
+                return SkillDraft(**payload)
+        return None
+
     def _save_metadata(self, draft: SkillDraft) -> None:
         metadata = Path(draft.path).parent / "metadata.json"
         metadata.write_text(
@@ -215,3 +269,38 @@ def _skill_name(task_pattern: str) -> str:
     base = "-".join(words[:6]) or "validated-workflow"
     name = f"handle-{base}"[:64].rstrip("-")
     return name if name else "handle-validated-workflow"
+
+
+def _unique_values(experiences: List[Experience], field_name: str) -> List[str]:
+    values = []
+    for experience in experiences:
+        for value in experience.strategy.get(field_name, []):
+            text = str(value).strip()
+            if text and text not in values:
+                values.append(text)
+    return values
+
+
+def _merged_steps(experiences: List[Experience]) -> tuple[List[Dict], List[str]]:
+    steps: List[Dict] = []
+    signatures = set()
+    variants: Dict[str, set[str]] = {}
+    for experience in experiences:
+        for step in experience.strategy.get("steps", []):
+            signature = ":".join((
+                str(step.get("action", "invoke")),
+                str(step.get("resource_type", "generic-resource")),
+                str(step.get("command_family", "")),
+            ))
+            if signature not in signatures:
+                signatures.add(signature)
+                steps.append(dict(step))
+            key = f"{step.get('action', 'invoke')}:{step.get('resource_type', 'generic-resource')}"
+            command = str(step.get("command_family", ""))
+            if command:
+                variants.setdefault(key, set()).add(command)
+    warnings = [
+        f"{key} has command alternatives: {', '.join(sorted(commands))}"
+        for key, commands in sorted(variants.items()) if len(commands) > 1
+    ]
+    return steps, warnings
