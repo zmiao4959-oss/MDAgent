@@ -39,6 +39,13 @@ def test_settings_dialog_and_controls_exist():
         "setting-task-concurrency",
         "setting-task-retries",
         "setting-task-notifications",
+        "evolution-status",
+        "evolution-candidate-count",
+        "evolution-verified-count",
+        "evolution-rejected-count",
+        "evolution-filter",
+        "evolution-experience-list",
+        "refresh-evolution-experiences",
     ):
         assert f'id="{element_id}"' in html
 
@@ -58,6 +65,12 @@ def test_settings_are_persisted_and_applied_by_frontend():
     assert "Notification.requestPermission()" in js
     assert "notifyCompletedProjects" in js
     assert "showTaskCompletionNotification" in js
+    assert 'fetch(`/api/evolution/experiences?' in js
+    assert 'fetch("/api/evolution/feedback"' in js
+    assert "submitEvolutionFeedback" in js
+    assert "refreshEvolutionExperiences" in js
+    assert "experience.usage_count" in js
+    assert "experience.task_pattern" in js
 
 
 def test_settings_css_has_light_theme_and_accessibility_states():
@@ -70,6 +83,9 @@ def test_settings_css_has_light_theme_and_accessibility_states():
     assert '.knowledge-status[data-state="running"]' in css
     assert '.diagnostic-grid' in css
     assert '.diagnostic-dot[data-state="unavailable"]' in css
+    assert ".evolution-card" in css
+    assert '.evolution-badge[data-status="verified"]' in css
+    assert ".evolution-actions" in css
 
 
 def test_gpumd_knowledge_snapshot_reports_incremental_index_state(tmp_path, monkeypatch):

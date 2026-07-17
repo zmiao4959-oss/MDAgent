@@ -252,6 +252,37 @@
         </div>
       </div>
 
+      <div class="settings-section settings-evolution">
+        <div class="settings-section-heading">
+          <div>
+            <h3>自我进化</h3>
+            <p>查看智能体提炼的经验。只有已验证经验会参与后续任务，你可以通过反馈晋升或回滚。</p>
+          </div>
+          <span id="evolution-status" class="knowledge-status">待读取</span>
+        </div>
+        <div class="evolution-metrics">
+          <div><span>候选</span><strong id="evolution-candidate-count">0</strong></div>
+          <div><span>已验证</span><strong id="evolution-verified-count">0</strong></div>
+          <div><span>已拒绝</span><strong id="evolution-rejected-count">0</strong></div>
+        </div>
+        <label class="settings-field" for="evolution-filter">
+          <span>显示状态</span>
+          <select id="evolution-filter">
+            <option value="">全部经验</option>
+            <option value="candidate">候选</option>
+            <option value="verified">已验证</option>
+            <option value="rejected">已拒绝</option>
+          </select>
+        </label>
+        <div id="evolution-experience-list" class="evolution-list" aria-live="polite">
+          <p class="knowledge-message">打开设置后自动读取经验。</p>
+        </div>
+        <p id="evolution-message" class="knowledge-message" role="status"></p>
+        <div class="knowledge-actions">
+          <button id="refresh-evolution-experiences" class="ghost-btn" type="button">刷新经验</button>
+        </div>
+      </div>
+
       <div class="settings-section settings-task-behavior">
         <div class="settings-section-heading">
           <div>

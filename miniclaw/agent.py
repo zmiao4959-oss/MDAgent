@@ -28,6 +28,8 @@ from .viz.auto import AutoVisualizer
 from .viz.snapshot import snapshot_workspace
 from .hooks import hook_system, HookContext
 from .stats import agent_stats, RunStats
+from .learning.trace import EvolutionTrace
+from .learning.service import EvolutionService
 
 logger = get_logger(__name__)
 
@@ -247,6 +249,41 @@ class Agent:
         logger.debug("Found %s memory matches", len(search_results))
         return "\n".join(lines).rstrip() + "\n\n"
 
+    def _experience_prefix(
+        self,
+        user_message: str,
+        trace: Optional[EvolutionTrace] = None,
+    ) -> str:
+        if not (
+            config.evolution.enabled
+            and config.evolution.inject_verified
+            and user_message
+        ):
+            return ""
+        try:
+            prefix, experience_ids = EvolutionService(active_workspace_dir()).prompt_context(
+                user_message, limit=config.evolution.max_injected
+            )
+            if trace is not None and experience_ids:
+                trace.metadata["applied_experience_ids"] = experience_ids
+            return prefix
+        except Exception:
+            logger.exception("Failed to retrieve verified agent experience")
+            return ""
+
+    @staticmethod
+    def _complete_evolution_trace(trace: EvolutionTrace) -> None:
+        if not config.evolution.enabled:
+            return
+        try:
+            EvolutionService(active_workspace_dir()).complete_trace(
+                trace,
+                learn=config.evolution.auto_observe,
+                evaluate_applied=config.evolution.auto_evaluate_applied,
+            )
+        except Exception:
+            logger.exception("Failed to persist self-evolution trace")
+
     async def _execute_one_tool(
         self, tc: Dict, context: AgentContext
     ) -> LLMMessage:
@@ -350,6 +387,15 @@ class Agent:
         }
         logger.info("Executing tool: %s(%s)", func_name, arguments)
         result = await tool_registry.execute(func_name, arguments, exec_context)
+
+        evolution_trace = context.metadata.get("_evolution_trace")
+        if isinstance(evolution_trace, EvolutionTrace):
+            evolution_trace.add_tool(func_name, arguments, result)
+        current_run = context.metadata.get("_run_stats")
+        if isinstance(current_run, RunStats):
+            current_run.tools_called.append(func_name)
+            if str(result).lstrip().lower().startswith(("error", "[error")):
+                current_run.tool_errors += 1
 
         # ── after_tool hook ──
         await hook_system.fire("after_tool",
@@ -547,6 +593,17 @@ class Agent:
         # A single Agent instance serves every WebChat project.  Keep this run
         # local so concurrent projects cannot overwrite each other's stats.
         current_run: RunStats = agent_stats.start_run(context.chat_id)
+        context.metadata["_run_stats"] = current_run
+        evolution_trace = EvolutionTrace(
+            chat_id=context.chat_id,
+            channel=context.channel,
+            objective=context.user_message,
+            metadata={
+                "project_id": context.metadata.get("project_id", ""),
+                "plan_mode": bool(context.metadata.get("plan_mode", False)),
+            },
+        )
+        context.metadata["_evolution_trace"] = evolution_trace
 
         # ── before_agent hook ──
         hook_ctx = await hook_system.fire("before_agent",
@@ -559,7 +616,10 @@ class Agent:
             return f"[Agent blocked: {hook_ctx.prevent_reason}]"
 
         if context.user_message:
-            prefix = self._memory_prefix(context.user_message)
+            prefix = (
+                self._experience_prefix(context.user_message, evolution_trace)
+                + self._memory_prefix(context.user_message)
+            )
             full_content = prefix + context.user_message if prefix else context.user_message
             session.add_message(LLMMessage(role="user", content=full_content))
 
@@ -700,7 +760,18 @@ class Agent:
             )
             # ── Record error stats ──
             current_run.error = err_msg
+            evolution_trace.finish(
+                success=False,
+                rounds=round_num if 'round_num' in dir() else 0,
+                prompt_tokens=all_usage["prompt_tokens"],
+                completion_tokens=all_usage["completion_tokens"],
+                error=err_msg,
+            )
+            current_run.success = False
+            current_run.quality_score = evolution_trace.score
+            current_run.tool_errors = len(evolution_trace.errors)
             agent_stats.end_run(current_run)
+            self._complete_evolution_trace(evolution_trace)
             # ── 错误时也要尽力保存 session ──
             await self.sessions.save(session)
             raise
@@ -737,7 +808,19 @@ class Agent:
         current_run.prompt_tokens = all_usage["prompt_tokens"]
         current_run.completion_tokens = all_usage["completion_tokens"]
         current_run.rounds = round_num if 'round_num' in dir() else 0
+        evolution_trace.finish(
+            success=bool((final_response or "").strip()),
+            final_response=final_response,
+            rounds=round_num if 'round_num' in dir() else 0,
+            prompt_tokens=all_usage["prompt_tokens"],
+            completion_tokens=all_usage["completion_tokens"],
+            hit_max_rounds=hit_max_rounds,
+        )
+        current_run.success = evolution_trace.success
+        current_run.quality_score = evolution_trace.score
+        current_run.hit_max_rounds = hit_max_rounds
         agent_stats.end_run(current_run)
+        self._complete_evolution_trace(evolution_trace)
 
         logger.info(
             "Agent run complete: %s messages, %s tokens",

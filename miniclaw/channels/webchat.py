@@ -585,6 +585,49 @@ class WebChatAdapter(BaseChannelAdapter):
             with workspace_scope(adapter._workspace_for_project(project) if project else None):
                 return list_workspace_files(work_dir)
 
+        @app.get("/api/evolution/experiences")
+        async def list_evolution_experiences(status: str = "", project_id: str = ""):
+            from ..learning.service import EvolutionService
+
+            project = adapter.projects.get(project_id) if project_id else None
+            if project_id and project is None:
+                raise HTTPException(status_code=404, detail="project not found")
+            workspace = adapter._workspace_for_project(project) if project else WORKSPACE_DIR
+            service = EvolutionService(workspace)
+            experiences = service.list_experiences(status or None)
+            all_experiences = service.list_experiences()
+            counts = {"candidate": 0, "verified": 0, "rejected": 0}
+            for item in all_experiences:
+                item_status = item.get("status", "candidate")
+                counts[item_status] = counts.get(item_status, 0) + 1
+            return {
+                "ok": True,
+                "experiences": experiences,
+                "counts": counts,
+            }
+
+        @app.post("/api/evolution/feedback")
+        async def evolution_feedback(request: Request):
+            from ..learning.service import EvolutionService
+
+            body = await request.json()
+            experience_id = str(body.get("experience_id", "")).strip()
+            project_id = str(body.get("project_id", "")).strip()
+            positive = body.get("positive")
+            if not experience_id or not isinstance(positive, bool):
+                raise HTTPException(
+                    status_code=400,
+                    detail="experience_id and boolean positive are required",
+                )
+            project = adapter.projects.get(project_id) if project_id else None
+            if project_id and project is None:
+                raise HTTPException(status_code=404, detail="project not found")
+            workspace = adapter._workspace_for_project(project) if project else WORKSPACE_DIR
+            experience = EvolutionService(workspace).feedback(experience_id, positive)
+            if experience is None:
+                raise HTTPException(status_code=404, detail="experience not found")
+            return {"ok": True, "experience": experience.__dict__}
+
         @app.get("/api/asset")
         async def get_asset(path: str, project_id: str = ""):
             project = adapter.projects.get(project_id) if project_id else None

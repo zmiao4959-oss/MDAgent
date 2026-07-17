@@ -167,6 +167,16 @@ class PlanningAgentConfig:
     temperature: float = 0.3            # 规划阶段温度（更低=更确定）
 
 
+@dataclass
+class EvolutionConfig:
+    """Controlled self-evolution settings."""
+    enabled: bool = True
+    auto_observe: bool = True
+    inject_verified: bool = True
+    max_injected: int = 3
+    auto_evaluate_applied: bool = True
+
+
 class Config:
     """全局单例配置"""
     _instance = None
@@ -214,6 +224,7 @@ class Config:
         planning_raw = agent_raw.get("planning", {})
         execution_raw = raw.get("execution", {})
         rag_raw = raw.get("rag", {})
+        evolution_raw = raw.get("evolution", {})
         self.agent = AgentConfig(
             max_tool_rounds=agent_raw.get("max_tool_rounds", 15),
             max_context_tokens=agent_raw.get("max_context_tokens", 80000),
@@ -242,6 +253,13 @@ class Config:
             dimension=rag_raw.get("dimension", 2048),
             batch_size=rag_raw.get("batch_size", 16),
             max_concurrency=rag_raw.get("max_concurrency", 4),
+        )
+        self.evolution = EvolutionConfig(
+            enabled=bool(evolution_raw.get("enabled", True)),
+            auto_observe=bool(evolution_raw.get("auto_observe", True)),
+            inject_verified=bool(evolution_raw.get("inject_verified", True)),
+            max_injected=max(0, min(10, int(evolution_raw.get("max_injected", 3)))),
+            auto_evaluate_applied=bool(evolution_raw.get("auto_evaluate_applied", True)),
         )
     """
     @classmethod 也是一个装饰器，它把方法变成类方法，与普通实例方法的区别在于：

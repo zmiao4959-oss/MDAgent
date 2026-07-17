@@ -69,6 +69,14 @@ import * as THREE from '/static/three.module.js';
   const settingTaskRetries = document.getElementById("setting-task-retries");
   const settingTaskNotifications = document.getElementById("setting-task-notifications");
   const taskBehaviorMessage = document.getElementById("task-behavior-message");
+  const evolutionStatus = document.getElementById("evolution-status");
+  const evolutionCandidateCount = document.getElementById("evolution-candidate-count");
+  const evolutionVerifiedCount = document.getElementById("evolution-verified-count");
+  const evolutionRejectedCount = document.getElementById("evolution-rejected-count");
+  const evolutionFilter = document.getElementById("evolution-filter");
+  const evolutionExperienceList = document.getElementById("evolution-experience-list");
+  const evolutionMessage = document.getElementById("evolution-message");
+  const refreshEvolutionButton = document.getElementById("refresh-evolution-experiences");
 
   let currentChatId = localStorage.getItem(CHAT_STORAGE_KEY) || "webchat:default";
   let currentProjectId = localStorage.getItem(PROJECT_STORAGE_KEY) || "";
@@ -167,6 +175,7 @@ import * as THREE from '/static/three.module.js';
     refreshGpumdKnowledgeStatus();
     refreshRuntimeDiagnostics();
     loadTaskBehaviorSettings();
+    refreshEvolutionExperiences();
   }
 
   function closeSettingsDialog() {
@@ -260,6 +269,103 @@ import * as THREE from '/static/three.module.js';
       taskBehaviorMessage.textContent = "";
     } catch (error) {
       taskBehaviorMessage.textContent = error.message || "无法读取任务设置";
+    }
+  }
+
+  function renderEvolutionExperiences(data) {
+    const counts = data.counts || {};
+    evolutionCandidateCount.textContent = Number(counts.candidate || 0).toLocaleString("zh-CN");
+    evolutionVerifiedCount.textContent = Number(counts.verified || 0).toLocaleString("zh-CN");
+    evolutionRejectedCount.textContent = Number(counts.rejected || 0).toLocaleString("zh-CN");
+    const experiences = data.experiences || [];
+    evolutionStatus.textContent = `${experiences.length} 条`;
+    evolutionStatus.dataset.state = "ready";
+    evolutionExperienceList.innerHTML = "";
+    if (!experiences.length) {
+      const empty = document.createElement("p");
+      empty.className = "knowledge-message";
+      empty.textContent = "当前筛选条件下还没有经验。";
+      evolutionExperienceList.appendChild(empty);
+      return;
+    }
+    const statusLabels = { candidate: "候选", verified: "已验证", rejected: "已拒绝" };
+    experiences.forEach((experience) => {
+      const card = document.createElement("article");
+      card.className = "evolution-card";
+      card.dataset.status = experience.status || "candidate";
+
+      const heading = document.createElement("div");
+      heading.className = "evolution-card-heading";
+      const situation = document.createElement("strong");
+      situation.textContent = experience.situation || "未命名经验";
+      const badge = document.createElement("span");
+      badge.className = "evolution-badge";
+      badge.dataset.status = experience.status || "candidate";
+      badge.textContent = statusLabels[experience.status] || experience.status;
+      heading.append(situation, badge);
+
+      const lesson = document.createElement("p");
+      lesson.textContent = experience.lesson || "";
+      if (experience.task_pattern) lesson.title = `任务模式：${experience.task_pattern}`;
+      const evidence = document.createElement("small");
+      evidence.textContent = `使用 ${experience.usage_count || 0} 次 · 正向 ${experience.positive_evidence || 0} · 负向 ${experience.negative_evidence || 0} · 置信度 ${Math.round(Number(experience.confidence || 0) * 100)}%`;
+
+      const actions = document.createElement("div");
+      actions.className = "evolution-actions";
+      const approve = document.createElement("button");
+      approve.type = "button";
+      approve.className = "ghost-btn";
+      approve.textContent = "有效";
+      approve.addEventListener("click", () => submitEvolutionFeedback(experience.experience_id, true));
+      const reject = document.createElement("button");
+      reject.type = "button";
+      reject.className = "ghost-btn danger-btn";
+      reject.textContent = "无效 / 回滚";
+      reject.addEventListener("click", () => submitEvolutionFeedback(experience.experience_id, false));
+      actions.append(approve, reject);
+      card.append(heading, lesson, evidence, actions);
+      evolutionExperienceList.appendChild(card);
+    });
+  }
+
+  async function refreshEvolutionExperiences() {
+    if (!settingsDialog || settingsDialog.hidden) return;
+    evolutionStatus.textContent = "读取中";
+    evolutionStatus.dataset.state = "running";
+    evolutionMessage.textContent = "";
+    const params = new URLSearchParams();
+    if (currentProjectId) params.set("project_id", currentProjectId);
+    if (evolutionFilter.value) params.set("status", evolutionFilter.value);
+    try {
+      const response = await fetch(`/api/evolution/experiences?${params.toString()}`);
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.detail || "无法读取进化经验");
+      renderEvolutionExperiences(data);
+    } catch (error) {
+      evolutionStatus.textContent = "读取失败";
+      evolutionStatus.dataset.state = "error";
+      evolutionMessage.textContent = error.message || "无法读取进化经验";
+    }
+  }
+
+  async function submitEvolutionFeedback(experienceId, positive) {
+    evolutionMessage.textContent = positive ? "正在记录正向反馈…" : "正在执行降权或回滚…";
+    try {
+      const response = await fetch("/api/evolution/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          experience_id: experienceId,
+          positive,
+          project_id: currentProjectId || "",
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.detail || "反馈保存失败");
+      evolutionMessage.textContent = positive ? "正向证据已记录。" : "负向证据已记录，必要时经验会自动回滚。";
+      await refreshEvolutionExperiences();
+    } catch (error) {
+      evolutionMessage.textContent = error.message || "反馈保存失败";
     }
   }
 
@@ -2154,6 +2260,8 @@ import * as THREE from '/static/three.module.js';
   gpumdUpdateIndex?.addEventListener("click", () => runGpumdKnowledgeAction("index"));
   refreshRuntimeDiagnosticsButton?.addEventListener("click", refreshRuntimeDiagnostics);
   exportRuntimeDiagnosticsButton?.addEventListener("click", exportRuntimeDiagnostics);
+  refreshEvolutionButton?.addEventListener("click", refreshEvolutionExperiences);
+  evolutionFilter?.addEventListener("change", refreshEvolutionExperiences);
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && settingsDialog && !settingsDialog.hidden) {
       closeSettingsDialog();

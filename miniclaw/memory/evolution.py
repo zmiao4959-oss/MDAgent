@@ -31,6 +31,7 @@ class MemoryEntry:
         "contradicts",  # 与此冲突的记忆 ID 列表
         "source",       # "session" | "daily" | "permanent"
         "key",          # 归一化后的关键词签名
+        "last_decay_at",
     )
 
     def __init__(
@@ -49,6 +50,7 @@ class MemoryEntry:
         self.contradicts: List[str] = []
         self.source = source
         self.key = self._compute_key(text)
+        self.last_decay_at = self.timestamp
 
     @staticmethod
     def _compute_key(text: str) -> str:
@@ -140,7 +142,10 @@ class EvolutionaryMemory:
                 scored.append((score, entry))
 
         scored.sort(key=lambda x: -x[0])
-        return [e for _, e in scored[:max_results]]
+        recalled = [e for _, e in scored[:max_results]]
+        for entry in recalled:
+            entry.references += 1
+        return recalled
 
     def consolidate(self) -> int:
         """分层整合：session → daily → permanent。返回升级的条目数。"""
@@ -199,11 +204,12 @@ class EvolutionaryMemory:
         for e in self._entries:
             if e.source == "permanent":
                 continue
-            days = (now - e.timestamp) / 86400.0
+            days = max(0.0, (now - e.last_decay_at) / 86400.0)
             e.weight = max(
                 self.MIN_WEIGHT,
                 e.weight * math.exp(-math.log(2) * days / self.HALF_LIFE_DAYS),
             )
+            e.last_decay_at = now
 
     def _find_similar(self, entry: MemoryEntry) -> List[int]:
         """找到与给定记忆相似（可能冲突）的已有记忆索引。"""

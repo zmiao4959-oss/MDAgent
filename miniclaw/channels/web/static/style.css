@@ -1064,6 +1064,22 @@ html, body {
 .diagnostic-dot[data-state="unavailable"] { background: #ff8b91; box-shadow: 0 0 8px rgba(255,139,145,.3); }
 .diagnostic-item strong { overflow: hidden; color: #d8e4f8; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .diagnostic-item small { grid-column: 2; overflow: hidden; color: #71819a; font-size: 9px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.evolution-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.evolution-metrics > div { padding: 9px; border-radius: 9px; background: rgba(130,158,204,.07); text-align: center; }
+.evolution-metrics span { display: block; color: #71819a; font-size: 9px; }
+.evolution-metrics strong { display: block; margin-top: 3px; color: #d8e4f8; font-size: 14px; }
+.evolution-list { display: grid; gap: 8px; max-height: 280px; overflow-y: auto; }
+.evolution-card { display: grid; gap: 6px; padding: 10px; border: 1px solid rgba(151,177,220,.13); border-radius: 9px; background: rgba(130,158,204,.06); }
+.evolution-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.evolution-card-heading strong { color: #d8e4f8; font-size: 11px; line-height: 1.4; }
+.evolution-card p { margin: 0; color: #aebdd2; font-size: 10px; line-height: 1.5; }
+.evolution-card small { color: #71819a; font-size: 9px; }
+.evolution-badge { flex: 0 0 auto; padding: 2px 6px; border-radius: 999px; color: #f0c66c; background: rgba(142,101,24,.12); font-size: 9px; }
+.evolution-badge[data-status="verified"] { color: #71ddb0; background: rgba(35,139,99,.12); }
+.evolution-badge[data-status="rejected"] { color: #ff8b91; background: rgba(146,48,57,.12); }
+.evolution-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.evolution-actions button { padding: 4px 8px; font-size: 9px; }
+.danger-btn { color: #ff9ca1; border-color: rgba(255,139,145,.22); }
 
 .quick-actions[hidden] { display: none; }
 html[data-message-size="small"] .messages { font-size: 13px; }
@@ -1113,6 +1129,8 @@ html[data-theme="light"] .settings-section { background: rgba(238,243,248,.7); }
 html[data-theme="light"] .settings-section h3,
 html[data-theme="light"] .knowledge-metrics strong,
 html[data-theme="light"] .diagnostic-item strong,
+html[data-theme="light"] .evolution-card-heading strong,
+html[data-theme="light"] .evolution-metrics strong,
 html[data-theme="light"] .settings-field > span,
 html[data-theme="light"] .settings-switch strong,
 html[data-theme="light"] .project-dialog-card label { color: #293a51; }
@@ -1127,6 +1145,7 @@ html[data-theme="light"] .icon-btn { color: #475a73; background: rgba(255,255,25
   .knowledge-model { grid-column: 1 / -1; }
   .knowledge-actions { align-items: stretch; flex-direction: column; }
   .diagnostic-grid { grid-template-columns: 1fr; }
+  .evolution-actions { align-items: stretch; flex-direction: column; }
 }
 
 /* ── Project artifact centre ───────────────────────────────────────── */

@@ -30,6 +30,10 @@ class RunStats:
     completion_tokens: int = 0
     tools_called: List[str] = field(default_factory=list)
     error: Optional[str] = None
+    success: Optional[bool] = None
+    quality_score: float = 0.0
+    tool_errors: int = 0
+    hit_max_rounds: bool = False
 
     @property
     def duration_ms(self) -> float:
@@ -98,6 +102,15 @@ class AgentStatsTracker:
                 "avg_duration_ms": round(avg_duration_ms, 1),
                 "recent_run_count": len(self.recent_runs),
                 "top_tools": [{"name": n, "count": c} for n, c in top_tools],
+                "success_rate": round(
+                    sum(1 for r in self.recent_runs if r.success)
+                    / max(1, sum(1 for r in self.recent_runs if r.success is not None)),
+                    3,
+                ),
+                "avg_quality_score": round(
+                    sum(r.quality_score for r in self.recent_runs) / max(1, len(self.recent_runs)),
+                    3,
+                ),
             }
 
     def reset(self):
