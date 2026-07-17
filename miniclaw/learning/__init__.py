@@ -11,6 +11,7 @@ from .governance import GovernanceManager
 from .skill_evolution import SkillDraft, SkillSynthesizer
 from .strategy import SemanticStep, StructuredStrategy, build_strategy, render_strategy
 from .executable_policy import ExecutablePolicyDraft, ExecutablePolicyManager
+from .source_proposal import RepeatedFailureDetector, SourceProposal, SourceProposalStore
 
 __all__ = [
     "EvolutionTrace", "ToolTrace", "TraceStore",
@@ -24,4 +25,5 @@ __all__ = [
     "SkillDraft", "SkillSynthesizer",
     "SemanticStep", "StructuredStrategy", "build_strategy", "render_strategy",
     "ExecutablePolicyDraft", "ExecutablePolicyManager",
+    "RepeatedFailureDetector", "SourceProposal", "SourceProposalStore",
 ]
