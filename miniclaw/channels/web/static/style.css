@@ -1193,6 +1193,23 @@ html[data-theme="light"] .icon-btn { color: #475a73; background: rgba(255,255,25
   font: 11px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
   white-space: pre-wrap;
 }
+.capsule-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; padding: 10px; border: 1px solid rgba(151,177,220,.13); border-radius: 9px; background: rgba(7,12,22,.34); }
+.capsule-toolbar > div { display: grid; gap: 3px; min-width: 0; }
+.capsule-toolbar strong { color: #cbd9eb; font-size: 12px; }
+.capsule-toolbar span { color: #7d8ea7; font-size: 10px; }
+.capsule-toolbar .primary-btn, .capsule-actions .primary-btn { padding: 7px 10px; white-space: nowrap; }
+.capsule-list { display: grid; gap: 8px; max-height: 430px; overflow-y: auto; }
+.capsule-card { display: grid; gap: 8px; padding: 10px; border: 1px solid rgba(151,177,220,.14); border-radius: 10px; background: rgba(255,255,255,.018); }
+.capsule-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.capsule-card-head > div { display: grid; gap: 3px; min-width: 0; }
+.capsule-card-head strong { overflow: hidden; color: #c7d7ec; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.capsule-card-head span { color: #71819a; font-size: 10px; }
+.capsule-card code { overflow: hidden; color: #70819a; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.capsule-badge { flex: 0 0 auto; padding: 3px 7px; border: 1px solid rgba(148,163,184,.25); border-radius: 999px; font-size: 9px !important; }
+.capsule-verified { color: #86efac !important; border-color: rgba(134,239,172,.35); background: rgba(134,239,172,.08); }
+.capsule-changed, .capsule-missing { color: #fcd34d !important; border-color: rgba(252,211,77,.35); background: rgba(252,211,77,.08); }
+.capsule-unreadable { color: #fca5a5 !important; border-color: rgba(252,165,165,.35); background: rgba(252,165,165,.08); }
+.capsule-actions { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
 .run-timeline { display: grid; gap: 8px; max-height: 420px; overflow-y: auto; }
 .timeline-event { display: grid; grid-template-columns: 72px 1fr; gap: 9px; padding: 9px 10px; border-left: 2px solid #6680a5; border-radius: 0 8px 8px 0; background: rgba(255,255,255,.018); color: #becce0; font-size: 12px; }
 .timeline-event time { color: #71819a; font: 10px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; }

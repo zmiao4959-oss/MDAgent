@@ -1,5 +1,6 @@
 import * as THREE from '/static/three.module.js';
 import { createEvolutionPanel } from '/static/evolution.js';
+import { createResearchCapsulePanel } from '/static/capsules.js';
 
   const CHAT_STORAGE_KEY = "miniclaw_webchat_chat_id";
   const PROJECT_STORAGE_KEY = "miniclaw_webchat_project_id";
@@ -832,6 +833,13 @@ import { createEvolutionPanel } from '/static/evolution.js';
       artifactSummary.textContent = "暂时无法读取项目产物。";
     }
   }
+
+  const capsulePanel = createResearchCapsulePanel({
+    getProjectId: () => currentProjectId,
+    formatFileSize,
+    updateBadge,
+    refreshTimeline,
+  });
 
   async function refreshTimeline() {
     if (!currentProjectId || !runTimeline) return;
@@ -1748,6 +1756,7 @@ import { createEvolutionPanel } from '/static/evolution.js';
     await loadHistory();
     await refreshFileList();
     await refreshArtifacts();
+    await capsulePanel.refresh();
     await refreshTimeline();
     await refreshPlan();
     inp.focus();
@@ -1953,6 +1962,7 @@ import { createEvolutionPanel } from '/static/evolution.js';
     updateCurrentChatLabel();
     setActiveInSidebar();
     await refreshArtifacts();
+    await capsulePanel.refresh();
     await refreshTimeline();
     await refreshPlan();
   }
@@ -1992,6 +2002,7 @@ import { createEvolutionPanel } from '/static/evolution.js';
           await loadHistory();
           await refreshPlan();
           await refreshArtifacts();
+          await capsulePanel.refresh();
           updateCurrentChatLabel();
         }
       }

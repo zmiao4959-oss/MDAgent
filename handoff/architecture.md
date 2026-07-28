@@ -11,6 +11,7 @@ main.py
 ├── Agent               → agent.py          核心循环（LLM + 工具执行）
 ├── SkillLoader         → skills/loader.py  技能发现与渐进加载
 ├── GPUMD RAG           → rag/ + rag_tool.py 官方知识库与向量检索
+├── ResearchCapsule     → research_capsule.py 科研证据、文件哈希与复现清单
 ├── GatewayServer       → gateway/server.py  WebSocket 协议
 ├── WebChatAdapter      → channels/webchat.py FastAPI + SSE
 ├── TelegramAdapter     → channels/telegram.py
@@ -18,6 +19,36 @@ main.py
 ├── CronScheduler       → cron_scheduler.py Cron 任务
 └── SubAgentManager     → subagent.py       子 Agent
 ```
+
+## 科研胶囊数据流
+
+```text
+项目元数据 + Session 统计 + 最近 EvolutionTrace + 项目工作区
+    └─► research_capsule.py
+          ├─ 排除运行状态、凭据文件、符号链接和路径逃逸
+          ├─ 对普通文件流式计算 SHA-256
+          ├─ 记录环境、MiniClaw Git 状态和脱敏工具轨迹
+          └─► <project>/.miniclaw/research-capsules/capsule_<id>/
+                  ├─ capsule.json
+                  ├─ README.md
+                  ├─ verification.json
+                  └─ exports/*.zip
+```
+
+HTTP 入口位于 `channels/web/capsule_routes.py`。捕获、核验和导出在线程中执行，避免文件散列阻塞 FastAPI 事件循环；正在运行或仍使用全局共享工作区的项目会被拒绝。实际文件导出先复核清单，再对 UTF-8 文本二次脱敏，并用 `export.json` 记录派生文件哈希。阶段 26 将在此模型上增加隔离重放。
+
+## MDSynth 编译器桥接
+
+```text
+用户 MD 目标
+  └─► 内置 Skill: lammps-script-gen
+        └─► Tool: generate_lammps_script（高风险、需审批）
+              └─► 最小环境的 Python 子进程
+                    └─► 外部 MDSynth: Intent → IR → Validator → Compiler
+                          └─► 当前项目/generated/... 证据包
+```
+
+桥接位于 `tools/lammps_script_tool.py`，子进程入口位于 `integrations/mdsynth_runner.py`。MDSynth 源码不复制进 MiniClaw；默认读取用户指定的独立仓库，也可通过 `MDSYNTH_PROJECT_DIR` 切换。模板外直接生成和 LAMMPS 预检默认关闭，并需要精确确认。
 
 ## GPUMD RAG 数据流
 

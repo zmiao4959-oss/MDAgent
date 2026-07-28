@@ -32,8 +32,9 @@ def workspace_root() -> Path:
 
 def skill_roots() -> tuple[Path, ...]:
     roots = (
-        (WORKSPACE_DIR / "skills").resolve(),
+        (Path(__file__).resolve().parent.parent / "builtin_skills").resolve(),
         (WORKSPACE_DIR.parent / "skills").resolve(),
+        (WORKSPACE_DIR / "skills").resolve(),
     )
     deduped = []
     seen = set()

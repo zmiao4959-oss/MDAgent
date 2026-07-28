@@ -459,6 +459,11 @@ class Agent:
             data={"message_count": len(messages), "tool_count": len(tools) if tools else 0},
         )
 
+
+        # print("messages:\n\n", messages)
+        # print("tools:\n\n", tools)
+
+
         if stream and on_stream_chunk:
             full_content = ""
             # 流式工具调用累积 (类似 openai_compat.py 的实现)

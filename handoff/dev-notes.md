@@ -1,6 +1,8 @@
 # 开发备忘
 
-> 自我进化阶段 1–23 的开发与验收说明见 [`evolution.md`](evolution.md)。当前回归基线为 146 项测试通过，阶段 1–23 验收脚本全部通过。修改自进化门禁、治理逻辑或执行工具时应视为高风险变更，必须补测试并保留 Git 可回滚节点。
+> 自我进化阶段 1–23 的开发与验收说明见 [`evolution.md`](evolution.md)，科研胶囊阶段 24–25 见 [`research-capsules.md`](research-capsules.md)。当前回归基线为 159 项测试通过，阶段 1–25 与 MDSynth 集成验收全部通过。修改自进化门禁、治理逻辑、胶囊导出或执行工具时应视为高风险变更，必须补测试并保留 Git 可回滚节点。
+
+MDSynth/LAMMPS 编译器接入见 [`lammps-script-generation.md`](lammps-script-generation.md)。外部 MDSynth 仓库是独立源码真源，接入层不得静默修改或清理其工作树；高级模式必须保留精确确认和子进程隔离。
 
 ## 调试
 
@@ -80,6 +82,18 @@ python -m miniclaw.rag.cli build --full
 - 语料文件：`~/.miniclaw/workspace/skills/gpumd-script/references/corpus.jsonl`
 - 修改后运行 Skill 校验，并重启长期运行的 MiniClaw 进程以刷新工具和技能缓存。
 - 不要手工维护大批官方正文；优先修改 `rag/sync_gpumd.py` 后重新同步。
+
+## 代码知识图谱
+
+当前环境的 `codebase-memory-mcp 0.8.1` 在包含中文字符的仓库路径下只能建立文件层级，无法提取 Python 符号和调用关系。已建立一个指向本仓库的 ASCII 目录联接作为稳定索引入口：
+
+```text
+C:/Users/35059/.cache/codebase-memory-mcp/repo-links/openclaw-study
+```
+
+图谱工具应使用项目 `C-Users-35059-.cache-codebase-memory-mcp-repo-links-openclaw-study`。刷新时对上述 ASCII 路径调用 `index_repository`，使用 `mode="full"` 和 `persistence=true`；不要对中文原路径生成的旧文件级项目做结构查询。
+
+2026-07-17 的修复验证结果为 4,901 个节点、20,194 条关系，其中包含 1,004 个函数、2,123 个方法和 6,623 条调用边。持久化快照位于仓库的 `.codebase-memory/graph.db.zst`，该目录当前被 Git 忽略。
 
 ## Workspace 安全模型
 

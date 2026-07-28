@@ -107,6 +107,7 @@
           <button class="tab" data-tab="plan">计划</button>
           <button class="tab" data-tab="run">运行</button>
           <button class="tab" data-tab="artifacts">产物 <span id="artifact-count" class="tab-badge">0</span></button>
+          <button class="tab" data-tab="capsules">胶囊 <span id="capsule-count" class="tab-badge">0</span></button>
           <button class="tab active" data-tab="media">媒体 <span id="media-count" class="tab-badge">0</span></button>
           <button class="tab" data-tab="structure">结构 3D <span id="structure-count" class="tab-badge">0</span></button>
         </div>
@@ -123,6 +124,16 @@
           <div id="artifact-summary" class="artifact-summary">选择一个项目以查看运行摘要。</div>
           <div id="artifact-list" class="artifact-list"><p class="placeholder">项目生成的文件会显示在这里。</p></div>
           <pre id="artifact-preview" class="artifact-preview" hidden></pre>
+        </div>
+        <div id="tab-capsules" class="tab-pane">
+          <div class="capsule-toolbar">
+            <div>
+              <strong>科研胶囊</strong>
+              <span id="capsule-status">把当前项目封装成可核验的研究证据。</span>
+            </div>
+            <button id="create-capsule" class="primary-btn" type="button">生成胶囊</button>
+          </div>
+          <div id="capsule-list" class="capsule-list"><p class="placeholder">还没有科研胶囊。</p></div>
         </div>
         <div id="tab-media" class="tab-pane active">
           <div id="media-gallery" class="media-gallery">

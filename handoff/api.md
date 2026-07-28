@@ -2,7 +2,7 @@
 
 > `/api/evolution/*` 已包含经验反馈、评估、反思、治理、Skill、可执行策略和源代码候选管理接口。完整端点与启用条件见 [`evolution.md`](evolution.md#web-管理-api)。源代码进化默认返回 403，必须显式启用并配置 Git 仓库。
 
-聊天、项目和文件端点主要定义在 `miniclaw/channels/webchat.py`；`/api/evolution/*` 端点集中定义在 `miniclaw/channels/web/evolution_routes.py`，由 WebChat 启动时注册。
+聊天、项目和文件端点主要定义在 `miniclaw/channels/webchat.py`；`/api/evolution/*` 端点集中定义在 `miniclaw/channels/web/evolution_routes.py`，科研胶囊端点定义在 `miniclaw/channels/web/capsule_routes.py`，均由 WebChat 启动时注册。
 
 ## 对话
 
@@ -65,6 +65,13 @@ data: {"done": true, "full": "完整响应文本"}
 | `GET` | `/api/projects/{id}/artifacts` | 项目产物（文件列表） |
 | `GET` | `/api/projects/{id}/summary` | 项目摘要 + 最新产物 |
 | `GET` | `/api/projects/{id}/timeline` | 项目运行时间线 |
+| `POST` | `/api/projects/{id}/capsules` | 捕获项目科研胶囊；项目必须停止且工作区隔离 |
+| `GET` | `/api/projects/{id}/capsules` | 获取胶囊摘要列表 |
+| `GET` | `/api/projects/{id}/capsules/{capsule_id}` | 获取胶囊完整清单 |
+| `POST` | `/api/projects/{id}/capsules/{capsule_id}/verify` | 逐文件核验，返回并保存完整性报告 |
+| `POST` | `/api/projects/{id}/capsules/{capsule_id}/export` | 导出 ZIP；实际文件模式要求精确确认 |
+
+科研胶囊只写入项目工作区的 `.miniclaw/research-capsules/`。导出请求为 `{confirmation, include_files}`；实际文件模式要求 `EXPORT <capsule_id>`，仅清单模式不复制项目文件。完整格式和安全边界见 [`research-capsules.md`](research-capsules.md)。
 
 ## 文件
 

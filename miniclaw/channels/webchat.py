@@ -588,8 +588,10 @@ class WebChatAdapter(BaseChannelAdapter):
                 return list_workspace_files(work_dir)
 
         from .web.evolution_routes import register_evolution_routes
+        from .web.capsule_routes import register_capsule_routes
 
         register_evolution_routes(app, self)
+        register_capsule_routes(app, self)
 
         @app.get("/api/asset")
         async def get_asset(path: str, project_id: str = ""):

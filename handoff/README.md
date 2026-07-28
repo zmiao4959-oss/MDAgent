@@ -1,6 +1,6 @@
 # MiniClaw 项目交接
 
-> 自我进化系统已经完成阶段 1–23。完整架构、数据位置、配置、API、验收和源代码进化流程见 [`evolution.md`](evolution.md)。当前测试基线为 146 项通过；自动源码补丁默认关闭，必须显式配置源码 Git 仓库并启用开关。
+> 自我进化系统已经完成阶段 1–23，科研胶囊阶段 24–25 已完成，并已接入 MDSynth LAMMPS 编译器。完整架构、数据位置、配置、API、验收和源代码进化流程见 [`evolution.md`](evolution.md)、[`research-capsules.md`](research-capsules.md) 与 [`lammps-script-generation.md`](lammps-script-generation.md)。当前测试基线为 159 项通过；自动源码补丁默认关闭，必须显式配置源码 Git 仓库并启用开关。
 
 AI Agent 工作台 — 多轮工具调用 Agent，面向科学计算（LAMMPS/GPUMD 分子动力学、OVITO 可视化、领域知识检索），多渠道接入（WebChat / Telegram / WebSocket）。
 
@@ -9,7 +9,7 @@ AI Agent 工作台 — 多轮工具调用 Agent，面向科学计算（LAMMPS/GP
 | 项目 | 说明 |
 |------|------|
 | 语言 | Python 3.11+ (FastAPI + asyncio) / 原生 JS (无框架) |
-| 入口 | `python main.py` |
+| 入口 | 在仓库根目录运行 `python main.py` |
 | WebChat | `http://127.0.0.1:8000` |
 | Gateway | `ws://127.0.0.1:8765` |
 | 配置 | `miniclaw/config.yaml` |
@@ -29,61 +29,66 @@ AI Agent 工作台 — 多轮工具调用 Agent，面向科学计算（LAMMPS/GP
 | [`frontend.md`](frontend.md) | 修改 app.js、evolution.js，前端状态与 localStorage |
 | [`api.md`](api.md) | 查阅 API 端点定义 |
 | [`bugs.md`](bugs.md) | 理解近期修过的 Bug 和改动的上下文 |
+| [`research-capsules.md`](research-capsules.md) | 修改科研胶囊、文件清单、验证或重放能力 |
+| [`lammps-script-generation.md`](lammps-script-generation.md) | 修改 MDSynth 桥接、LAMMPS 编译 Tool 或内置 Skill |
 
 ## 启动
 
 ```bash
-cd miniclaw
-pip install -r requirements.txt
+# 先进入包含 main.py 和 requirements.txt 的仓库根目录
+cd openclaw-study
+python -m pip install -r requirements.txt
 python main.py
 ```
 
 ## 目录结构（仅关键文件）
 
 ```
-miniclaw/
+openclaw-study/
 ├── main.py                    # 启动入口
-├── config.yaml                # 全局配置
-├── agent.py                   # Agent 核心引擎
-├── hooks.py                   # 生命周期 Hook
-├── planning.py                # 计划模式
-├── projects.py                # 多项目管理
-├── stats.py                   # 运行统计
-├── llm/
-│   ├── base.py                # 数据结构
-│   ├── router.py              # Provider 路由
-│   └── openai_compat.py       # OpenAI 兼容 + SSE
-├── channels/
-│   ├── webchat.py             # WebChat FastAPI
-│   ├── telegram.py
-│   └── web/
-│       ├── files.py           # 文件浏览 API
-│       ├── evolution_routes.py # 进化管理 API
-│       └── static/
-│           ├── index.html
-│           ├── app.js         # 对话、项目和可视化主逻辑
-│           ├── evolution.js   # 经验与反思管理面板
-│           └── style.css
-├── tools/
-│   ├── registry.py
-│   ├── rag_tool.py            # GPUMD 文档检索工具
-│   └── paths.py               # 工作区路径安全解析
-├── rag/
-│   ├── embedding.py           # OpenAI/火山多模态 embedding 客户端
-│   ├── store.py               # JSON 向量索引、检索、增量构建
-│   ├── cli.py                 # 向量索引构建命令
-│   └── sync_gpumd.py          # 官方手册与 Tutorials 同步器
-├── skills/
-│   └── loader.py              # 标准 YAML + 旧 XML Skill 加载
-├── memory/
-│   ├── session.py
-│   └── session_store.py
-├── viz/
-│   ├── auto.py                # 自动可视化调度
-│   ├── ovito_render.py        # OVITO 子进程渲染
-│   ├── snapshot.py            # 文件快照 + diff
-│   └── constants.py
-└── gateway/server.py          # WebSocket Gateway
+├── requirements.txt           # 项目依赖
+└── miniclaw/
+    ├── config.yaml            # 全局配置
+    ├── agent.py               # Agent 核心引擎
+    ├── hooks.py               # 生命周期 Hook
+    ├── planning.py            # 计划模式
+    ├── projects.py            # 多项目管理
+    ├── stats.py               # 运行统计
+    ├── llm/
+    │   ├── base.py            # 数据结构
+    │   ├── router.py          # Provider 路由
+    │   └── openai_compat.py   # OpenAI 兼容 + SSE
+    ├── channels/
+    │   ├── webchat.py         # WebChat FastAPI
+    │   ├── telegram.py
+    │   └── web/
+    │       ├── files.py       # 文件浏览 API
+    │       ├── evolution_routes.py # 进化管理 API
+    │       └── static/
+    │           ├── index.html
+    │           ├── app.js     # 对话、项目和可视化主逻辑
+    │           ├── evolution.js # 经验与反思管理面板
+    │           └── style.css
+    ├── tools/
+    │   ├── registry.py
+    │   ├── rag_tool.py        # GPUMD 文档检索工具
+    │   └── paths.py           # 工作区路径安全解析
+    ├── rag/
+    │   ├── embedding.py       # OpenAI/火山多模态 embedding 客户端
+    │   ├── store.py           # JSON 向量索引、检索、增量构建
+    │   ├── cli.py             # 向量索引构建命令
+    │   └── sync_gpumd.py      # 官方手册与 Tutorials 同步器
+    ├── skills/
+    │   └── loader.py          # 标准 YAML + 旧 XML Skill 加载
+    ├── memory/
+    │   ├── session.py
+    │   └── session_store.py
+    ├── viz/
+    │   ├── auto.py            # 自动可视化调度
+    │   ├── ovito_render.py    # OVITO 子进程渲染
+    │   ├── snapshot.py        # 文件快照 + diff
+    │   └── constants.py
+    └── gateway/server.py      # WebSocket Gateway
 ```
 
 ## GPUMD RAG 速查

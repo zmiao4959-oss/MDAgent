@@ -4,10 +4,10 @@
 
 ## 当前状态
 
-- 阶段 1–23 已实现并通过验收。
-- 全量测试基线：`146 passed`。
-- `scripts/acceptance_stage1.py` 至 `scripts/acceptance_stage23.py` 全部通过。
-- 前端 `app.js`、`evolution.js` 语法检查与 `git diff --check` 通过。
+- 阶段 1–23 与科研胶囊阶段 24–25 已实现并通过验收。
+- 全量测试基线：`159 passed`（包含科研胶囊阶段 24–25 和 MDSynth 桥接测试）。
+- `scripts/acceptance_stage1.py` 至 `scripts/acceptance_stage25.py` 全部通过。
+- 前端 `app.js`、`evolution.js`、`capsules.js` 语法检查与 `git diff --check` 通过。
 - 关键 Git 节点：`fab9fbb`（阶段 1–6）、`e9dfeb4`（阶段 7–14）、`9dd65a9`（阶段 15）、`bef8bcb`（阶段 16）、`58686e3`（阶段 17）、`041530e`（阶段 18）、`8cc1087`（阶段 19）、`f321250`（阶段 20）。
 - 源代码进化计划：`docs/SOURCE_EVOLUTION_SINGLE_CANDIDATE_PLAN.md`，计划提交为 `be8e326`。
 - 平台化加固任务书：`docs/EVOLUTION_PLATFORM_HARDENING_PLAN.md`；阶段 21–23 提交为 `3025d77`、`37595ab`、`d9c53f4`。

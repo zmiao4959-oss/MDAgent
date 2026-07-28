@@ -1,12 +1,13 @@
 # 前端代码地图
 
-**文件**: `miniclaw/channels/web/static/app.js`（主模块）和 `evolution.js`（经验/反思面板），均为 ES Module。
+**文件**: `miniclaw/channels/web/static/app.js`（主模块）、`evolution.js`（经验/反思面板）和 `capsules.js`（科研胶囊面板），均为 ES Module。
 
 ## 架构
 
 ```
 import * as THREE from '/static/three.module.js';  // 行1
 import { createEvolutionPanel } from '/static/evolution.js';
+import { createResearchCapsulePanel } from '/static/capsules.js';
 
 // 全局状态 (~60 行)
 // marked.js 配置 (~20 行)
@@ -16,6 +17,7 @@ import { createEvolutionPanel } from '/static/evolution.js';
 // 对话: loadHistory, send, parseSseBuffer
 // 项目: refreshPlan, refreshArtifacts, refreshTimeline
 // 进化面板: evolution.js，通过 getProjectId 依赖注入获取当前项目
+// 科研胶囊: capsules.js，通过依赖注入刷新项目、时间线和文件大小显示
 // 事件绑定 + init()
 ```
 
