@@ -19,7 +19,7 @@ import time
 from pathlib import Path
 from typing import Callable, Optional, Tuple
 
-from ..config import active_workspace_dir, config
+from ..settings import active_workspace_dir, config
 from ..logger import get_logger
 from .registry import tool_registry
 

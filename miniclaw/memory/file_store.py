@@ -3,7 +3,7 @@ memory/file_store.py — 读写工作区文本文件
 """
 from pathlib import Path
 from typing import List
-from ..config import WORKSPACE_DIR, MEMORY_FILE
+from ..settings import WORKSPACE_DIR, MEMORY_FILE
 
 logger = get_logger(__name__)
 

@@ -1,3 +1,7 @@
+paths:
+  home: ~/.miniclaw
+  workspace: ~/.miniclaw/workspace
+
 llm:
   provider: deepseek
   model: deepseek-chat
@@ -15,6 +19,18 @@ llm:
 gateway:
   host: 127.0.0.1
   port: 18789
+
+webchat:
+  host: 127.0.0.1
+  port: 8000
+
+multi_agent:
+  default_profile: coordinator
+  max_concurrency: 4
+
+scheduler:
+  morning_summary_enabled: true
+  morning_summary_cron: "0 8 * * *"
 
 agent:
   max_tool_rounds: 15
@@ -66,20 +82,20 @@ evolution:
   trace_retention_days: 90
   skill_min_experiences: 2
   auto_skill_drafts_enabled: true
-    executable_policy_timeout_sec: 30
-    # Source-code evolution is opt-in and always uses an isolated Git worktree.
-    source_evolution_enabled: false
-    source_repo_path: ""
-    source_failure_min_occurrences: 3
-    source_failure_min_projects: 2
-    source_patch_max_files: 8
-    source_patch_max_changed_lines: 500
-    source_test_timeout_sec: 300
-    source_auto_patch_enabled: false
-    source_context_max_files: 6
-    source_context_max_chars: 30000
-    source_llm_timeout_sec: 120
-    artifact_retention_days: 90
+  executable_policy_timeout_sec: 30
+  # Source-code evolution is opt-in and always uses an isolated Git worktree.
+  source_evolution_enabled: false
+  source_repo_path: ""
+  source_failure_min_occurrences: 3
+  source_failure_min_projects: 2
+  source_patch_max_files: 8
+  source_patch_max_changed_lines: 500
+  source_test_timeout_sec: 300
+  source_auto_patch_enabled: false
+  source_context_max_files: 6
+  source_context_max_chars: 30000
+  source_llm_timeout_sec: 120
+  artifact_retention_days: 90
 
 channels:
   enabled:

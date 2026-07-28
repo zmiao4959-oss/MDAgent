@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from ..config import WORKSPACE_DIR, config
+from ..settings import WORKSPACE_DIR, config
 from .embedding import create_embedding_client
 from .store import BuildStats, JsonVectorStore, load_documents
 

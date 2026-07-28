@@ -42,12 +42,12 @@
 **原因**: SSE 断开 → `subscribed=False` → `_emit_media("gif")` 被丢弃 → `localStorage` 未更新。`session.metadata["viz_done"]` 虽有记录但客户端从未读取。
 
 **修复**:
-- `/api/history` 响应新增 `viz_done` 字段 (`webchat.py:513`)
+- `/api/history` 响应新增 `viz_done` 字段（现位于 `conversation_service.py`）
 - 客户端新增 `restoreVizFromServer()` — 从服务端补漏 GIF/PNG/CSV
 - `loadHistory()` 和 SSE 兜底恢复都调用它
 - `removeStructureCard` 记入 `localStorage("miniclaw_viz_removed")`，防手动叉掉后复活
 
-**影响文件**: `webchat.py`, `app.js` (restoreVizFromServer, loadHistory, removeStructureCard)
+**影响文件**: `conversation_service.py`, `app.js` (restoreVizFromServer, loadHistory, removeStructureCard)
 
 ---
 

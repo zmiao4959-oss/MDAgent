@@ -68,19 +68,34 @@ class ToolRegistry:
     def get(self, name: str) -> Optional[ToolDefinition]:
         return self._tools.get(name)
 
-    def tool_names(self) -> List[str]:
-        return sorted(self._tools.keys())
+    def tool_names(self, allowed_names: Optional[Set[str]] = None) -> List[str]:
+        names = self._tools.keys()
+        if allowed_names is not None and "*" not in allowed_names:
+            names = (name for name in names if name in allowed_names)
+        return sorted(names)
 
-    def list_for_llm(self, tag_filter: Optional[List[str]] = None) -> List[Dict]:
+    def list_for_llm(
+        self,
+        tag_filter: Optional[List[str]] = None,
+        allowed_names: Optional[Set[str]] = None,
+    ) -> List[Dict]:
         tools = list(self._tools.values())
+        if allowed_names is not None and "*" not in allowed_names:
+            tools = [t for t in tools if t.name in allowed_names]
         if tag_filter:
             tag_set = set(tag_filter)
             tools = [t for t in tools if tag_set.issubset(set(t.tags))]
         return [t.schema for t in tools]
 
-    def list_for_llm_exclude(self, exclude_tags: Optional[List[str]] = None) -> List[Dict]:
+    def list_for_llm_exclude(
+        self,
+        exclude_tags: Optional[List[str]] = None,
+        allowed_names: Optional[Set[str]] = None,
+    ) -> List[Dict]:
         """返回工具 schema 列表，排除包含任一 exclude_tag 的工具（OR 逻辑）。"""
         tools = list(self._tools.values())
+        if allowed_names is not None and "*" not in allowed_names:
+            tools = [t for t in tools if t.name in allowed_names]
         if exclude_tags:
             exclude_set = set(exclude_tags)
             tools = [t for t in tools if not exclude_set.intersection(set(t.tags))]
@@ -137,6 +152,13 @@ class ToolRegistry:
         arguments: Dict[str, Any],
         context: Optional[Dict] = None,
     ) -> str:
+        allowed_tools = (context or {}).get("allowed_tools")
+        if allowed_tools is not None:
+            allowed = set(allowed_tools)
+            if "*" not in allowed and name not in allowed:
+                logger.warning("Tool '%s' blocked by agent profile", name)
+                return f"Error: Tool '{name}' is not allowed for this agent profile"
+
         tool = self.get(name)
         if not tool:
             return f"Error: Unknown tool '{name}'"

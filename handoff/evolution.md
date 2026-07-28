@@ -5,7 +5,7 @@
 ## 当前状态
 
 - 阶段 1–23 与科研胶囊阶段 24–25 已实现并通过验收。
-- 全量测试基线：`159 passed`（包含科研胶囊阶段 24–25 和 MDSynth 桥接测试）。
+- 全量测试基线：`174 passed`（包含统一可移植配置、声明式多智能体、模块化 WebChat、并行任务事件、科研胶囊阶段 24–25 和 MDSynth 桥接测试）。
 - `scripts/acceptance_stage1.py` 至 `scripts/acceptance_stage25.py` 全部通过。
 - 前端 `app.js`、`evolution.js`、`capsules.js` 语法检查与 `git diff --check` 通过。
 - 关键 Git 节点：`fab9fbb`（阶段 1–6）、`e9dfeb4`（阶段 7–14）、`9dd65a9`（阶段 15）、`bef8bcb`（阶段 16）、`58686e3`（阶段 17）、`041530e`（阶段 18）、`8cc1087`（阶段 19）、`f321250`（阶段 20）。
@@ -162,7 +162,7 @@ class SourcePatchAgent(Protocol):
 
 阶段 22 后，`LLMSourcePatchAgent` 会先请求结构化回归测试，确认旧实现失败后才请求实现补丁。模型只能返回 JSON 中的“创建生成测试”或“在可疑源码文件中精确替换唯一文本”；不能执行 shell、安装依赖或自由写文件。运行 API 还要求功能开关、已批准提案和精确口令 `RUN <proposal_id>`。自动运行只产生 `patched` 实验，不会绕过评估或自动合并。
 
-WebChat 的进化路由位于 `miniclaw/channels/web/evolution_routes.py`，经验与反思前端位于 `miniclaw/channels/web/static/evolution.js`；`webchat.py` 和 `app.js` 只负责注册和调用。
+WebChat 的进化路由位于 `miniclaw/channels/web/evolution_routes.py`，经验与反思前端位于 `miniclaw/channels/web/static/evolution.js`；`web_app.py` 和 `app.js` 只负责注册和调用。
 
 ## 配置
 

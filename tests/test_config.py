@@ -1,6 +1,8 @@
 from pathlib import Path
 
+import miniclaw.config as config_module
 from miniclaw.config import Config, LLMConfig, resolve_config_path
+from miniclaw.settings import AppPaths
 
 
 def test_explicit_config_path_has_priority(tmp_path: Path):
@@ -23,6 +25,38 @@ def test_falls_back_to_packaged_example_for_fresh_workspace(tmp_path: Path):
 
     assert resolve_config_path(workspace, environ={}).name == "config.yaml"
     assert resolve_config_path(workspace, environ={}).parent.name == "miniclaw"
+
+
+def test_packaged_config_is_parseable():
+    path = Path(config_module.__file__).resolve().with_name("config.yaml")
+
+    loaded = Config(path)
+
+    assert loaded.evolution.source_evolution_enabled is False
+    assert loaded.webchat.port == 8000
+    assert loaded.multi_agent.default_profile == "coordinator"
+
+
+def test_app_paths_are_portable_and_environment_wins(tmp_path: Path):
+    configured_home = tmp_path / "configured"
+    env_home = tmp_path / "env-home"
+    env_workspace = tmp_path / "env-workspace"
+
+    paths = AppPaths.from_environ(
+        {
+            "MINICLAW_HOME": str(env_home),
+            "MINICLAW_WORKSPACE": str(env_workspace),
+        },
+        raw_paths={
+            "home": str(configured_home),
+            "workspace": str(configured_home / "workspace"),
+        },
+    )
+
+    assert paths.home == env_home
+    assert paths.workspace == env_workspace
+    assert paths.sessions == env_workspace / "sessions"
+    assert paths.agents == env_workspace / "agents"
 
 
 def test_provider_specific_api_key_beats_shared_api_key(monkeypatch):

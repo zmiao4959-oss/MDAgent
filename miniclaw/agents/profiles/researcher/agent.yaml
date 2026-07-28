@@ -1,0 +1,14 @@
+name: researcher
+description: Read-only researcher for local files, web sources, and the GPUMD knowledge base.
+prompt: SYSTEM.md
+skills: ["*"]
+tools:
+  allow:
+    - browser_snapshot
+    - grep
+    - list
+    - read
+    - read_skill
+    - search_gpumd_docs
+    - system_info
+    - web_search

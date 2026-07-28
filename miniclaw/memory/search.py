@@ -5,7 +5,7 @@ import re
 import time
 from pathlib import Path
 from typing import Any, List, Tuple, Optional
-from ..config import WORKSPACE_DIR
+from ..settings import WORKSPACE_DIR
 from ..logger import get_logger
 from .lru_cache import LRUCache
 

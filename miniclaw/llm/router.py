@@ -2,7 +2,7 @@ import asyncio
 from typing import List, Dict, Optional, AsyncIterator
 from .base import BaseLLMProvider, LLMMessage, LLMResponse, LLMStreamChunk
 from .openai_compat import OpenAICompatProvider
-from ..config import LLMConfig
+from ..settings import LLMConfig
 from ..logger import get_logger
 
 logger = get_logger(__name__)

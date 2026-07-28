@@ -8,7 +8,7 @@ from typing import List, Dict, Optional, AsyncIterator
 from dataclasses import dataclass, field
 from ..llm.base import LLMMessage
 from ..llm.router import LLMRouter
-from ..config import config
+from ..settings import config
 from ..logger import get_logger
 
 logger = get_logger(__name__)

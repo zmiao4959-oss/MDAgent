@@ -1,63 +1,53 @@
 # WebChat 通道
 
-前后端结合的 Web 聊天界面：左对话 + 右可视化面板。
+前后端结合的 Web 聊天界面：左侧会话与项目，右侧可视化和协作任务面板。
 
-## 后端
+## 后端结构
 
-**文件**: `miniclaw/channels/webchat.py`
+WebChat 监听 `http://127.0.0.1:8000`，后端按职责拆分：
 
-FastAPI 应用，挂载在 `http://127.0.0.1:8000`。所有 API 端点定义为 `event_stream()` 内的闭包。
+| 文件 | 职责 |
+|------|------|
+| `channels/webchat.py` | 旧导入路径兼容 |
+| `channels/webchat_adapter.py` | 组合服务、启动和停止 Uvicorn |
+| `channels/web/web_app.py` | 创建 FastAPI、挂载静态资源、统一注册路由 |
+| `channels/web/chat_routes.py` | `POST /api/chat` 与 SSE 响应 |
+| `channels/web/chat_run.py` | 驱动单次 Agent 请求 |
+| `channels/web/chat_events.py` | 编码 delta、进度、媒体和子任务事件 |
+| `channels/web/conversation_service.py` | 会话 CRUD、分叉、历史、导出和消息投递 |
+| `channels/web/conversation_routes.py` | 会话 HTTP 接口 |
+| `channels/web/project_run.py` | 项目后台任务、并发、重试与状态 |
+| `channels/web/project_workspace.py` | 项目目录、产物和会话预览 |
+| `channels/web/file_routes.py` | 项目范围内的文件与资源访问 |
+| `channels/web/knowledge_service.py` | GPUMD 同步和索引任务状态机 |
+| `channels/web/knowledge_routes.py` | GPUMD 知识库接口 |
+| `channels/web/system_routes.py` | 配置、诊断、任务行为和统计接口 |
 
-### SSE 流核心 (`POST /api/chat`)
+## SSE 数据流
 
-```python
-async def event_stream():
-    subscribed = True     # 客户端连接状态
-    out_q = asyncio.Queue()
-    result = {"response": None}
-
-    # 三个回调，注入给 Agent
-    async def collect_delta(chunk):   # LLM 流式文本 → out_q
-        if subscribed: await out_q.put({"kind": "delta", "text": chunk})
-    async def on_viz(event):          # 可视化事件 → out_q
-        if subscribed: await out_q.put({**event, "viz": True})
-    async def on_progress(data):      # LAMMPS 进度 → out_q
-        if subscribed: await out_q.put({"kind": "progress", "data": data})
-
-    async def run_agent():
-        try:
-            result["response"] = await asyncio.wait_for(
-                adapter._message_handler(ctx, on_stream_chunk=collect_delta,
-                                         on_viz_event=on_viz, on_progress=on_progress),
-                timeout=agent_timeout)
-        finally:
-            pending = ctx.metadata.get("viz_tasks") or []
-            if pending:
-                await asyncio.gather(*pending)   # ← 等待所有 OVITO 渲染完成
-            await out_q.put(None)                # ← 终止 while 循环
-
-    task = asyncio.create_task(run_agent())
-
-    # 主循环：从 out_q 读取，yield SSE 事件
-    while True:
-        item = await asyncio.wait_for(out_q.get(), timeout=10.0)
-        if item is None: break
-        yield f"data: {json.dumps(item)}\n\n"
-
-    yield f"data: {json.dumps({'done': True, 'full': result['response']})}\n\n"
+```text
+POST /api/chat
+  └─ chat_routes.py
+       ├─ 创建 AgentContext
+       ├─ ChatEventStream 建立输出队列
+       └─ ChatRunService.run()
+            ├─ 调用 Agent message handler
+            ├─ delta / progress / viz / task_event → SSE
+            ├─ 等待未完成的可视化任务
+            └─ done / error → 浏览器
 ```
 
-### `subscribed` 标志位
+当请求断开时，普通聊天任务会取消；项目聊天继续在后台运行，最终响应保存进
+Session。浏览器刷新或切换对话后，通过 `/api/history` 恢复消息和 `viz_done`。
 
-当 10s 超时且 `await request.is_disconnected()` 返回 True 时，`subscribed = False`，函数 return。**此后所有 `collect_delta` / `on_viz` 回调静默丢弃事件**。
-
-对于 **project 聊天**（`project is not None`），客户端断开后 agent 任务继续运行，响应保存到 session。客户端刷新或切换对话后从 `/api/history` 恢复。
+Coordinator 委派的子任务以 `pending → running → done/error` 事件进入同一个
+SSE 流，前端按任务 ID 更新“协作任务”面板，因此并行任务可同时展示。
 
 ## 前端
 
-**文件**: `miniclaw/channels/web/static/app.js`（主逻辑）与 `evolution.js`（经验和反思面板）。进化 API 位于 `miniclaw/channels/web/evolution_routes.py`。
-
-详见 [`frontend.md`](frontend.md)。
+主逻辑位于 `miniclaw/channels/web/static/app.js`，经验与反思面板位于
+`evolution.js`，科研胶囊面板位于 `capsules.js`。详见
+[`frontend.md`](frontend.md)。
 
 ### 静态资源
 
@@ -69,13 +59,10 @@ async def event_stream():
 | `three.module.js` | npm three@0.160 (ESM) | 3D 结构渲染 |
 | `style.css` | 手写 | 全局样式 |
 
-所有库已**本地化**到 `static/` 目录（不再依赖 CDN）。
+所有库已本地化到 `static/`，不依赖 CDN。完整端点见 [`api.md`](api.md)。
 
-### 关键 API 端点
+## 项目模式与普通模式
 
-详见 [`api.md`](api.md)。
-
-## 项目模式 vs 普通模式
-
-- **普通聊天**: 无 project_id，agent 执行期间断开 SSE = cancel 任务
-- **项目聊天**: 有 project_id，agent 在后台继续运行，浏览器断开不影响。项目状态（queued/running/active/paused/completed/archived）由服务端管理
+- 普通聊天：无 `project_id`，浏览器断开会取消当前 Agent 请求。
+- 项目聊天：携带 `project_id`，断开后继续运行；状态由服务端在
+  `queued/running/active/paused/completed/archived` 之间管理。

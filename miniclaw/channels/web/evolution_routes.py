@@ -3,7 +3,7 @@ from pathlib import Path
 
 from fastapi import HTTPException, Request
 
-from ...config import WORKSPACE_DIR, config
+from ...settings import WORKSPACE_DIR, config
 
 
 def register_evolution_routes(app, adapter) -> None:

@@ -3,7 +3,7 @@ heartbeat.py — 心跳系统
 """
 import asyncio
 from pathlib import Path
-from .config import config, WORKSPACE_DIR
+from .settings import config, WORKSPACE_DIR
 from .agent import Agent, AgentContext
 from .logger import get_logger
 

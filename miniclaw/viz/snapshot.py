@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
-from ..config import active_workspace_dir
+from ..settings import active_workspace_dir
 from .constants import SKIP_DIR_NAMES
 
 FileSnap = Dict[str, Tuple[int, int]]  # abs path -> (mtime_ns, size)

@@ -34,9 +34,15 @@ from .registry import tool_registry
     risk_level="low",
     tags=["skills"],
 )
-def read_skill_tool(name: str, **kwargs):
+def read_skill_tool(name: str, _context=None, **kwargs):
     if not name or not str(name).strip():
         return "Error: skill name is required"
+
+    allowed_skills = (_context or {}).get("allowed_skills")
+    if allowed_skills is not None:
+        allowed = set(allowed_skills)
+        if "*" not in allowed and str(name).strip() not in allowed:
+            return f"Error: Skill '{name}' is not allowed for this agent profile"
 
     loader = SkillLoader()
     skill = loader.get(str(name).strip())

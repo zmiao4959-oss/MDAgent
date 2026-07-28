@@ -1,0 +1,200 @@
+import asyncio
+from pathlib import Path
+
+from miniclaw.agent import Agent
+from miniclaw.agents import AgentCatalog, AgentProfile
+from miniclaw.config import active_workspace_dir
+from miniclaw.memory.session import SessionManager
+from miniclaw.subagent import SubAgentManager
+from miniclaw.tools.registry import tool_registry
+from miniclaw.tools.skill_tool import read_skill_tool
+from miniclaw.tools.delegation_tool import (
+    delegate_task_tool,
+    register_subagent_manager,
+)
+
+
+class _UnusedLLM:
+    pass
+
+
+def _write_profile(
+    root: Path,
+    name: str,
+    *,
+    description: str = "test agent",
+    tools: str = "[]",
+    skills: str = "[]",
+) -> None:
+    profile_dir = root / name
+    profile_dir.mkdir(parents=True)
+    (profile_dir / "SYSTEM.md").write_text(f"# {name}\n", encoding="utf-8")
+    (profile_dir / "agent.yaml").write_text(
+        (
+            f"name: {name}\n"
+            f"description: {description}\n"
+            "prompt: SYSTEM.md\n"
+            f"tools: {tools}\n"
+            f"skills: {skills}\n"
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_catalog_loads_profiles_and_later_root_overrides(tmp_path: Path):
+    builtins = tmp_path / "builtins"
+    custom = tmp_path / "custom"
+    _write_profile(builtins, "worker", description="built in")
+    _write_profile(custom, "worker", description="custom")
+
+    catalog = AgentCatalog([builtins, custom])
+
+    assert catalog.require("worker").description == "custom"
+    assert catalog.require("worker").system_prompt == "# worker"
+
+
+def test_agent_filters_visible_tools_and_enforces_execution(tmp_path: Path):
+    profile = AgentProfile.from_mapping(
+        {
+            "name": "reader",
+            "description": "read only",
+            "tools": ["read"],
+            "skills": [],
+        }
+    )
+    agent = Agent(_UnusedLLM(), SessionManager(tmp_path / "sessions"), profile=profile)
+
+    definitions = agent._build_tool_definitions()
+    names = {item["function"]["name"] for item in definitions}
+
+    assert names == {"read"}
+    result = asyncio.run(
+        tool_registry.execute(
+            "write",
+            {"path": "blocked.txt", "content": "no"},
+            {"allowed_tools": ["read"]},
+        )
+    )
+    assert "not allowed" in result
+
+
+def test_read_skill_enforces_profile_allowlist(tmp_path: Path, monkeypatch):
+    from miniclaw.skills import loader as loader_module
+    from miniclaw.tools import paths as paths_module
+
+    skills_root = tmp_path / "skills"
+    for name in ("allowed", "blocked"):
+        path = skills_root / name
+        path.mkdir(parents=True)
+        (path / "SKILL.md").write_text(
+            f"---\nname: {name}\ndescription: test\n---\n",
+            encoding="utf-8",
+        )
+    monkeypatch.setattr(loader_module, "WORKSPACE_DIR", tmp_path)
+    monkeypatch.setattr(paths_module, "WORKSPACE_DIR", tmp_path)
+
+    result = read_skill_tool(
+        "blocked",
+        _context={"allowed_skills": ["allowed"]},
+    )
+    assert "not allowed" in result
+
+
+def test_subagent_uses_independent_profiled_agent_and_real_sandbox(
+    tmp_path: Path,
+    monkeypatch,
+):
+    profiles = tmp_path / "profiles"
+    _write_profile(profiles, "worker", tools='["read"]', skills="[]")
+    catalog = AgentCatalog([profiles])
+    template = Agent(_UnusedLLM(), SessionManager(tmp_path / "sessions"))
+    manager = SubAgentManager(template, template.sessions, catalog=catalog)
+    seen = {}
+    events = []
+
+    async def fake_process(self, context, **kwargs):
+        seen["same_instance"] = self is template
+        seen["profile"] = self.profile.name
+        seen["workspace"] = active_workspace_dir()
+        return "completed"
+
+    monkeypatch.setattr(Agent, "_process_message", fake_process)
+
+    async def run():
+        async def on_event(event):
+            events.append(dict(event))
+
+        task_id = await manager.spawn(
+            "do work",
+            agent_name="worker",
+            sandbox=True,
+            event_callback=on_event,
+        )
+        result = await manager.wait(task_id)
+        return manager.get(task_id), result
+
+    task, result = asyncio.run(run())
+
+    assert result == "completed"
+    assert seen["same_instance"] is False
+    assert seen["profile"] == "worker"
+    assert seen["workspace"] == Path(task.sandbox_dir)
+    assert [event["status"] for event in events] == ["pending", "running", "done"]
+
+
+def test_coordinator_exposes_delegation_but_not_execution_tools(tmp_path: Path):
+    profile = AgentCatalog().require("coordinator")
+    agent = Agent(_UnusedLLM(), SessionManager(tmp_path / "sessions"), profile=profile)
+
+    names = {
+        definition["function"]["name"]
+        for definition in agent._build_tool_definitions()
+    }
+
+    assert {"list_agents", "delegate_task", "inspect_task", "wait_task", "cancel_task"} <= names
+    assert "execute" not in names
+    assert "write" not in names
+
+
+def test_coordinator_delegation_tool_runs_subagents_in_parallel(
+    tmp_path: Path,
+    monkeypatch,
+):
+    profiles = tmp_path / "profiles"
+    _write_profile(profiles, "worker", tools='["read"]', skills="[]")
+    catalog = AgentCatalog([profiles])
+    template = Agent(_UnusedLLM(), SessionManager(tmp_path / "sessions"))
+    manager = SubAgentManager(template, template.sessions, catalog=catalog)
+    register_subagent_manager(manager)
+    started = []
+    events = []
+
+    async def run_slow(self, context, **kwargs):
+        started.append(context.chat_id)
+        while len(started) < 2:
+            await asyncio.sleep(0)
+        return f"done:{context.user_message}"
+
+    async def on_event(event):
+        events.append(dict(event))
+
+    monkeypatch.setattr(Agent, "_process_message", run_slow)
+
+    async def run():
+        context = {"chat_id": "parent", "task_event_callback": on_event}
+        first, second = await asyncio.gather(
+            delegate_task_tool(
+                "worker", "first", _context=context, sandbox=False
+            ),
+            delegate_task_tool(
+                "worker", "second", _context=context, sandbox=False
+            ),
+        )
+        results = await asyncio.gather(manager.wait(first), manager.wait(second))
+        return results
+
+    results = asyncio.run(run())
+
+    assert sorted(results) == ["done:first", "done:second"]
+    assert len({event["task_id"] for event in events}) == 2
+    assert sum(event["status"] == "running" for event in events) == 2

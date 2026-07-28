@@ -1,3 +1,7 @@
+import asyncio
+
+from miniclaw.channels.web.project_run import ProjectRunService
+from miniclaw.channels.web.project_workspace import ProjectWorkspaceService
 from miniclaw.projects import ProjectManager
 from miniclaw.channels.webchat import WebChatAdapter
 from miniclaw.memory.session import SessionManager
@@ -35,7 +39,6 @@ def test_webchat_creates_a_first_project_for_a_fresh_workspace(tmp_path):
     sessions = SessionManager(tmp_path / "workspace" / "sessions")
     adapter = WebChatAdapter(session_manager=sessions)
 
-    import asyncio
     asyncio.run(adapter._ensure_projects())
 
     project = adapter.projects.list()[0]
@@ -84,3 +87,71 @@ def test_resolve_workspace_path_allows_extra_read_root(tmp_path):
     assert error is None
     assert path == skill_file.resolve()
     assert safe_relpath(path) == str(path.resolve()).replace("\\", "/")
+
+
+def test_project_run_service_completes_task_and_updates_summary(tmp_path):
+    async def scenario():
+        projects = ProjectManager(tmp_path / "projects.json")
+        project = projects.create("Run", "", "webchat:run", str(tmp_path))
+        project = projects.add_task(project.project_id, "Produce result")
+        workspaces = ProjectWorkspaceService(projects, None, tmp_path)
+
+        async def handler(context):
+            assert context.metadata["workspace_dir"] == str(tmp_path.resolve())
+            return "result.txt created"
+
+        runner = ProjectRunService(
+            projects,
+            workspaces,
+            lambda: handler,
+            tmp_path / "behavior.json",
+        )
+        runner.queue(project, project.tasks[0])
+        running = runner.runs[project.project_id]
+        await running
+
+        restored = projects.get(project.project_id)
+        assert restored.status == "active"
+        assert restored.tasks[0]["done"] is True
+        assert "result.txt created" in restored.summary
+        assert [event["kind"] for event in restored.timeline[-3:]] == [
+            "queued",
+            "running",
+            "done",
+        ]
+        assert project.project_id not in runner.runs
+
+    asyncio.run(scenario())
+
+
+def test_project_run_service_retries_before_success(tmp_path):
+    async def scenario():
+        projects = ProjectManager(tmp_path / "projects.json")
+        project = projects.create("Retry", "", "webchat:retry", str(tmp_path))
+        project = projects.add_task(project.project_id, "Retry task")
+        workspaces = ProjectWorkspaceService(projects, None, tmp_path)
+        attempts = 0
+
+        async def handler(_context):
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise RuntimeError("temporary failure")
+            return "recovered"
+
+        runner = ProjectRunService(
+            projects,
+            workspaces,
+            lambda: handler,
+            tmp_path / "behavior.json",
+        )
+        await runner.update_behavior({"retry_count": 1})
+        runner.queue(project, project.tasks[0])
+        await runner.runs[project.project_id]
+
+        restored = projects.get(project.project_id)
+        assert attempts == 2
+        assert restored.status == "active"
+        assert any(event["kind"] == "retry" for event in restored.timeline)
+
+    asyncio.run(scenario())

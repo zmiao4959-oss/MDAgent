@@ -1,7 +1,7 @@
 """Agent 可调用的 GPUMD 文档检索工具。"""
 from __future__ import annotations
 
-from ..config import WORKSPACE_DIR, config
+from ..settings import WORKSPACE_DIR, config
 from ..rag.embedding import create_embedding_client
 from ..rag.store import JsonVectorStore, SearchResult, load_documents
 from .registry import tool_registry

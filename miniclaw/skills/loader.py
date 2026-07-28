@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from ..config import WORKSPACE_DIR
+from ..settings import WORKSPACE_DIR
 from ..logger import get_logger
 from ..tools.paths import skill_roots
 

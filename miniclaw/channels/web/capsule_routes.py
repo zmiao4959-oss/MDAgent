@@ -6,7 +6,7 @@ import asyncio
 from fastapi import HTTPException, Request
 from fastapi.responses import FileResponse
 
-from ...config import WORKSPACE_DIR
+from ...settings import WORKSPACE_DIR
 from ...research_capsule import (
     CapsuleIntegrityError,
     ResearchCapsuleManager,

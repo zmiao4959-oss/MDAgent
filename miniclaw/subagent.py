@@ -9,16 +9,18 @@ import shutil
 import tempfile
 import uuid
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Awaitable, Callable, Dict, List, Optional
 
 from dataclasses import dataclass, field
 
 from .agent import Agent, AgentContext
-from .config import WORKSPACE_DIR, MEMORY_FILE
+from .agents.catalog import AgentCatalog
+from .settings import WORKSPACE_DIR, MEMORY_FILE
 from .memory.session import SessionManager
 from .logger import get_logger
 
 logger = get_logger(__name__)
+TaskEventCallback = Callable[[Dict], Awaitable[None]]
 
 # 子 Agent 沙箱默认复制到隔离工作区的文件
 _SANDBOX_SEED_FILES = [
@@ -35,6 +37,7 @@ class SubAgentTask:
     """一个子任务"""
     task_id: str
     task_prompt: str
+    agent_name: str = "general-worker"
     status: str = "pending"          # pending | running | done | error
     result: Optional[str] = None
     model: str = "default"
@@ -42,15 +45,33 @@ class SubAgentTask:
     sandbox_dir: Optional[str] = None  # 隔离工作区路径
     collected_files: List[str] = field(default_factory=list)
 
+    def to_dict(self) -> Dict:
+        return {
+            "task_id": self.task_id,
+            "agent": self.agent_name,
+            "objective": self.task_prompt,
+            "status": self.status,
+            "result": self.result,
+            "sandbox_dir": self.sandbox_dir,
+            "collected_files": list(self.collected_files),
+        }
+
 
 class SubAgentManager:
     """管理多个子 Agent 的并发执行，支持沙箱隔离。"""
 
-    def __init__(self, agent_template: Agent, session_manager: SessionManager):
+    def __init__(
+        self,
+        agent_template: Agent,
+        session_manager: SessionManager,
+        catalog: Optional[AgentCatalog] = None,
+    ):
         self.agent = agent_template
         self.sessions = session_manager
+        self.catalog = catalog or AgentCatalog()
         self._tasks: Dict[str, SubAgentTask] = {}
         self._running: Dict[str, asyncio.Task] = {}
+        self._event_callbacks: Dict[str, TaskEventCallback] = {}
 
     async def spawn(
         self,
@@ -59,8 +80,10 @@ class SubAgentManager:
         model: str = "default",
         thinking: str = "off",
         *,
+        agent_name: str = "general-worker",
         sandbox: bool = True,
         seed_files: Optional[List[str]] = None,
+        event_callback: Optional[TaskEventCallback] = None,
     ) -> str:
         """
         创建一个子 Agent 任务，立即开始异步执行。
@@ -70,22 +93,31 @@ class SubAgentManager:
             parent_session_id: 父会话 ID
             model: 使用的模型（default = 跟随主 Agent）
             thinking: thinking 模式
+            agent_name: AgentCatalog 中的 Profile 名称
             sandbox: 是否使用沙箱隔离工作区
             seed_files: 额外复制到沙箱的文件列表
 
         Returns:
             task_id
         """
+        self.catalog.refresh()
+        profile = self.catalog.require(agent_name)
         task_id = f"subagent:{uuid.uuid4().hex[:12]}"
         task = SubAgentTask(
             task_id=task_id,
             task_prompt=task_prompt,
+            agent_name=profile.name,
             model=model,
             thinking=thinking,
         )
         self._tasks[task_id] = task
+        if event_callback is not None:
+            self._event_callbacks[task_id] = event_callback
 
-        coro = self._run_subagent(task, parent_session_id, sandbox, seed_files)
+        await self._emit_event(task, event_callback)
+        coro = self._run_subagent(
+            task, parent_session_id, sandbox, seed_files, event_callback
+        )
         self._running[task_id] = asyncio.create_task(coro)
 
         logger.info("Sub-agent spawned: %s (sandbox=%s, model=%s)", task_id, sandbox, model)
@@ -114,9 +146,11 @@ class SubAgentManager:
         parent_session_id: Optional[str],
         sandbox: bool,
         seed_files: Optional[List[str]],
+        event_callback: Optional[TaskEventCallback],
     ) -> None:
         """在独立上下文中执行子 Agent。"""
         task.status = "running"
+        await self._emit_event(task, event_callback)
         try:
             metadata: Dict = {
                 "parent_session": parent_session_id,
@@ -127,6 +161,7 @@ class SubAgentManager:
                 sandbox_dir = await self._prepare_sandbox(task, seed_files)
                 metadata["sandbox_dir"] = str(sandbox_dir)
                 metadata["original_workspace"] = str(WORKSPACE_DIR)
+                metadata["workspace_dir"] = str(sandbox_dir)
 
             ctx = AgentContext(
                 chat_id=f"subagent:{task.task_id}",
@@ -141,7 +176,9 @@ class SubAgentManager:
                 ctx.metadata["model_override"] = task.model
                 ctx.metadata["thinking"] = task.thinking
 
-            task.result = await self.agent.process_message(ctx)
+            profile = self.catalog.require(task.agent_name)
+            child_agent = Agent(self.agent.llm, self.sessions, profile=profile)
+            task.result = await child_agent.process_message(ctx)
             task.status = "done"
 
             # 收集沙箱生成的文件
@@ -149,10 +186,12 @@ class SubAgentManager:
                 self._collect_sandbox_files(task)
 
             logger.info("Sub-agent done: %s", task.task_id)
+            await self._emit_event(task, event_callback)
         except Exception as e:
             task.result = f"Error: {e}"
             task.status = "error"
             logger.error("Sub-agent error: %s: %s", task.task_id, e)
+            await self._emit_event(task, event_callback)
         finally:
             # 清理沙箱（保留结果文件的情况下可配置）
             pass
@@ -172,6 +211,18 @@ class SubAgentManager:
     def get(self, task_id: str) -> Optional[SubAgentTask]:
         return self._tasks.get(task_id)
 
+    @staticmethod
+    async def _emit_event(
+        task: SubAgentTask,
+        callback: Optional[TaskEventCallback],
+    ) -> None:
+        if callback is None:
+            return
+        try:
+            await callback(task.to_dict())
+        except Exception:
+            logger.exception("Sub-agent event callback failed for %s", task.task_id)
+
     def list_running(self) -> list:
         return [t for t in self._tasks.values() if t.status in ("pending", "running")]
 
@@ -182,13 +233,17 @@ class SubAgentManager:
         """等待一个子任务完成。"""
         if task_id in self._running:
             try:
-                await asyncio.wait_for(self._running[task_id], timeout=timeout)
+                await asyncio.wait_for(
+                    asyncio.shield(self._running[task_id]),
+                    timeout=timeout,
+                )
             except asyncio.TimeoutError:
                 task = self._tasks.get(task_id)
-                if task:
-                    task.status = "error"
-                    task.result = "Error: Sub-agent timed out"
-                return task.result if task else None
+                return (
+                    f"Task {task_id} is still {task.status}"
+                    if task is not None
+                    else None
+                )
         task = self._tasks.get(task_id)
         return task.result if task else None
 
@@ -201,6 +256,7 @@ class SubAgentManager:
             task.status = "error"
             task.result = "Task was cancelled"
             await self._cleanup_sandbox(task)
+            await self._emit_event(task, self._event_callbacks.get(task_id))
 
     async def _cleanup_sandbox(self, task: SubAgentTask) -> None:
         """清理子 Agent 的沙箱目录。"""

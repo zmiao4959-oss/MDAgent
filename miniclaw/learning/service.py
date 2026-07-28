@@ -37,7 +37,7 @@ class EvolutionService:
         shared_workspace: Optional[Path | str] = None,
     ):
         if canary_enabled is None:
-            from ..config import config
+            from ..settings import config
 
             canary_enabled = config.evolution.canary_enabled
             canary_traffic_percent = config.evolution.canary_traffic_percent
@@ -57,7 +57,7 @@ class EvolutionService:
         )
         self.workspace = Path(workspace).resolve()
         if shared_workspace is None:
-            from ..config import WORKSPACE_DIR
+            from ..settings import WORKSPACE_DIR
 
             configured_workspace = WORKSPACE_DIR.resolve()
             shared_workspace = (
@@ -307,7 +307,7 @@ class EvolutionService:
         ).to_dict()
 
     def _synthesize_skill_if_ready(self, task_pattern: str) -> Optional[Dict]:
-        from ..config import config
+        from ..settings import config
 
         if not config.evolution.auto_skill_drafts_enabled:
             return None
@@ -422,7 +422,7 @@ class EvolutionService:
         repo_root: Path | str,
         patch_agent: SourcePatchAgent,
     ) -> Dict:
-        from ..config import config
+        from ..settings import config
 
         policy = SourcePatchPolicy(
             max_files=config.evolution.source_patch_max_files,
@@ -447,7 +447,7 @@ class EvolutionService:
         repo_root: Path | str,
         llm,
     ) -> Dict:
-        from ..config import config
+        from ..settings import config
 
         policy = SourcePatchPolicy(
             max_files=config.evolution.source_patch_max_files,
@@ -476,7 +476,7 @@ class EvolutionService:
         *,
         full_commands: Optional[List[List[str]]] = None,
     ) -> Dict:
-        from ..config import config
+        from ..settings import config
 
         experiment = SourceCandidateEvaluator(
             repo_root,

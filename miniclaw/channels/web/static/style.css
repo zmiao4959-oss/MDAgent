@@ -1017,6 +1017,44 @@ html, body {
   border-radius: 11px;
   background: rgba(4,10,20,.3);
 }
+
+.agent-tasks-panel {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(20, 31, 49, .55);
+}
+.agent-tasks-head {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.agent-tasks-list {
+  display: grid;
+  gap: 6px;
+}
+.agent-task-card {
+  display: grid;
+  grid-template-columns: minmax(90px, .5fr) minmax(160px, 1.5fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: rgba(255,255,255,.04);
+  font-size: 12px;
+}
+.agent-task-objective {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agent-task-status { color: var(--muted); }
+.agent-task-card[data-status="running"] .agent-task-status { color: var(--accent); }
+.agent-task-card[data-status="done"] .agent-task-status { color: #58d68d; }
+.agent-task-card[data-status="error"] .agent-task-status { color: #ff7b7b; }
 .settings-section h3 { margin: 0 0 2px; color: #d8e4f8; font-size: 12px; }
 .settings-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .settings-section-heading p { margin: 4px 0 0; color: #71819a; font-size: 10px; line-height: 1.45; }

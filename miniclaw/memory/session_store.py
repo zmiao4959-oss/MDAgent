@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from ..config import WORKSPACE_DIR
+from ..settings import WORKSPACE_DIR
 from ..logger import get_logger
 
 logger = get_logger(__name__)

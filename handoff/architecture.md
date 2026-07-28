@@ -8,17 +8,62 @@
 main.py
 ├── LLMRouter           → llm/router.py     多 Provider 路由 + fallback
 ├── SessionManager      → memory/session.py  对话持久化
-├── Agent               → agent.py          核心循环（LLM + 工具执行）
+├── Coordinator         → agents/profiles/  默认主 Agent
+├── AgentCatalog        → agents/catalog.py 声明式 Profile 发现
+├── Agent               → agent.py          共享循环（LLM + 工具执行）
 ├── SkillLoader         → skills/loader.py  技能发现与渐进加载
 ├── GPUMD RAG           → rag/ + rag_tool.py 官方知识库与向量检索
 ├── ResearchCapsule     → research_capsule.py 科研证据、文件哈希与复现清单
 ├── GatewayServer       → gateway/server.py  WebSocket 协议
-├── WebChatAdapter      → channels/webchat.py FastAPI + SSE
+├── WebChatAdapter      → channels/webchat_adapter.py 服务组合与生命周期
 ├── TelegramAdapter     → channels/telegram.py
 ├── HeartbeatLoop       → heartbeat.py      定时心跳
 ├── CronScheduler       → cron_scheduler.py Cron 任务
 └── SubAgentManager     → subagent.py       子 Agent
 ```
+
+## 声明式多智能体
+
+默认入口加载 `coordinator` Profile。Coordinator 通过 `list_agents`、
+`delegate_task`、`inspect_task`、`wait_task` 和 `cancel_task` 管理子任务。
+每个子任务创建独立 `Agent` 实例和 Session，但复用 LLM Router、ToolRegistry、
+Hook、Trace 与安全基础设施。
+
+内置 Profile 位于 `miniclaw/agents/profiles/`；用户可在工作区 `agents/`
+下放置同结构目录，自定义或覆盖同名 Profile。Profile 的工具和 Skill 白名单
+既用于过滤提示上下文，也在实际执行阶段再次校验。
+
+子任务状态按 `pending → running → done/error` 生成结构化事件。WebChat 将事件
+通过当前聊天的 SSE 流转发，前端“协作任务”面板按任务 ID 增量更新，因此多个
+并行 Agent 可以同时显示各自的角色、目标和状态。
+
+WebChat 的 HTTP 边界位于 `miniclaw/channels/web/`：`chat_routes.py` 只负责
+解析请求和建立 SSE 响应，`chat_run.py` 驱动一次 Agent 请求，`chat_events.py`
+统一编码流式事件；`project_routes.py` 管理项目生命周期和报告，
+`project_task_routes.py` 管理计划任务接口。`ProjectRunService` 负责后台任务、
+并发限制、重试、状态和摘要，`ProjectWorkspaceService` 负责项目目录、产物列表、
+会话预览和旧对话初始化。`KnowledgeService` 独立维护 GPUMD 语料同步、索引构建
+和任务状态，`diagnostics.py` 提供无敏感信息的本地运行能力探测；
+`knowledge_routes.py` 与 `system_routes.py` 暴露相应接口。会话生命周期、历史、
+分叉、导出与消息投递由 `ConversationService` 负责，文件访问由
+`file_routes.py` 按项目工作区限定。`web_app.py` 是唯一 FastAPI 应用工厂，
+集中完成中间件、静态资源与所有路由注册；`webchat_adapter.py` 只组合服务并
+管理服务器生命周期，`webchat.py` 仅保留向后兼容导出。
+
+共享运行时组件位于 `miniclaw/runtime/`。`PromptBuilder` 负责 Profile 感知的
+三层 Prompt、Skill 摘要和 Tool schemas；`ToolExecutor` 负责幂等、Hook、
+进度上报和 Profile 权限校验；`RunLifecycle` 负责 Hook、Trace、统计和进化
+收尾；`AgentLoop` 负责多轮 LLM、Tool、Session checkpoint、上下文压缩和自动
+可视化；`RequestPreparer` 负责 Session、before hook、记忆/经验注入、规划
+模式和运行参数。`Agent` 现在主要负责组装组件和保留兼容入口。
+
+## 配置与可移植路径
+
+`miniclaw/settings.py` 是配置结构、默认值、YAML、环境变量、路径解析和校验的
+唯一内部入口；`miniclaw/config.py` 只保留向后兼容导出。所有运行目录由
+`AppPaths` 从 `MINICLAW_HOME` 派生，并允许 `MINICLAW_WORKSPACE` 覆盖。
+配置优先级为代码默认值、`config.yaml`、环境变量、显式配置路径。WebChat、
+默认 Coordinator、并发度和晨间调度均已从 `main.py` 移入 `config.yaml`。
 
 ## 科研胶囊数据流
 
@@ -72,13 +117,13 @@ gpumd.org sitemap + GPUMD-Tutorials ZIP
 ## 一条消息的完整链路
 
 ```
-浏览器                    FastAPI (webchat.py)           Agent (agent.py)          LLM
-──────                    ───────────────────           ────────────────          ───
+浏览器                 chat_routes / chat_run       Agent / runtime             LLM
+──────                 ───────────────────────       ───────────────             ───
 
 POST /api/chat
   {message, chat_id}
-  └─► event_stream()
-        ├─ create_task(run_agent())
+  └─► ChatEventStream
+        ├─ create_task(ChatRunService.run())
         │    ├─ agent.process_message()
         │    │    ├─ 构建 system prompt（三层缓存）
         │    │    ├─ for round in 1..max_rounds:

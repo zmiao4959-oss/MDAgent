@@ -1,0 +1,23 @@
+name: general-worker
+description: General-purpose worker with the existing MiniClaw skills and execution tools.
+prompt: SYSTEM.md
+skills: ["*"]
+tools:
+  allow:
+    - browser_snapshot
+    - copy_file
+    - execute
+    - generate_lammps_script
+    - grep
+    - list
+    - make_dir
+    - read
+    - read_skill
+    - remember
+    - search_gpumd_docs
+    - send_message
+    - system_info
+    - update_json
+    - web_search
+    - write
+    - write_json

@@ -5,11 +5,12 @@ import asyncio
 import signal
 from typing import Optional
 
-from miniclaw.config import config, WORKSPACE_DIR
+from miniclaw.settings import config
 from miniclaw.logger import get_logger
 from miniclaw.llm.router import LLMRouter
 from miniclaw.memory.session import SessionManager
 from miniclaw.agent import Agent
+from miniclaw.agents import AgentCatalog
 from miniclaw.heartbeat import HeartbeatLoop
 from miniclaw.cron_scheduler import CronScheduler, CronJob
 from miniclaw.subagent import SubAgentManager
@@ -17,6 +18,7 @@ from miniclaw.gateway.server import GatewayServer
 from miniclaw.channels.webchat import WebChatAdapter
 from miniclaw.tools import ensure_tools_loaded
 from miniclaw.tools.message_tool import register_send_callback, unregister_send_callback
+from miniclaw.tools.delegation_tool import register_subagent_manager
 from miniclaw.planning import register_plan_project_manager
 
 ensure_tools_loaded()
@@ -66,9 +68,12 @@ async def main():
     logger.info("=== MiniClaw Starting ===")
 
     router = LLMRouter(config.llm, config.llm.fallback_providers)
-    session_mgr = SessionManager(WORKSPACE_DIR / "sessions")
-    agent = Agent(router, session_mgr)
-    subagent_mgr = SubAgentManager(agent, session_mgr)
+    session_mgr = SessionManager(config.paths.sessions)
+    agent_catalog = AgentCatalog()
+    coordinator_profile = agent_catalog.require(config.multi_agent.default_profile)
+    agent = Agent(router, session_mgr, profile=coordinator_profile)
+    subagent_mgr = SubAgentManager(agent, session_mgr, catalog=agent_catalog)
+    register_subagent_manager(subagent_mgr)
 
     gateway = GatewayServer(agent)
     gateway_task = asyncio.create_task(gateway.start(), name="gateway")
@@ -77,8 +82,8 @@ async def main():
 
     if config.channels.enabled.get("webchat", True):
         webchat = WebChatAdapter(
-            host="127.0.0.1",
-            port=8000,
+            host=config.webchat.host,
+            port=config.webchat.port,
             session_manager=session_mgr,
             source_patch_llm=router,
         )
@@ -106,14 +111,15 @@ async def main():
     heartbeat_task = asyncio.create_task(heartbeat.run(), name="heartbeat")
 
     cron = CronScheduler(agent)
-    cron.add_job(CronJob(
-        name="morning_summary",
-        cron_expr="0 8 * * *",
-        task_prompt="Check today's calendar, weather, and any important emails. "
-                     "Write a brief morning summary.",
-        delivery_channel="webchat",
-        delivery_to="default",
-    ))
+    if config.scheduler.morning_summary_enabled:
+        cron.add_job(CronJob(
+            name="morning_summary",
+            cron_expr=config.scheduler.morning_summary_cron,
+            task_prompt="Check today's calendar, weather, and any important emails. "
+                        "Write a brief morning summary.",
+            delivery_channel="webchat",
+            delivery_to="default",
+        ))
     cron_task = asyncio.create_task(cron.run(), name="cron")
 
     stop_event = asyncio.Event()
@@ -126,7 +132,7 @@ async def main():
     signal.signal(signal.SIGTERM, shutdown)
 
     logger.info(f"Gateway: ws://{config.gateway.host}:{config.gateway.port}")
-    logger.info(f"WebChat: http://127.0.0.1:8000")
+    logger.info(f"WebChat: http://{config.webchat.host}:{config.webchat.port}")
     logger.info(f"Heartbeat: every {config.agent.heartbeat_interval_min} min")
     logger.info(f"Cron jobs: {len(cron.jobs)} registered")
     logger.info("=== MiniClaw Ready ===")

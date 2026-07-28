@@ -20,6 +20,7 @@ def ensure_tools_loaded() -> None:
     from . import skill_tool  # noqa: F401
     from . import rag_tool  # noqa: F401
     from . import lammps_script_tool  # noqa: F401
+    from . import delegation_tool  # noqa: F401
     try:
         from . import browser_tool  # noqa: F401
     except ImportError:

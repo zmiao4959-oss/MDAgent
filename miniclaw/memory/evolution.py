@@ -16,7 +16,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from ..config import WORKSPACE_DIR, MEMORY_FILE
+from ..settings import WORKSPACE_DIR, MEMORY_FILE
 from ..logger import get_logger
 
 logger = get_logger(__name__)

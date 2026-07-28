@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 from .registry import tool_registry
-from ..config import active_workspace_dir, config
+from ..settings import active_workspace_dir, config
 from ..logger import get_logger
 
 logger = get_logger(__name__)

@@ -67,6 +67,13 @@
           <button class="quick-action" type="button" data-prompt="浏览工作区中最新的结果文件，建议最适合生成的可视化。"><span>◌</span> 生成可视化</button>
           <button class="quick-action" type="button" data-prompt="为我整理一个今天的工作摘要：已完成、进行中和待办事项。"><span>▤</span> 整理工作摘要</button>
         </section>
+        <section id="agent-tasks-panel" class="agent-tasks-panel" hidden aria-live="polite">
+          <div class="agent-tasks-head">
+            <span>协作任务</span>
+            <span id="agent-tasks-summary">0 个任务</span>
+          </div>
+          <div id="agent-tasks-list" class="agent-tasks-list"></div>
+        </section>
         <div class="panel-status chat-status">
           <div class="progress-track"><div id="chat-progress" class="progress-bar"></div></div>
           <span id="chat-status-text" class="status-text">就绪</span>

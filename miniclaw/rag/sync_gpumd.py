@@ -15,7 +15,7 @@ from xml.etree import ElementTree
 
 from bs4 import BeautifulSoup
 
-from ..config import WORKSPACE_DIR
+from ..settings import WORKSPACE_DIR
 from .store import RagDocument
 
 SITEMAP_URL = "https://gpumd.org/sitemap.xml"

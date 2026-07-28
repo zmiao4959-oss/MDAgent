@@ -1,16 +1,12 @@
 """
 agent.py — Agent 主循环（★ 核心引擎）
 """
-import json
 import asyncio
-import re
-from datetime import datetime
-from pathlib import Path
-from typing import List, Dict, Optional, Any, Callable, Awaitable, Tuple
+from typing import List, Dict, Optional, Any, Callable, Awaitable, Tuple, TYPE_CHECKING
 
 from dataclasses import dataclass, field
 
-from .config import active_workspace_dir, config, workspace_scope, WORKSPACE_DIR, MEMORY_FILE
+from .settings import active_workspace_dir, config, workspace_scope, WORKSPACE_DIR
 from .logger import get_logger
 from .llm.base import (
     LLMMessage,
@@ -24,32 +20,25 @@ from .tools.registry import tool_registry
 from .memory.session import Session, SessionManager
 from .memory.search import keyword_search
 from .skills.loader import SkillLoader
-from .viz.auto import AutoVisualizer
-from .viz.snapshot import snapshot_workspace
-from .hooks import hook_system, HookContext
-from .stats import agent_stats, RunStats
+from .hooks import hook_system
 from .learning.trace import EvolutionTrace
 from .learning.service import EvolutionService
+from .runtime import (
+    PromptBuilder,
+    ToolExecutor,
+    RunLifecycle,
+    AgentLoop,
+    RequestPreparer,
+)
+
+if TYPE_CHECKING:
+    from .agents.profile import AgentProfile
 
 logger = get_logger(__name__)
-
-# 参与系统提示组装的 workspace 文件（用于缓存失效检测）
-_SYSTEM_PROMPT_FILES = (
-    "AGENTS.md",
-    "SOUL.md",
-    "IDENTITY.md",
-    "USER.md",
-    MEMORY_FILE,
-)
 
 StreamChunkCallback = Callable[[str], Awaitable[None]]
 VizEventCallback = Callable[[Dict[str, Any]], Awaitable[None]]
 ProgressCallback = Callable[[Dict[str, Any]], Awaitable[None]]
-
-_TOOL_DESC_LIMIT = 120
-_SKILL_DESC_LIMIT = 160
-_MAX_SKILLS_IN_PROMPT = 12
-
 
 @dataclass
 class AgentContext:
@@ -64,11 +53,58 @@ class AgentContext:
 class Agent:
     """Agent 核心引擎"""
 
-    def __init__(self, llm_router: LLMRouter, session_manager: SessionManager):
+    def __init__(
+        self,
+        llm_router: LLMRouter,
+        session_manager: SessionManager,
+        profile: Optional["AgentProfile"] = None,
+    ):
         ensure_tools_loaded()
         self.llm = llm_router
         self.sessions = session_manager
+        self.profile = profile
         self._skill_loader = SkillLoader()
+        if profile is not None:
+            known_tools = set(tool_registry.tool_names())
+            unknown_tools = set(profile.tools) - {"*"} - known_tools
+            if unknown_tools:
+                raise ValueError(
+                    f"Agent profile '{profile.name}' references unknown tools: "
+                    f"{', '.join(sorted(unknown_tools))}"
+                )
+            known_skills = {skill.name for skill in self._skill_loader.list_all()}
+            unknown_skills = set(profile.skills) - {"*"} - known_skills
+            if unknown_skills:
+                raise ValueError(
+                    f"Agent profile '{profile.name}' references unknown skills: "
+                    f"{', '.join(sorted(unknown_skills))}"
+                )
+        self.prompt_builder = PromptBuilder(
+            profile,
+            skill_loader=self._skill_loader,
+            workspace_dir=WORKSPACE_DIR,
+        )
+        self.tool_executor = ToolExecutor(profile)
+        self.run_lifecycle = RunLifecycle(
+            profile,
+            complete_trace=self._complete_evolution_trace,
+            generate_reflection=self._maybe_generate_reflection,
+        )
+        self.agent_loop = AgentLoop(
+            sessions=self.sessions,
+            llm=self.llm,
+            call_llm=self._call_llm,
+            execute_tools=self._handle_tool_calls,
+            finalize_after_max_rounds=self._finalize_after_max_rounds,
+        )
+        self.request_preparer = RequestPreparer(
+            sessions=self.sessions,
+            lifecycle=self.run_lifecycle,
+            prompt_builder=self.prompt_builder,
+            profile=self.profile,
+            memory_prefix=self._memory_prefix,
+            experience_prefix=self._experience_prefix,
+        )
         self._system_prompt_cache: Optional[str] = None
         self._system_prompt_cache_key: Optional[Tuple[Any, ...]] = None
 
@@ -76,155 +112,44 @@ class Agent:
 
     def _stable_fingerprint(self) -> Tuple[Any, ...]:
         """Stable 层指纹：身份文件 + 工具 + 技能（最少变动，缓存友好）。"""
-        parts: List[Any] = []
-        for name in ("SOUL.md", "IDENTITY.md"):
-            path = WORKSPACE_DIR / name
-            if path.exists():
-                stat = path.stat()
-                parts.append((name, stat.st_mtime_ns, stat.st_size))
-        skills_dir = WORKSPACE_DIR / "skills"
-        if skills_dir.exists():
-            skill_mtimes = tuple(
-                sorted(
-                    (p.name, p.stat().st_mtime_ns)
-                    for p in skills_dir.iterdir()
-                    if p.is_dir() and (p / "SKILL.md").exists()
-                )
-            )
-            parts.append(("skills", skill_mtimes))
-        parts.append(("tools", tuple(tool_registry.tool_names())))
-        return tuple(parts)
+        return self.prompt_builder.stable_fingerprint()
+
+    def _visible_tool_names(self) -> List[str]:
+        return self.prompt_builder.visible_tool_names()
+
+    def _visible_skills(self) -> List[Any]:
+        return self.prompt_builder.visible_skills()
 
     def _context_fingerprint(self) -> Tuple[Any, ...]:
         """Context 层指纹：环境文件（AGENTS.md, USER.md, MEMORY.md）。"""
-        parts: List[Any] = []
-        for name in ("AGENTS.md", "USER.md", MEMORY_FILE):
-            path = WORKSPACE_DIR / name
-            if path.exists():
-                stat = path.stat()
-                parts.append((name, stat.st_mtime_ns, stat.st_size))
-        return tuple(parts)
+        return self.prompt_builder.context_fingerprint()
 
     def _build_stable_prompt(self) -> str:
         """Stable 层：身份 + 工具描述 + 技能列表（缓存友好，极少重建）。"""
-        self._skill_loader._refresh()
-        parts: List[str] = []
-
-        for filename in ("SOUL.md", "IDENTITY.md"):
-            path = WORKSPACE_DIR / filename
-            if path.exists():
-                parts.append(path.read_text(encoding="utf-8"))
-
-        parts.append(self._build_tool_prompt_summary())
-
-        skills_list = self._skill_loader.list_all()
-        if skills_list:
-            parts.append(self._build_skill_prompt_summary(skills_list))
-
-        return "\n\n".join(parts)
+        return self.prompt_builder.build_stable_prompt()
 
     def _build_tool_prompt_summary(self) -> str:
         """Keep the prompt compact; exact tool schemas are sent separately."""
-        lines = [
-            "## Tooling",
-            "Function schemas are provided separately. Use those schemas for exact arguments and field names.",
-        ]
-        for tool_name in sorted(tool_registry.tool_names()):
-            td = tool_registry.get(tool_name)
-            if td is None:
-                continue
-            desc = " ".join((td.description or "").split())
-            if len(desc) > _TOOL_DESC_LIMIT:
-                desc = desc[: _TOOL_DESC_LIMIT - 3].rstrip() + "..."
-            suffix = ""
-            if td.risk_level != "low":
-                suffix += f" [{td.risk_level} risk]"
-            if td.require_approval:
-                suffix += " [requires approval]"
-            lines.append(f"- `{tool_name}`: {desc or 'No description.'}{suffix}")
-        return "\n".join(lines)
+        return self.prompt_builder.build_tool_summary()
 
     def _build_skill_prompt_summary(self, skills_list: List[Any]) -> str:
         """Summarise skills without flooding the prompt with file paths."""
-        lines = [
-            "## Available Skills",
-            (
-                "If a skill clearly matches the task, call `read_skill` with the exact "
-                "skill name before acting. Skill files are named SKILL.md; do not guess "
-                "README.md or other filenames."
-            ),
-        ]
-        ordered = sorted(skills_list, key=lambda s: s.name.lower())
-        shown = ordered[:_MAX_SKILLS_IN_PROMPT]
-        for skill in shown:
-            desc = " ".join((skill.description or "").split())
-            if len(desc) > _SKILL_DESC_LIMIT:
-                desc = desc[: _SKILL_DESC_LIMIT - 3].rstrip() + "..."
-            line = f"- `{skill.name}`"
-            if desc:
-                line += f": {desc}"
-            line += f" (load: read_skill name={skill.name!r})"
-            lines.append(line)
-        remaining = len(ordered) - len(shown)
-        if remaining > 0:
-            lines.append(f"- ... and {remaining} more skills available in the workspace.")
-        return "\n".join(lines)
+        return self.prompt_builder.build_skill_summary(skills_list)
 
     def _build_context_prompt(self) -> str:
         """Context 层：项目指令 + 用户偏好 + 长期记忆。"""
-        parts: List[str] = []
-
-        for filename in ("AGENTS.md", "USER.md"):
-            path = WORKSPACE_DIR / filename
-            if path.exists():
-                parts.append(path.read_text(encoding="utf-8"))
-
-        mem = WORKSPACE_DIR / MEMORY_FILE
-        if mem.exists():
-            mem_text = mem.read_text(encoding="utf-8")
-            # 限制记忆内容大小，避免撑爆上下文
-            if len(mem_text) > 8000:
-                mem_text = mem_text[:8000] + "\n\n... [记忆文件过长，已截断]"
-            parts.append(f"## Long-term Memory\n{mem_text}")
-
-        return "\n\n".join(parts)
+        return self.prompt_builder.build_context_prompt()
 
     def _build_system_prompt(self) -> str:
         """三层上下文组装：Stable（缓存） + Context（文件感知缓存） + Volatile（每轮动态）。"""
-        stable_key = self._stable_fingerprint()
-        context_key = self._context_fingerprint()
-
-        # 重建 Stable 层
-        if (self._system_prompt_cache is None
-                or getattr(self, '_stable_cache_key', None) != stable_key):
-            self._stable_cache = self._build_stable_prompt()
-            self._stable_cache_key = stable_key
-
-        # 重建 Context 层
-        if (getattr(self, '_context_cache', None) is None
-                or getattr(self, '_context_cache_key', None) != context_key):
-            self._context_cache = self._build_context_prompt()
-            self._context_cache_key = context_key
-
-        # Volatile 层每轮动态注入
-        parts = [self._stable_cache]
-        if self._context_cache:
-            parts.append(self._context_cache)
-        parts.append(
-            f"## Runtime Info\n"
-            f"- Current time: {datetime.now().isoformat()}\n"
-            f"- Workspace: {active_workspace_dir()}"
-        )
-
-        # 保持向后兼容的缓存键
-        full_key = (stable_key, context_key)
-        self._system_prompt_cache = "\n\n".join(parts)
-        self._system_prompt_cache_key = full_key
-        return self._system_prompt_cache
+        self.prompt_builder.skill_loader = self._skill_loader
+        prompt = self.prompt_builder.build_system_prompt()
+        self._system_prompt_cache = prompt
+        return prompt
 
     def _build_tool_definitions(self) -> List[Dict]:
         """生成 OpenAI function-calling 格式的工具定义"""
-        return tool_registry.list_for_llm()
+        return self.prompt_builder.build_tool_definitions()
 
     async def _resolve_session(self, context: AgentContext) -> Session:
         """优先从磁盘恢复会话，避免 Gateway 重启后丢失历史。"""
@@ -308,143 +233,13 @@ class Agent:
     async def _execute_one_tool(
         self, tc: Dict, context: AgentContext
     ) -> LLMMessage:
-        func_name = tc["function"]["name"]
-        try:
-            arguments = json.loads(tc["function"]["arguments"])
-        except json.JSONDecodeError:
-            return LLMMessage(
-                role="tool",
-                tool_call_id=tc["id"],
-                content=f"Error: Invalid JSON arguments: {tc['function']['arguments']}",
-            )
-
-        # ── 幂等性追踪: 同一轮中相同工具+相同参数跳过重复执行 ──
-        idem_key = context.metadata.setdefault("_tool_idem_keys", set())
-        arg_fp = (func_name, json.dumps(arguments, sort_keys=True, default=str))
-        if arg_fp in idem_key:
-            logger.info("Skipping duplicate tool call: %s", func_name)
-            return LLMMessage(
-                role="tool",
-                tool_call_id=tc["id"],
-                content="[Skipped: duplicate tool call with identical arguments in this round]",
-                name=func_name,
-            )
-        idem_key.add(arg_fp)
-
-        # ── before_tool hook (可阻止工具执行) ──
-        hook_ctx = await hook_system.fire("before_tool",
-            chat_id=context.chat_id,
-            channel=context.channel,
-            data={"tool_name": func_name, "arguments": arguments},
-        )
-        if hook_ctx.prevent:
-            return LLMMessage(
-                role="tool",
-                tool_call_id=tc["id"],
-                content=f"[Tool '{func_name}' blocked by hook: {hook_ctx.prevent_reason}]",
-                name=func_name,
-            )
-
-        # 为 execute 工具注入 stdout 逐行回调，用于 LAMMPS 进度上报
-        on_progress: Optional[ProgressCallback] = context.metadata.get("_on_progress")
-        if on_progress and func_name == "execute":
-            loop = asyncio.get_running_loop()
-            cmd_text: str = arguments.get("command", "")
-
-            # 尝试从 LAMMPS input 文件解析总步数 (run N)
-            total: Optional[int] = None
-            m_in = re.search(r'(?:^|\s)-in\s+(?:"([^"]+)"|(\S+))', cmd_text)
-            if m_in:
-                in_path = m_in.group(1) or m_in.group(2)
-                try:
-                    p = Path(in_path)
-                    if not p.is_absolute():
-                        wd = arguments.get("working_dir", "")
-                        base = Path(wd) if wd else active_workspace_dir()
-                        if not base.is_absolute():
-                            base = active_workspace_dir() / base
-                        p = base / in_path
-                    p = p.resolve()
-                    if p.exists():
-                        content = p.read_text(encoding="utf-8", errors="replace")
-                        runs = re.findall(
-                            r"^run\s+(\d+)", content, re.MULTILINE | re.IGNORECASE
-                        )
-                        if runs:
-                            total = sum(int(n) for n in runs)
-                            logger.debug("LAMMPS total steps: %s (from %s run(s))", total, len(runs))
-                except Exception:
-                    pass
-
-            def _on_line(line: str) -> None:
-                """在 stdout 读取线程中调用；检测 LAMMPS thermo 行并推送进度。"""
-                stripped = line.strip()
-                parts = stripped.split()
-                if len(parts) < 3:
-                    return
-                # LAMMPS thermo 行：第一个 token 是正整数步数
-                if not parts[0].isdigit():
-                    return
-                step = int(parts[0])
-                data: Dict[str, Any] = {"current": step}
-                if total is not None:
-                    data["total"] = total
-                try:
-                    asyncio.run_coroutine_threadsafe(on_progress(data), loop)
-                except Exception:
-                    pass
-
-            arguments["_on_line"] = _on_line
-
-        exec_context = {
-            "chat_id": context.chat_id,
-            "channel": context.channel,
-            "account_id": context.account_id,
-            "approved": context.metadata.get("approved", False),
-            "project_id": context.metadata.get("project_id", ""),
-            "project_title": context.metadata.get("project_title", ""),
-            "project_objective": context.metadata.get("project_objective", ""),
-            "workspace_dir": context.metadata.get("workspace_dir", ""),
-        }
-        logger.info("Executing tool: %s(%s)", func_name, arguments)
-        result = await tool_registry.execute(func_name, arguments, exec_context)
-
-        evolution_trace = context.metadata.get("_evolution_trace")
-        if isinstance(evolution_trace, EvolutionTrace):
-            evolution_trace.add_tool(func_name, arguments, result)
-        current_run = context.metadata.get("_run_stats")
-        if isinstance(current_run, RunStats):
-            current_run.tools_called.append(func_name)
-            if str(result).lstrip().lower().startswith(("error", "[error")):
-                current_run.tool_errors += 1
-
-        # ── after_tool hook ──
-        await hook_system.fire("after_tool",
-            chat_id=context.chat_id,
-            channel=context.channel,
-            data={"tool_name": func_name, "arguments": arguments, "result": result},
-        )
-
-        return LLMMessage(
-            role="tool",
-            tool_call_id=tc["id"],
-            content=result,
-            name=func_name,
-        )
+        return await self.tool_executor.execute_one(tc, context)
 
     async def _handle_tool_calls(
         self, tool_calls: List[Dict], context: AgentContext
     ) -> List[LLMMessage]:
         """并行执行工具调用，返回工具结果消息列表（顺序与 tool_calls 一致）。"""
-        if not tool_calls:
-            return []
-        if len(tool_calls) == 1:
-            return [await self._execute_one_tool(tool_calls[0], context)]
-        return list(
-            await asyncio.gather(
-                *[self._execute_one_tool(tc, context) for tc in tool_calls]
-            )
-        )
+        return await self.tool_executor.execute_many(tool_calls, context)
 
     async def _call_llm(
         self,
@@ -613,192 +408,41 @@ class Agent:
         """
         if on_progress:
             context.metadata["_on_progress"] = on_progress
-        session = await self._resolve_session(context)
+        prepared = await self.request_preparer.prepare(context)
+        if prepared.blocked_response is not None:
+            return prepared.blocked_response
+        session = prepared.session
+        run_state = prepared.run_state
+        system_prompt = prepared.system_prompt
+        tools = prepared.tools
+        max_rounds = prepared.max_rounds
 
-        # ── Stats tracking ──
-        # A single Agent instance serves every WebChat project.  Keep this run
-        # local so concurrent projects cannot overwrite each other's stats.
-        current_run: RunStats = agent_stats.start_run(context.chat_id)
-        context.metadata["_run_stats"] = current_run
-        evolution_trace = EvolutionTrace(
-            chat_id=context.chat_id,
-            channel=context.channel,
-            objective=context.user_message,
-            metadata={
-                "project_id": context.metadata.get("project_id", ""),
-                "plan_mode": bool(context.metadata.get("plan_mode", False)),
-            },
-        )
-        context.metadata["_evolution_trace"] = evolution_trace
-
-        # ── before_agent hook ──
-        hook_ctx = await hook_system.fire("before_agent",
-            chat_id=context.chat_id,
-            channel=context.channel,
-            account_id=context.account_id,
-            data={"message": context.user_message},
-        )
-        if hook_ctx.prevent:
-            return f"[Agent blocked: {hook_ctx.prevent_reason}]"
-
-        if context.user_message:
-            prefix = (
-                self._experience_prefix(context.user_message, evolution_trace)
-                + self._memory_prefix(context.user_message)
-            )
-            full_content = prefix + context.user_message if prefix else context.user_message
-            session.add_message(LLMMessage(role="user", content=full_content))
-
-        # ── Plan mode 分支：Planning Agent 专用 prompt + 受限制工具集 ──
-        plan_mode = bool(context.metadata.get("plan_mode", False))
-        if plan_mode:
-            from .planning import build_planning_system_prompt
-
-            project_id = context.metadata.get("project_id", "")
-            project_title = context.metadata.get("project_title", "")
-            project_objective = context.metadata.get("project_objective", "")
-            system_prompt = build_planning_system_prompt(
-                project_id, project_title, project_objective
-            )
-            tools = tool_registry.list_for_llm_exclude(
-                exclude_tags=["execution", "shell", "browser", "communication"]
-            )
-            max_rounds = config.agent.planning.max_tool_rounds
-            logger.info(
-                "Plan mode active for project %s (chat %s)",
-                project_id or "(none)",
-                context.chat_id,
-            )
-        else:
-            system_prompt = self._build_system_prompt()
-            tools = self._build_tool_definitions()
-            max_rounds = config.agent.max_tool_rounds
-
-        messages = [LLMMessage(role="system", content=system_prompt)] + session.messages
-        final_response = ""
-        all_usage = {"prompt_tokens": 0, "completion_tokens": 0}
-        hit_max_rounds = False
-        pending_viz: List[asyncio.Task] = []
-        context.metadata["viz_tasks"] = pending_viz
-        auto_viz: Optional[AutoVisualizer] = None
-        if context.channel == "webchat" and on_viz_event:
-            auto_viz = AutoVisualizer(session, on_viz_event, pending_viz)
-
-        # 追踪本次运行的 token 用量（记录到 session metadata）
-        session.metadata.setdefault("total_tokens", 0)
+        all_usage = run_state.usage
 
         try:
-            for round_num in range(1, max_rounds + 1):
-                if session.should_compact():
-                    logger.info(
-                        "Compacting session %s before round %s",
-                        session.session_id,
-                        round_num,
-                    )
-                    await hook_system.fire("on_compaction",
-                        chat_id=context.chat_id,
-                        data={"session_id": session.session_id, "round": round_num},
-                    )
-                    await self.sessions.compact(session, self.llm)
-                    messages = [
-                        LLMMessage(role="system", content=system_prompt),
-                        *session.messages,
-                    ]
+            loop_result = await self.agent_loop.run(
+                session=session,
+                context=context,
+                system_prompt=system_prompt,
+                tools=tools,
+                max_rounds=max_rounds,
+                run_state=run_state,
+                lifecycle=self.run_lifecycle,
+                on_stream_chunk=on_stream_chunk,
+                on_viz_event=on_viz_event,
+            )
+            final_response = loop_result.final_response
+            round_num = loop_result.rounds
+            hit_max_rounds = loop_result.hit_max_rounds
 
-                # 所有轮次都支持流式输出（首轮文本流式，后续轮工具调用也尽量流式）
-                should_stream = bool(on_stream_chunk)
-                response = await self._call_llm(
-                    messages,
-                    tools,
-                    stream=should_stream,
-                    on_stream_chunk=on_stream_chunk,
-                )
-
-                all_usage["prompt_tokens"] += response.usage.get("prompt_tokens", 0)
-                all_usage["completion_tokens"] += response.usage.get("completion_tokens", 0)
-                round_tokens = response.usage.get("prompt_tokens", 0) + response.usage.get("completion_tokens", 0)
-                session.metadata["total_tokens"] = session.metadata.get("total_tokens", 0) + round_tokens
-
-                if response.content:
-                    final_response = response.content
-
-                if self._should_stop_loop(response):
-                    if response.content:
-                        session.add_message(
-                            LLMMessage(
-                                role="assistant",
-                                content=response.content,
-                                reasoning_content=response.reasoning_content,
-                            )
-                        )
-                    break
-
-                assistant_msg = LLMMessage(
-                    role="assistant",
-                    content=response.content or "",
-                    tool_calls=response.tool_calls,
-                    reasoning_content=response.reasoning_content,
-                )
-                session.add_message(assistant_msg)
-                messages.append(assistant_msg)
-
-                snap_before = snapshot_workspace() if auto_viz else {}
-                context.metadata["_tool_idem_keys"] = set()
-                tool_results = await self._handle_tool_calls(
-                    response.tool_calls, context
-                )
-                for tr in tool_results:
-                    session.add_message(tr)
-                    messages.append(tr)
-
-                if auto_viz:
-                    snap_after = snapshot_workspace()
-                    await auto_viz.after_tool_round(snap_before, snap_after)
-
-                # ── 每轮后保存 session (checkpoint recovery) ──
-                await self.sessions.save(session)
-
-                logger.info(
-                    "Round %s: executed %s tool(s), tokens=%s",
-                    round_num,
-                    len(response.tool_calls),
-                    round_tokens,
-                )
-            else:
-                hit_max_rounds = True
-
-            if hit_max_rounds:
-                recovery = await self._finalize_after_max_rounds(
-                    session, system_prompt, on_stream_chunk
-                )
-                if recovery:
-                    final_response = recovery
-
-        except Exception:
+        except Exception as exc:
             logger.exception("Agent loop failed for chat_id=%s", context.chat_id)
-            # ── on_error hook ──
-            import sys
-            err_msg = str(sys.exc_info()[1])
-            await hook_system.fire("on_error",
-                chat_id=context.chat_id,
-                channel=context.channel,
-                data={"error": err_msg, "round": round_num if 'round_num' in dir() else 0},
+            await self.run_lifecycle.fail(
+                run_state,
+                context,
+                exc,
+                rounds=round_num if "round_num" in locals() else 0,
             )
-            # ── Record error stats ──
-            current_run.error = err_msg
-            evolution_trace.finish(
-                success=False,
-                rounds=round_num if 'round_num' in dir() else 0,
-                prompt_tokens=all_usage["prompt_tokens"],
-                completion_tokens=all_usage["completion_tokens"],
-                error=err_msg,
-            )
-            current_run.success = False
-            current_run.quality_score = evolution_trace.score
-            current_run.tool_errors = len(evolution_trace.errors)
-            agent_stats.end_run(current_run)
-            self._complete_evolution_trace(evolution_trace)
-            await self._maybe_generate_reflection(evolution_trace)
             # ── 错误时也要尽力保存 session ──
             await self.sessions.save(session)
             raise
@@ -819,36 +463,14 @@ class Agent:
             if not (final_response or "").strip():
                 final_response = "（模型未返回文本，可能仅执行了工具调用；请查看上文工具输出或重试。）"
 
-        # ── after_agent hook ──
-        await hook_system.fire("after_agent",
-            chat_id=context.chat_id,
-            channel=context.channel,
-            data={
-                "rounds": round_num if 'round_num' in dir() else 0,
-                "final_response_length": len(final_response),
-                "total_tokens": all_usage,
-                "session_id": session.session_id,
-            },
-        )
-
-        # ── Record stats ──
-        current_run.prompt_tokens = all_usage["prompt_tokens"]
-        current_run.completion_tokens = all_usage["completion_tokens"]
-        current_run.rounds = round_num if 'round_num' in dir() else 0
-        evolution_trace.finish(
-            success=bool((final_response or "").strip()),
-            final_response=final_response,
-            rounds=round_num if 'round_num' in dir() else 0,
-            prompt_tokens=all_usage["prompt_tokens"],
-            completion_tokens=all_usage["completion_tokens"],
+        await self.run_lifecycle.finish(
+            run_state,
+            context,
+            session,
+            final_response,
+            rounds=round_num if "round_num" in locals() else 0,
             hit_max_rounds=hit_max_rounds,
         )
-        current_run.success = evolution_trace.success
-        current_run.quality_score = evolution_trace.score
-        current_run.hit_max_rounds = hit_max_rounds
-        agent_stats.end_run(current_run)
-        self._complete_evolution_trace(evolution_trace)
-        await self._maybe_generate_reflection(evolution_trace)
 
         logger.info(
             "Agent run complete: %s messages, %s tokens",

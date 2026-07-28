@@ -3,7 +3,7 @@ security.py — 安全系统
 """
 from typing import List, Dict, Optional
 from pathlib import Path
-from .config import WORKSPACE_DIR
+from .settings import APP_PATHS, WORKSPACE_DIR
 from .tools.registry import ToolDefinition
 from .logger import get_logger
 
@@ -21,7 +21,7 @@ class SecurityPolicy:
     def __init__(self):
         self.allowed_dirs: List[Path] = [
             WORKSPACE_DIR.resolve(),
-            Path.home() / ".miniclaw" / "workspace",
+            APP_PATHS.workspace,
             Path.home() / "Desktop",
             Path.home() / "Documents",
         ]

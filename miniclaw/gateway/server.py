@@ -6,7 +6,7 @@ import asyncio
 import uuid
 import websockets
 from typing import Dict, Set
-from ..config import config
+from ..settings import config
 from ..logger import get_logger
 
 logger = get_logger(__name__)

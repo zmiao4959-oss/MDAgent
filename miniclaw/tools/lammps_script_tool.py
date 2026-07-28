@@ -9,7 +9,7 @@ import sys
 import tempfile
 from typing import Any
 
-from ..config import active_workspace_dir, config
+from ..settings import active_workspace_dir, config
 from .paths import resolve_workspace_path
 from .registry import tool_registry
 

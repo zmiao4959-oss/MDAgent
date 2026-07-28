@@ -1,6 +1,6 @@
 # MiniClaw 项目交接
 
-> 自我进化系统已经完成阶段 1–23，科研胶囊阶段 24–25 已完成，并已接入 MDSynth LAMMPS 编译器。完整架构、数据位置、配置、API、验收和源代码进化流程见 [`evolution.md`](evolution.md)、[`research-capsules.md`](research-capsules.md) 与 [`lammps-script-generation.md`](lammps-script-generation.md)。当前测试基线为 159 项通过；自动源码补丁默认关闭，必须显式配置源码 Git 仓库并启用开关。
+> 自我进化系统已经完成阶段 1–23，科研胶囊阶段 24–25 已完成，并已接入 MDSynth LAMMPS 编译器。声明式多智能体、WebChat 并行任务状态和统一可移植配置已经完成。完整计划见 [`../docs/MULTI_AGENT_REFACTOR_PLAN.md`](../docs/MULTI_AGENT_REFACTOR_PLAN.md)。当前测试基线为 174 项通过；自动源码补丁默认关闭，必须显式配置源码 Git 仓库并启用开关。
 
 AI Agent 工作台 — 多轮工具调用 Agent，面向科学计算（LAMMPS/GPUMD 分子动力学、OVITO 可视化、领域知识检索），多渠道接入（WebChat / Telegram / WebSocket）。
 
@@ -59,10 +59,26 @@ openclaw-study/
     │   ├── router.py          # Provider 路由
     │   └── openai_compat.py   # OpenAI 兼容 + SSE
     ├── channels/
-    │   ├── webchat.py         # WebChat FastAPI
+    │   ├── webchat.py         # 向后兼容导出
+    │   ├── webchat_adapter.py # WebChat 服务组合与服务器生命周期
     │   ├── telegram.py
     │   └── web/
     │       ├── files.py       # 文件浏览 API
+    │       ├── chat_routes.py # 对话 SSE 入口
+    │       ├── chat_run.py    # 单次 Agent 请求编排
+    │       ├── chat_events.py # SSE 事件流
+    │       ├── project_routes.py # 项目生命周期 API
+    │       ├── project_task_routes.py # 项目计划与任务 API
+    │       ├── project_run.py # 项目后台执行、并发与重试
+    │       ├── project_workspace.py # 项目工作区与产物视图
+    │       ├── knowledge_service.py # GPUMD 知识库任务状态机
+    │       ├── knowledge_routes.py # GPUMD 知识库 API
+    │       ├── diagnostics.py # 本地运行能力诊断
+    │       ├── system_routes.py # 配置、诊断和统计 API
+    │       ├── conversation_service.py # 会话生命周期与导出
+    │       ├── conversation_routes.py # 会话管理 API
+    │       ├── file_routes.py # 项目范围文件 API
+    │       ├── web_app.py # FastAPI 应用工厂与统一路由注册
     │       ├── evolution_routes.py # 进化管理 API
     │       └── static/
     │           ├── index.html

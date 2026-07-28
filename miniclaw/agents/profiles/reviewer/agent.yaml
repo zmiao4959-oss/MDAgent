@@ -1,0 +1,12 @@
+name: reviewer
+description: Read-only reviewer that checks artifacts, evidence, safety, and task completion.
+prompt: SYSTEM.md
+skills: ["*"]
+tools:
+  allow:
+    - grep
+    - list
+    - read
+    - read_skill
+    - search_gpumd_docs
+    - system_info

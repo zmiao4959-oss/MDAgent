@@ -1,7 +1,14 @@
+import asyncio
+from collections import Counter
 from pathlib import Path
 
+import pytest
+
+from miniclaw.channels.web.knowledge_service import KnowledgeService
+from miniclaw.channels.web.web_app import create_web_app
 from miniclaw.channels.webchat import (
     TASK_BEHAVIOR_DEFAULTS,
+    WebChatAdapter,
     collect_runtime_diagnostics,
     gpumd_knowledge_snapshot,
     load_task_behavior,
@@ -9,6 +16,7 @@ from miniclaw.channels.webchat import (
     save_task_behavior,
 )
 from miniclaw.config import config
+from miniclaw.memory.session import SessionManager
 
 
 STATIC = Path(__file__).parents[1] / "miniclaw" / "channels" / "web" / "static"
@@ -137,13 +145,17 @@ def test_source_evolution_routes_exist():
 
 
 def test_evolution_modules_are_registered_without_duplicate_implementations():
-    webchat = (
-        Path(__file__).parents[1] / "miniclaw" / "channels" / "webchat.py"
+    web_app = (
+        Path(__file__).parents[1]
+        / "miniclaw"
+        / "channels"
+        / "web"
+        / "web_app.py"
     ).read_text(encoding="utf-8")
     app_js = (STATIC / "app.js").read_text(encoding="utf-8")
 
-    assert "register_evolution_routes(app, self)" in webchat
-    assert '@app.get("/api/evolution/' not in webchat
+    assert "register_evolution_routes(app, adapter)" in web_app
+    assert '@app.get("/api/evolution/' not in web_app
     assert "createEvolutionPanel" in app_js
     assert 'fetch("/api/evolution/feedback"' not in app_js
 
@@ -220,7 +232,10 @@ def test_task_behavior_uses_defaults_for_invalid_file(tmp_path):
 
 
 def test_runtime_diagnostics_reports_expected_capabilities(monkeypatch):
-    monkeypatch.setattr("miniclaw.channels.webchat.shutil.which", lambda _name: None)
+    monkeypatch.setattr(
+        "miniclaw.channels.web.diagnostics.shutil.which",
+        lambda _name: None,
+    )
 
     diagnostics = collect_runtime_diagnostics()
     items = {item["id"]: item for item in diagnostics["items"]}
@@ -228,3 +243,83 @@ def test_runtime_diagnostics_reports_expected_capabilities(monkeypatch):
     assert {"gpumd", "lammps", "ssh", "gpu", "embedding"} <= set(items)
     assert items["gpumd"]["state"] == "unavailable"
     assert "api_key" not in diagnostics
+
+
+def test_system_and_knowledge_routes_are_registered_once():
+    root = Path(__file__).parents[1] / "miniclaw" / "channels"
+    webchat = (root / "webchat.py").read_text(encoding="utf-8")
+    web_app = (root / "web" / "web_app.py").read_text(encoding="utf-8")
+    system_routes = (root / "web" / "system_routes.py").read_text(encoding="utf-8")
+    knowledge_routes = (
+        root / "web" / "knowledge_routes.py"
+    ).read_text(encoding="utf-8")
+
+    assert "register_system_routes(app, adapter)" in web_app
+    assert "register_knowledge_routes(app, adapter)" in web_app
+    assert "/api/diagnostics" in system_routes
+    assert "/api/settings/task-behavior" in system_routes
+    assert "/api/knowledge/gpumd" in knowledge_routes
+    assert '@app.get("/api/diagnostics")' not in webchat
+    assert '@app.get("/api/knowledge/gpumd")' not in webchat
+
+
+def test_knowledge_service_exposes_running_state_and_rejects_overlap(
+    monkeypatch,
+):
+    async def scenario():
+        service = KnowledgeService()
+        blocker = asyncio.Event()
+
+        async def wait_for_release(_action):
+            await blocker.wait()
+
+        monkeypatch.setattr(service, "_run", wait_for_release)
+        service.start("sync")
+
+        assert service.state["state"] == "running"
+        assert service.state["action"] == "sync"
+        with pytest.raises(RuntimeError, match="已有知识库任务"):
+            service.start("index")
+        await service.stop()
+
+    asyncio.run(scenario())
+
+
+def test_web_app_registers_each_api_operation_once(tmp_path):
+    adapter = WebChatAdapter(
+        session_manager=SessionManager(tmp_path / "sessions")
+    )
+    app = create_web_app(adapter)
+    operations = [
+        (method, route.path)
+        for route in app.routes
+        for method in getattr(route, "methods", set())
+        if route.path.startswith("/api/")
+    ]
+    counts = Counter(operations)
+
+    assert all(count == 1 for count in counts.values())
+    assert {
+        ("POST", "/api/chat"),
+        ("GET", "/api/conversations"),
+        ("GET", "/api/files"),
+        ("GET", "/api/knowledge/gpumd"),
+        ("GET", "/api/projects"),
+        ("GET", "/api/diagnostics"),
+    } <= set(operations)
+
+
+def test_subagent_task_events_are_wired_to_webchat_panel():
+    web_app = Path("miniclaw/channels/web/web_app.py").read_text(encoding="utf-8")
+    events = Path("miniclaw/channels/web/chat_events.py").read_text(encoding="utf-8")
+    run_service = Path("miniclaw/channels/web/chat_run.py").read_text(encoding="utf-8")
+    routes = Path("miniclaw/channels/web/chat_routes.py").read_text(encoding="utf-8")
+    app = Path("miniclaw/channels/web/static/app.js").read_text(encoding="utf-8")
+    html = Path("miniclaw/channels/web/static/index.html").read_text(encoding="utf-8")
+
+    assert "register_chat_routes(app, adapter)" in web_app
+    assert "ChatRunService" in routes
+    assert "publish_task" in run_service
+    assert '"task_event"' in events
+    assert "handleTaskEvent(payload.task_event)" in app
+    assert 'id="agent-tasks-panel"' in html

@@ -1,9 +1,9 @@
 import logging
 import sys
-from pathlib import Path
+from .settings import APP_PATHS
 from logging.handlers import RotatingFileHandler
 
-LOG_DIR = Path.home() / ".miniclaw" / "logs"
+LOG_DIR = APP_PATHS.logs
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # 格式：时间 [级别] 模块: 消息

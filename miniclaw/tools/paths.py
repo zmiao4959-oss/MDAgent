@@ -6,7 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Iterable, Optional, Tuple
 
-from ..config import WORKSPACE_DIR, active_workspace_dir
+from ..settings import WORKSPACE_DIR, active_workspace_dir
 
 # Single-file read/write limits (bytes)
 MAX_READ_BYTES = 512 * 1024

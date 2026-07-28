@@ -2,7 +2,7 @@
 
 > `/api/evolution/*` 已包含经验反馈、评估、反思、治理、Skill、可执行策略和源代码候选管理接口。完整端点与启用条件见 [`evolution.md`](evolution.md#web-管理-api)。源代码进化默认返回 403，必须显式启用并配置 Git 仓库。
 
-聊天、项目和文件端点主要定义在 `miniclaw/channels/webchat.py`；`/api/evolution/*` 端点集中定义在 `miniclaw/channels/web/evolution_routes.py`，科研胶囊端点定义在 `miniclaw/channels/web/capsule_routes.py`，均由 WebChat 启动时注册。
+所有端点由 `miniclaw/channels/web/web_app.py` 统一注册。聊天流、会话、项目、文件、知识库、系统设置、进化和科研胶囊分别位于同目录的对应 `*_routes.py` 中。
 
 ## 对话
 
@@ -92,4 +92,4 @@ data: {"done": true, "full": "完整响应文本"}
 
 ## 安全响应头
 
-`webchat.py` 中有 middleware 为所有响应添加 `X-Content-Type-Options: nosniff`。
+`web_app.py` 中的 middleware 为所有响应添加 `X-Content-Type-Options: nosniff`。

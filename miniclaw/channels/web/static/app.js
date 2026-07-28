@@ -29,6 +29,9 @@ import { createResearchCapsulePanel } from '/static/capsules.js';
   const runNextTaskButton = document.getElementById("run-next-task");
   const chatProgress = document.getElementById("chat-progress");
   const chatStatusText = document.getElementById("chat-status-text");
+  const agentTasksPanel = document.getElementById("agent-tasks-panel");
+  const agentTasksList = document.getElementById("agent-tasks-list");
+  const agentTasksSummary = document.getElementById("agent-tasks-summary");
   const vizProgress = document.getElementById("viz-progress");
   const vizStatusText = document.getElementById("viz-status-text");
   const mediaCountEl = document.getElementById("media-count");
@@ -43,6 +46,7 @@ import { createResearchCapsulePanel } from '/static/capsules.js';
   const runtimeSummary = document.getElementById("runtime-summary");
   const planModeCheckbox = document.getElementById("plan-mode-checkbox");
   const planModeToggle = document.getElementById("plan-mode-toggle");
+  const agentTaskState = new Map();
   const projectDialog = document.getElementById("project-dialog");
   const projectForm = document.getElementById("project-form");
   const projectTitleInput = document.getElementById("project-title");
@@ -1795,11 +1799,44 @@ import { createResearchCapsulePanel } from '/static/capsules.js';
     return rest;
   }
 
+  function renderAgentTasks() {
+    const tasks = Array.from(agentTaskState.values());
+    agentTasksPanel.hidden = tasks.length === 0;
+    if (!tasks.length) return;
+    const running = tasks.filter((task) => task.status === "pending" || task.status === "running").length;
+    agentTasksSummary.textContent = running ? `${running} 运行中 / ${tasks.length} 总计` : `${tasks.length} 个任务`;
+    agentTasksList.innerHTML = "";
+    for (const task of tasks) {
+      const card = document.createElement("div");
+      card.className = "agent-task-card";
+      card.dataset.status = task.status || "pending";
+      const role = document.createElement("strong");
+      role.textContent = task.agent || "agent";
+      const objective = document.createElement("span");
+      objective.className = "agent-task-objective";
+      objective.textContent = task.objective || "";
+      objective.title = task.objective || "";
+      const status = document.createElement("span");
+      status.className = "agent-task-status";
+      status.textContent = task.status || "pending";
+      card.append(role, objective, status);
+      agentTasksList.appendChild(card);
+    }
+  }
+
+  function handleTaskEvent(task) {
+    if (!task || !task.task_id) return;
+    agentTaskState.set(task.task_id, task);
+    renderAgentTasks();
+  }
+
   async function send() {
     const text = inp.value.trim();
     const projectId = currentProjectId;
     const chatId = currentChatId;
     if (!text || !projectId || runningProjectIds.has(projectId)) return;
+    agentTaskState.clear();
+    renderAgentTasks();
     addMsg("user", text);
     inp.value = "";
     inp.style.height = "auto";
@@ -1855,7 +1892,9 @@ import { createResearchCapsulePanel } from '/static/capsules.js';
         if (x.done) break;
         buffer += decoder.decode(x.value, { stream: true });
         buffer = parseSseBuffer(buffer, (payload) => {
-          if (payload.progress) {
+          if (payload.task_event) {
+            handleTaskEvent(payload.task_event);
+          } else if (payload.progress) {
             const p = payload.progress;
             if (p.total) {
               const pct = Math.round((p.current / p.total) * 100);
@@ -1895,7 +1934,9 @@ import { createResearchCapsulePanel } from '/static/capsules.js';
       // 兜底：处理 buffer 剩余数据（复用同一解析函数，避免遗漏 done 事件）
       if (buffer.trim()) {
         parseSseBuffer(buffer + "\n", (payload) => {
-          if (payload.progress) {
+          if (payload.task_event) {
+            handleTaskEvent(payload.task_event);
+          } else if (payload.progress) {
             const p = payload.progress;
             if (p.total) setChatProgress(true, `Step ${p.current} / ${p.total}`, Math.round((p.current / p.total) * 100), projectId);
             else setChatProgress(true, `Step ${p.current}`, undefined, projectId);
