@@ -10,6 +10,7 @@ from miniclaw.tools.registry import tool_registry
 from miniclaw.tools.skill_tool import read_skill_tool
 from miniclaw.tools.delegation_tool import (
     delegate_task_tool,
+    list_tasks_tool,
     register_subagent_manager,
 )
 
@@ -149,10 +150,18 @@ def test_coordinator_exposes_delegation_but_not_execution_tools(tmp_path: Path):
     definitions = agent._build_tool_definitions()
     names = {definition["function"]["name"] for definition in definitions}
 
-    assert {"list_agents", "delegate_task", "inspect_task", "wait_task", "cancel_task"} <= names
+    assert {
+        "list_agents",
+        "list_tasks",
+        "delegate_task",
+        "inspect_task",
+        "wait_task",
+        "cancel_task",
+    } <= names
     assert "execute" not in names
     assert "write" not in names
     assert "opaque identifier" in profile.system_prompt
+    assert "call `list_tasks`" in profile.system_prompt
     assert "Never call `delegate_task` again" in profile.system_prompt
 
     by_name = {
@@ -271,3 +280,57 @@ def test_equivalent_delegations_reuse_task_unless_forced(
     assert forced["task_id"] != first["task_id"]
     assert forced["reused"] is False
     assert calls == 2
+
+
+def test_list_tasks_is_scoped_to_parent_and_supports_reconciliation(
+    tmp_path: Path,
+    monkeypatch,
+):
+    profiles = tmp_path / "profiles"
+    _write_profile(profiles, "worker", tools='["read"]', skills="[]")
+    catalog = AgentCatalog([profiles])
+    template = Agent(_UnusedLLM(), SessionManager(tmp_path / "sessions"))
+    manager = SubAgentManager(template, template.sessions, catalog=catalog)
+    register_subagent_manager(manager)
+
+    async def process(self, context, **kwargs):
+        return "done"
+
+    monkeypatch.setattr(Agent, "_process_message", process)
+
+    async def run():
+        first = await delegate_task_tool(
+            "worker",
+            "analyze alpha",
+            idempotency_key="alpha-key",
+            _context={"chat_id": "parent-one"},
+            sandbox=False,
+        )
+        await delegate_task_tool(
+            "worker",
+            "analyze beta",
+            idempotency_key="beta-key",
+            _context={"chat_id": "parent-two"},
+            sandbox=False,
+        )
+        scoped = list_tasks_tool(_context={"chat_id": "parent-one"})
+        matched = list_tasks_tool(
+            query="alpha-key",
+            _context={"chat_id": "parent-one"},
+        )
+        missing = list_tasks_tool(
+            query="beta",
+            _context={"chat_id": "parent-one"},
+        )
+        await asyncio.gather(
+            *(manager.wait(task.task_id) for task in manager.list_all())
+        )
+        return first, scoped, matched, missing
+
+    first, scoped, matched, missing = asyncio.run(run())
+
+    assert scoped["count"] == 1
+    assert scoped["tasks"][0]["task_id"] == first["task_id"]
+    assert scoped["tasks"][0]["idempotency_key"] == "alpha-key"
+    assert matched["tasks"][0]["objective"] == "analyze alpha"
+    assert missing["tasks"] == []

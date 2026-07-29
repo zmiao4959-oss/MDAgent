@@ -42,6 +42,8 @@ class SubAgentTask:
     result: Optional[str] = None
     model: str = "default"
     thinking: str = "off"
+    parent_session_id: Optional[str] = None
+    idempotency_key: Optional[str] = None
     sandbox_dir: Optional[str] = None  # 隔离工作区路径
     collected_files: List[str] = field(default_factory=list)
 
@@ -52,6 +54,7 @@ class SubAgentTask:
             "objective": self.task_prompt,
             "status": self.status,
             "result": self.result,
+            "idempotency_key": self.idempotency_key,
             "sandbox_dir": self.sandbox_dir,
             "collected_files": list(self.collected_files),
         }
@@ -145,6 +148,12 @@ class SubAgentManager:
             agent_name=profile.name,
             model=model,
             thinking=thinking,
+            parent_session_id=parent_session_id,
+            idempotency_key=(
+                idempotency_key.strip()
+                if idempotency_key and idempotency_key.strip()
+                else None
+            ),
         )
         self._tasks[task_id] = task
         self._delegation_keys[delegation_key] = task_id
@@ -303,6 +312,14 @@ class SubAgentManager:
 
     def list_all(self) -> list:
         return list(self._tasks.values())
+
+    def list_for_parent(self, parent_session_id: str) -> List[SubAgentTask]:
+        """Return only tasks owned by one parent conversation."""
+        return [
+            task
+            for task in self._tasks.values()
+            if task.parent_session_id == parent_session_id
+        ]
 
     async def wait(self, task_id: str, timeout: float = 300) -> Optional[str]:
         """等待一个子任务完成。"""

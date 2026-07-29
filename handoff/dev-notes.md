@@ -1,6 +1,6 @@
 # 开发备忘
 
-> 自我进化阶段 1–23 的开发与验收说明见 [`evolution.md`](evolution.md)，科研胶囊阶段 24–25 见 [`research-capsules.md`](research-capsules.md)。当前回归基线为 175 项测试通过，包含声明式多智能体、幂等委派、WebChat 并行任务事件、模块化服务与统一可移植配置。修改配置路径、Agent Profile 权限、自进化门禁、治理逻辑、胶囊导出或执行工具时应视为高风险变更，必须补测试并保留 Git 可回滚节点。
+> 自我进化阶段 1–23 的开发与验收说明见 [`evolution.md`](evolution.md)，科研胶囊阶段 24–25 见 [`research-capsules.md`](research-capsules.md)。当前回归基线为 176 项测试通过，包含声明式多智能体、幂等委派与任务对账、WebChat 并行任务事件、模块化服务与统一可移植配置。修改配置路径、Agent Profile 权限、自进化门禁、治理逻辑、胶囊导出或执行工具时应视为高风险变更，必须补测试并保留 Git 可回滚节点。
 
 MDSynth/LAMMPS 编译器接入见 [`lammps-script-generation.md`](lammps-script-generation.md)。外部 MDSynth 仓库是独立源码真源，接入层不得静默修改或清理其工作树；高级模式必须保留精确确认和子进程隔离。
 

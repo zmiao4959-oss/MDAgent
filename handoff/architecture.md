@@ -25,14 +25,16 @@ main.py
 ## 声明式多智能体
 
 默认入口加载 `coordinator` Profile。Coordinator 通过 `list_agents`、
-`delegate_task`、`inspect_task`、`wait_task` 和 `cancel_task` 管理子任务。
+`list_tasks`、`delegate_task`、`inspect_task`、`wait_task` 和 `cancel_task`
+管理子任务。
 每个子任务创建独立 `Agent` 实例和 Session，但复用 LLM Router、ToolRegistry、
 Hook、Trace 与安全基础设施。
 
 `delegate_task` 返回结构化回执，其中 `task_id` 是必须原样传递的不透明标识符。
 Manager 以父会话、Profile、目标、模型和沙箱设置生成幂等键；等价重复委派复用
 原任务，只有显式 `force_new=true` 才创建新任务。查询失败不会被解释为委派失败，
-Coordinator 必须从原回执恢复完整 ID，禁止因此自动重复派发。
+Coordinator 必须先从原回执恢复完整 ID，再通过当前父会话隔离的 `list_tasks`
+按 ID、幂等键、Agent 或目标进行对账，禁止因此自动重复派发。
 
 内置 Profile 位于 `miniclaw/agents/profiles/`；用户可在工作区 `agents/`
 下放置同结构目录，自定义或覆盖同名 Profile。Profile 的工具和 Skill 白名单

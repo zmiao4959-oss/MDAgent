@@ -10,6 +10,7 @@ tools:
     - remember
     - send_message
     - list_agents
+    - list_tasks
     - delegate_task
     - inspect_task
     - wait_task

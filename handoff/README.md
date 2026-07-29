@@ -1,6 +1,6 @@
 # MiniClaw 项目交接
 
-> 自我进化系统已经完成阶段 1–23，科研胶囊阶段 24–25 已完成，并已接入 MDSynth LAMMPS 编译器。声明式多智能体、WebChat 并行任务状态和统一可移植配置已经完成。完整计划见 [`../docs/MULTI_AGENT_REFACTOR_PLAN.md`](../docs/MULTI_AGENT_REFACTOR_PLAN.md)。当前测试基线为 175 项通过；自动源码补丁默认关闭，必须显式配置源码 Git 仓库并启用开关。
+> 自我进化系统已经完成阶段 1–23，科研胶囊阶段 24–25 已完成，并已接入 MDSynth LAMMPS 编译器。声明式多智能体、WebChat 并行任务状态和统一可移植配置已经完成。完整计划见 [`../docs/MULTI_AGENT_REFACTOR_PLAN.md`](../docs/MULTI_AGENT_REFACTOR_PLAN.md)。当前测试基线为 176 项通过；自动源码补丁默认关闭，必须显式配置源码 Git 仓库并启用开关。
 
 AI Agent 工作台 — 多轮工具调用 Agent，面向科学计算（LAMMPS/GPUMD 分子动力学、OVITO 可视化、领域知识检索），多渠道接入（WebChat / Telegram / WebSocket）。
 

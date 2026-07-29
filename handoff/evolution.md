@@ -5,7 +5,7 @@
 ## 当前状态
 
 - 阶段 1–23 与科研胶囊阶段 24–25 已实现并通过验收。
-- 全量测试基线：`175 passed`（包含统一可移植配置、声明式多智能体、幂等委派、模块化 WebChat、并行任务事件、科研胶囊阶段 24–25 和 MDSynth 桥接测试）。
+- 全量测试基线：`176 passed`（包含统一可移植配置、声明式多智能体、幂等委派与任务对账、模块化 WebChat、并行任务事件、科研胶囊阶段 24–25 和 MDSynth 桥接测试）。
 - `scripts/acceptance_stage1.py` 至 `scripts/acceptance_stage25.py` 全部通过。
 - 前端 `app.js`、`evolution.js`、`capsules.js` 语法检查与 `git diff --check` 通过。
 - 关键 Git 节点：`fab9fbb`（阶段 1–6）、`e9dfeb4`（阶段 7–14）、`9dd65a9`（阶段 15）、`bef8bcb`（阶段 16）、`58686e3`（阶段 17）、`041530e`（阶段 18）、`8cc1087`（阶段 19）、`f321250`（阶段 20）。

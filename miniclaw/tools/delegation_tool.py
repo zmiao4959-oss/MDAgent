@@ -52,6 +52,89 @@ def list_agents_tool(**kwargs: Any) -> str:
 
 
 @tool_registry.register(
+    name="list_tasks",
+    description="Reconcile delegated tasks owned by the current conversation.",
+    schema={
+        "type": "function",
+        "function": {
+            "name": "list_tasks",
+            "description": (
+                "List delegated tasks for the current parent conversation only. "
+                "Use this after an exact task lookup fails; reconcile by task_id, "
+                "idempotency_key, Agent, or objective before considering a rerun."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": (
+                            "Optional case-insensitive substring matched against "
+                            "task_id, idempotency_key, Agent name, and objective."
+                        ),
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["pending", "running", "done", "error"],
+                        "description": "Optional exact status filter.",
+                    },
+                },
+            },
+        },
+    },
+    tags=["coordination"],
+)
+def list_tasks_tool(
+    query: str = "",
+    status: str = "",
+    _context=None,
+    **kwargs: Any,
+) -> dict:
+    context = _context or {}
+    parent_session_id = context.get("chat_id")
+    if not parent_session_id:
+        return {
+            "status": "error",
+            "error": "Current parent conversation is unavailable.",
+            "tasks": [],
+        }
+
+    tasks = _require_manager().list_for_parent(parent_session_id)
+    normalized_query = query.strip().lower()
+    if status:
+        tasks = [task for task in tasks if task.status == status]
+    if normalized_query:
+        tasks = [
+            task
+            for task in tasks
+            if normalized_query
+            in " ".join(
+                (
+                    task.task_id,
+                    task.idempotency_key or "",
+                    task.agent_name,
+                    task.task_prompt,
+                )
+            ).lower()
+        ]
+    return {
+        "status": "ok",
+        "count": len(tasks),
+        "tasks": [
+            {
+                "task_id": task.task_id,
+                "idempotency_key": task.idempotency_key,
+                "agent": task.agent_name,
+                "objective": task.task_prompt,
+                "status": task.status,
+                "has_result": task.result is not None,
+            }
+            for task in tasks
+        ],
+    }
+
+
+@tool_registry.register(
     name="delegate_task",
     description="Start a task using a selected Agent profile.",
     schema={
@@ -150,8 +233,8 @@ def inspect_task_tool(task_id: str, **kwargs: Any) -> dict:
             "status": "not_found",
             "task_id": task_id,
             "instruction": (
-                "Do not delegate again. Retrieve the exact task_id from the original "
-                "delegate_task receipt and retry with it verbatim."
+                "Do not delegate again. Retry once with the exact task_id from the "
+                "original receipt, then use list_tasks to reconcile this conversation."
             ),
         }
     return task.to_dict()
@@ -191,7 +274,7 @@ async def wait_task_tool(
     result = await _require_manager().wait(task_id, timeout=float(timeout))
     return result if result is not None else (
         f"Error: Unknown task '{task_id}'. Do not delegate again; reuse the exact "
-        "task_id from the original delegate_task receipt, including its prefix."
+        "task_id from the original receipt, then use list_tasks to reconcile."
     )
 
 
@@ -221,7 +304,7 @@ async def cancel_task_tool(task_id: str, **kwargs: Any) -> str:
     if _require_manager().get(task_id) is None:
         return (
             f"Error: Unknown task '{task_id}'. Do not delegate again; reuse the exact "
-            "task_id from the original delegate_task receipt."
+            "task_id from the original receipt, then use list_tasks to reconcile."
         )
     await _require_manager().kill(task_id)
     return f"Cancelled {task_id}"
