@@ -9,7 +9,7 @@ import shutil
 import tempfile
 import uuid
 from pathlib import Path
-from typing import Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
 from dataclasses import dataclass, field
 
@@ -72,6 +72,7 @@ class SubAgentManager:
         self._tasks: Dict[str, SubAgentTask] = {}
         self._running: Dict[str, asyncio.Task] = {}
         self._event_callbacks: Dict[str, TaskEventCallback] = {}
+        self._delegation_keys: Dict[Tuple[Any, ...], str] = {}
 
     async def spawn(
         self,
@@ -84,24 +85,59 @@ class SubAgentManager:
         sandbox: bool = True,
         seed_files: Optional[List[str]] = None,
         event_callback: Optional[TaskEventCallback] = None,
+        idempotency_key: Optional[str] = None,
+        force_new: bool = False,
     ) -> str:
-        """
-        创建一个子 Agent 任务，立即开始异步执行。
+        """Create a delegated task and return its opaque task ID."""
+        receipt = await self.delegate(
+            task_prompt,
+            parent_session_id=parent_session_id,
+            model=model,
+            thinking=thinking,
+            agent_name=agent_name,
+            sandbox=sandbox,
+            seed_files=seed_files,
+            event_callback=event_callback,
+            idempotency_key=idempotency_key,
+            force_new=force_new,
+        )
+        return str(receipt["task_id"])
 
-        Args:
-            task_prompt: 子任务的提示词
-            parent_session_id: 父会话 ID
-            model: 使用的模型（default = 跟随主 Agent）
-            thinking: thinking 模式
-            agent_name: AgentCatalog 中的 Profile 名称
-            sandbox: 是否使用沙箱隔离工作区
-            seed_files: 额外复制到沙箱的文件列表
-
-        Returns:
-            task_id
-        """
+    async def delegate(
+        self,
+        task_prompt: str,
+        parent_session_id: str = None,
+        model: str = "default",
+        thinking: str = "off",
+        *,
+        agent_name: str = "general-worker",
+        sandbox: bool = True,
+        seed_files: Optional[List[str]] = None,
+        event_callback: Optional[TaskEventCallback] = None,
+        idempotency_key: Optional[str] = None,
+        force_new: bool = False,
+    ) -> Dict[str, Any]:
+        """Create or reuse a delegated task and return a structured receipt."""
         self.catalog.refresh()
         profile = self.catalog.require(agent_name)
+        delegation_key = self._delegation_key(
+            task_prompt=task_prompt,
+            parent_session_id=parent_session_id,
+            agent_name=profile.name,
+            model=model,
+            thinking=thinking,
+            sandbox=sandbox,
+            seed_files=seed_files,
+            idempotency_key=idempotency_key,
+        )
+        existing_id = self._delegation_keys.get(delegation_key)
+        existing = self._tasks.get(existing_id or "")
+        if not force_new and existing is not None:
+            if event_callback is not None and existing_id not in self._event_callbacks:
+                self._event_callbacks[existing_id] = event_callback
+            logger.info("Reusing delegated task: %s", existing.task_id)
+            return self._receipt(existing, reused=True)
+
         task_id = f"subagent:{uuid.uuid4().hex[:12]}"
         task = SubAgentTask(
             task_id=task_id,
@@ -111,6 +147,7 @@ class SubAgentManager:
             thinking=thinking,
         )
         self._tasks[task_id] = task
+        self._delegation_keys[delegation_key] = task_id
         if event_callback is not None:
             self._event_callbacks[task_id] = event_callback
 
@@ -121,7 +158,45 @@ class SubAgentManager:
         self._running[task_id] = asyncio.create_task(coro)
 
         logger.info("Sub-agent spawned: %s (sandbox=%s, model=%s)", task_id, sandbox, model)
-        return task_id
+        return self._receipt(task, reused=False)
+
+    @staticmethod
+    def _delegation_key(
+        *,
+        task_prompt: str,
+        parent_session_id: Optional[str],
+        agent_name: str,
+        model: str,
+        thinking: str,
+        sandbox: bool,
+        seed_files: Optional[List[str]],
+        idempotency_key: Optional[str],
+    ) -> Tuple[Any, ...]:
+        parent = parent_session_id or ""
+        if idempotency_key and idempotency_key.strip():
+            return ("explicit", parent, idempotency_key.strip())
+        return (
+            "automatic",
+            parent,
+            agent_name,
+            " ".join(task_prompt.split()),
+            model,
+            thinking,
+            bool(sandbox),
+            tuple(seed_files or ()),
+        )
+
+    @staticmethod
+    def _receipt(task: SubAgentTask, *, reused: bool) -> Dict[str, Any]:
+        return {
+            "task_id": task.task_id,
+            "status": task.status,
+            "reused": reused,
+            "instruction": (
+                "Treat task_id as opaque. Copy it verbatim, including the "
+                "'subagent:' prefix, for inspect_task, wait_task, or cancel_task."
+            ),
+        }
 
     async def _prepare_sandbox(self, task: SubAgentTask, seed_files: Optional[List[str]]) -> Path:
         """为子 Agent 创建隔离工作区。"""

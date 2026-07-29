@@ -9,6 +9,10 @@ if TYPE_CHECKING:
     from ..subagent import SubAgentManager
 
 _manager: Optional["SubAgentManager"] = None
+_TASK_ID_DESCRIPTION = (
+    "Opaque task ID returned by delegate_task. Copy it verbatim, including "
+    "the 'subagent:' prefix. Never shorten, parse, or reconstruct it."
+)
 
 
 def register_subagent_manager(manager: "SubAgentManager") -> None:
@@ -56,7 +60,9 @@ def list_agents_tool(**kwargs: Any) -> str:
             "name": "delegate_task",
             "description": (
                 "Delegate a concrete objective to an Agent profile. Independent tasks "
-                "may be delegated before waiting for any one of them."
+                "may be delegated before waiting for any one of them. Returns a "
+                "structured receipt containing the opaque task_id. Equivalent repeated "
+                "requests reuse the original task unless force_new is true."
             ),
             "parameters": {
                 "type": "object",
@@ -74,6 +80,20 @@ def list_agents_tool(**kwargs: Any) -> str:
                         "type": "boolean",
                         "description": "Run in an isolated temporary workspace. Default false.",
                     },
+                    "idempotency_key": {
+                        "type": "string",
+                        "description": (
+                            "Optional stable key for this logical delegation. Reusing it "
+                            "in the same parent conversation returns the original task."
+                        ),
+                    },
+                    "force_new": {
+                        "type": "boolean",
+                        "description": (
+                            "Create a new task even when an equivalent delegation exists. "
+                            "Use only for an explicit rerun. Default false."
+                        ),
+                    },
                 },
             },
         },
@@ -84,16 +104,20 @@ async def delegate_task_tool(
     agent: str,
     objective: str,
     sandbox: bool = False,
+    idempotency_key: str = "",
+    force_new: bool = False,
     _context=None,
     **kwargs: Any,
-) -> str:
+) -> dict:
     context = _context or {}
-    return await _require_manager().spawn(
+    return await _require_manager().delegate(
         objective,
         parent_session_id=context.get("chat_id"),
         agent_name=agent,
         sandbox=bool(sandbox),
         event_callback=context.get("task_event_callback"),
+        idempotency_key=idempotency_key or None,
+        force_new=bool(force_new),
     )
 
 
@@ -108,7 +132,12 @@ async def delegate_task_tool(
             "parameters": {
                 "type": "object",
                 "required": ["task_id"],
-                "properties": {"task_id": {"type": "string"}},
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "description": _TASK_ID_DESCRIPTION,
+                    }
+                },
             },
         },
     },
@@ -117,7 +146,14 @@ async def delegate_task_tool(
 def inspect_task_tool(task_id: str, **kwargs: Any) -> dict:
     task = _require_manager().get(task_id)
     if task is None:
-        return {"status": "not_found", "task_id": task_id}
+        return {
+            "status": "not_found",
+            "task_id": task_id,
+            "instruction": (
+                "Do not delegate again. Retrieve the exact task_id from the original "
+                "delegate_task receipt and retry with it verbatim."
+            ),
+        }
     return task.to_dict()
 
 
@@ -133,7 +169,10 @@ def inspect_task_tool(task_id: str, **kwargs: Any) -> dict:
                 "type": "object",
                 "required": ["task_id"],
                 "properties": {
-                    "task_id": {"type": "string"},
+                    "task_id": {
+                        "type": "string",
+                        "description": _TASK_ID_DESCRIPTION,
+                    },
                     "timeout": {
                         "type": "number",
                         "description": "Maximum seconds to wait. Default 300.",
@@ -150,7 +189,10 @@ async def wait_task_tool(
     **kwargs: Any,
 ) -> str:
     result = await _require_manager().wait(task_id, timeout=float(timeout))
-    return result if result is not None else f"Error: Unknown task '{task_id}'"
+    return result if result is not None else (
+        f"Error: Unknown task '{task_id}'. Do not delegate again; reuse the exact "
+        "task_id from the original delegate_task receipt, including its prefix."
+    )
 
 
 @tool_registry.register(
@@ -164,7 +206,12 @@ async def wait_task_tool(
             "parameters": {
                 "type": "object",
                 "required": ["task_id"],
-                "properties": {"task_id": {"type": "string"}},
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "description": _TASK_ID_DESCRIPTION,
+                    }
+                },
             },
         },
     },
@@ -172,6 +219,9 @@ async def wait_task_tool(
 )
 async def cancel_task_tool(task_id: str, **kwargs: Any) -> str:
     if _require_manager().get(task_id) is None:
-        return f"Error: Unknown task '{task_id}'"
+        return (
+            f"Error: Unknown task '{task_id}'. Do not delegate again; reuse the exact "
+            "task_id from the original delegate_task receipt."
+        )
     await _require_manager().kill(task_id)
     return f"Cancelled {task_id}"

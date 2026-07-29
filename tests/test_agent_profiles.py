@@ -146,14 +146,25 @@ def test_coordinator_exposes_delegation_but_not_execution_tools(tmp_path: Path):
     profile = AgentCatalog().require("coordinator")
     agent = Agent(_UnusedLLM(), SessionManager(tmp_path / "sessions"), profile=profile)
 
-    names = {
-        definition["function"]["name"]
-        for definition in agent._build_tool_definitions()
-    }
+    definitions = agent._build_tool_definitions()
+    names = {definition["function"]["name"] for definition in definitions}
 
     assert {"list_agents", "delegate_task", "inspect_task", "wait_task", "cancel_task"} <= names
     assert "execute" not in names
     assert "write" not in names
+    assert "opaque identifier" in profile.system_prompt
+    assert "Never call `delegate_task` again" in profile.system_prompt
+
+    by_name = {
+        definition["function"]["name"]: definition["function"]
+        for definition in definitions
+    }
+    for tool_name in ("inspect_task", "wait_task", "cancel_task"):
+        description = by_name[tool_name]["parameters"]["properties"]["task_id"][
+            "description"
+        ]
+        assert "Copy it verbatim" in description
+        assert "subagent:" in description
 
 
 def test_coordinator_delegation_tool_runs_subagents_in_parallel(
@@ -190,7 +201,10 @@ def test_coordinator_delegation_tool_runs_subagents_in_parallel(
                 "worker", "second", _context=context, sandbox=False
             ),
         )
-        results = await asyncio.gather(manager.wait(first), manager.wait(second))
+        results = await asyncio.gather(
+            manager.wait(first["task_id"]),
+            manager.wait(second["task_id"]),
+        )
         return results
 
     results = asyncio.run(run())
@@ -198,3 +212,62 @@ def test_coordinator_delegation_tool_runs_subagents_in_parallel(
     assert sorted(results) == ["done:first", "done:second"]
     assert len({event["task_id"] for event in events}) == 2
     assert sum(event["status"] == "running" for event in events) == 2
+
+
+def test_equivalent_delegations_reuse_task_unless_forced(
+    tmp_path: Path,
+    monkeypatch,
+):
+    profiles = tmp_path / "profiles"
+    _write_profile(profiles, "worker", tools='["read"]', skills="[]")
+    catalog = AgentCatalog([profiles])
+    template = Agent(_UnusedLLM(), SessionManager(tmp_path / "sessions"))
+    manager = SubAgentManager(template, template.sessions, catalog=catalog)
+    register_subagent_manager(manager)
+    calls = 0
+
+    async def process(self, context, **kwargs):
+        nonlocal calls
+        calls += 1
+        return "done"
+
+    monkeypatch.setattr(Agent, "_process_message", process)
+
+    async def run():
+        context = {"chat_id": "parent"}
+        first = await delegate_task_tool(
+            "worker",
+            "same objective",
+            _context=context,
+            sandbox=False,
+        )
+        duplicate = await delegate_task_tool(
+            "worker",
+            "same   objective",
+            _context=context,
+            sandbox=False,
+        )
+        forced = await delegate_task_tool(
+            "worker",
+            "same objective",
+            _context=context,
+            sandbox=False,
+            force_new=True,
+        )
+        await asyncio.gather(
+            manager.wait(first["task_id"]),
+            manager.wait(forced["task_id"]),
+        )
+        return first, duplicate, forced
+
+    first, duplicate, forced = asyncio.run(run())
+
+    assert first["reused"] is False
+    assert duplicate == {
+        **first,
+        "reused": True,
+    }
+    assert duplicate["task_id"].startswith("subagent:")
+    assert forced["task_id"] != first["task_id"]
+    assert forced["reused"] is False
+    assert calls == 2
