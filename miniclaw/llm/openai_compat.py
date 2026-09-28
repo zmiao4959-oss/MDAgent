@@ -10,7 +10,9 @@ from .base import (
     merge_stream_fragment,
 )
 
-
+# AsyncOpenAI 是 OpenAI 官方 Python SDK（v1.0+）提供的异步 HTTP 客户端
+# 使用 AsyncOpenAI 可以方便地与 OpenAI API 进行异步交互，支持非阻塞的请求和响应处理，适用于需要高并发或异步操作的场景。
+# 但这也意味着，消息的格式和工具调用的处理方式需要与 OpenAI API 的规范保持一致，以确保正确的请求和响应解析。
 class OpenAICompatProvider(BaseLLMProvider):
     def __init__(self, api_key: str, base_url: str, model: str):
         self.model = model

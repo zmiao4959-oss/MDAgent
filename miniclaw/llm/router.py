@@ -22,6 +22,7 @@ def _is_retryable(error: Exception) -> bool:
         "timeout", "connection reset", "service unavailable",
         "overloaded", "capacity", "temporarily",
     ]
+    # 返回true或者false，这里的判断是为了捕获一些常见的可重试错误信息，避免因为网络波动或服务端临时问题导致请求失败。
     return any(kw in msg for kw in retryable_keywords)
 
 

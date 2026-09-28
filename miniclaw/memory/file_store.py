@@ -4,7 +4,7 @@ memory/file_store.py — 读写工作区文本文件
 from pathlib import Path
 from typing import List
 from ..settings import WORKSPACE_DIR, MEMORY_FILE
-
+from ..logger import get_logger
 logger = get_logger(__name__)
 
 # 系统文件列表（在组装上下文时加载）

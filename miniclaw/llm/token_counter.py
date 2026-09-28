@@ -14,6 +14,7 @@ from ..logger import get_logger
 logger = get_logger(__name__)
 
 # 各模型的 tiktoken encoding 映射
+# 分词器用于对文本进行分词，可以用于统计 token 数量。不同模型使用不同的分词器，因此需要根据模型名称选择合适的 encoding。
 _MODEL_ENCODING = {
     "gpt-4": "cl100k_base",
     "gpt-4o": "o200k_base",
@@ -58,6 +59,7 @@ def count_tokens(text: str, model: str = "gpt-4") -> int:
         except Exception:
             pass
     # fallback：更精确的字符估算（考虑了中文等宽字符）
+    # 分词器失败估算保底
     ascii_chars = sum(1 for c in text if ord(c) < 128)
     wide_chars = len(text) - ascii_chars
     return int(ascii_chars / 4 + wide_chars / 1.5)
@@ -77,6 +79,8 @@ def count_message_tokens(msg: LLMMessage, model: str = "gpt-4") -> int:
         total += count_tokens(msg.tool_call_id, model) + 2
     if msg.name:
         total += count_tokens(msg.name, model) + 1
+    if msg.reasoning_content:
+        total += count_tokens(msg.reasoning_content, model) + 2  # thinking 内容 + 结构开销
     return total
 
 

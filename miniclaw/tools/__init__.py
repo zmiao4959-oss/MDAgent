@@ -3,7 +3,7 @@ tools 包 — 统一加载所有内置工具模块（副作用：注册到 tool_
 """
 from .registry import tool_registry, ToolDefinition, ToolRegistry
 
-_LOADED = False
+_LOADED = False #仅仅导入一次，避免多次导入引发多次工具注册带来问题
 
 
 def ensure_tools_loaded() -> None:

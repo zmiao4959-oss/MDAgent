@@ -4,6 +4,7 @@ tools/registry.py — 工具注册与执行中心
 from __future__ import annotations
 
 import asyncio
+import inspect
 from typing import Dict, List, Callable, Any, Optional, Set
 
 from dataclasses import dataclass, field
@@ -190,7 +191,7 @@ class ToolRegistry:
             return f"Error executing '{name}': {e}"
 
     async def _invoke(self, tool: ToolDefinition, args: Dict[str, Any]) -> Any:
-        if asyncio.iscoroutinefunction(tool.func):
+        if inspect.iscoroutinefunction(tool.func):
             coro = tool.func(**args)
             if tool.timeout_sec:
                 return await asyncio.wait_for(coro, timeout=tool.timeout_sec)
@@ -208,6 +209,7 @@ class ToolRegistry:
 
 
 def truncate_tool_result(text: str, max_chars: int) -> str:
+    """截断工具输出结果，保留前后部分，中间省略提示。"""
     if len(text) <= max_chars:
         return text
     head = max_chars * 2 // 3

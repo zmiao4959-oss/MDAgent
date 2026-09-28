@@ -27,10 +27,11 @@ _IMAGE_SUFFIXES = frozenset({".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"})
 
 
 def workspace_root() -> Path:
+    '~/.miniclaw/workspace'
     return active_workspace_dir().resolve()
 
-
 def skill_roots() -> tuple[Path, ...]:
+    '~/.miniclaw/builtin_skills, ~/.miniclaw/skills, <workspace>/skills'
     roots = (
         (Path(__file__).resolve().parent.parent / "builtin_skills").resolve(),
         (WORKSPACE_DIR.parent / "skills").resolve(),
@@ -48,6 +49,7 @@ def skill_roots() -> tuple[Path, ...]:
 
 
 def readable_roots() -> tuple[Path, ...]:
+    '限制只可以读取的根目录'
     roots = [workspace_root(), WORKSPACE_DIR.resolve(), *skill_roots()]
     deduped = []
     seen = set()

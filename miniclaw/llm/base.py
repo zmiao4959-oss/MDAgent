@@ -53,7 +53,7 @@ class LLMStreamChunk:
     usage: Dict[str, int] = field(default_factory=dict)
     reasoning_content: Optional[str] = None  # DeepSeek thinking mode
 
-
+# 继承ABC类，定义一个抽象基类BaseLLMProvider，此基类不可被实例化，表示一个LLM提供者。该类包含三个抽象方法：chat、chat_stream和supports_tools，分别用于非流式对话、流式对话和检查是否支持工具调用。
 class BaseLLMProvider(ABC):
     """LLM Provider 抽象基类"""
     # abstractmethod：是一个装饰器，标记某个方法为“抽象方法”，意思是：子类必须重写这个方法，否则子类也无法实例化

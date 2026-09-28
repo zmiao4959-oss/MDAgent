@@ -38,6 +38,7 @@ async def _await_task(
     if task is None or task.done():
         return
     try:
+        #这里的 shield 是为了 task 在超时的时候第一时间打印日志，然后手动取消，而不是等任务退出彻底结束后才打印日志 
         await asyncio.wait_for(asyncio.shield(task), timeout=timeout)
     except asyncio.TimeoutError:
         logger.warning("%s did not stop within %.0fs, cancelling", name, timeout)
@@ -66,7 +67,7 @@ async def _cancel_task(task: Optional[asyncio.Task], *, name: str) -> None:
 
 async def main():
     logger.info("=== MiniClaw Starting ===")
-
+    # 目前所有配置都在.miniclaw/config.yaml中，项目里面的config.py目前还没有用到
     router = LLMRouter(config.llm, config.llm.fallback_providers)
     session_mgr = SessionManager(config.paths.sessions)
     agent_catalog = AgentCatalog()

@@ -145,6 +145,7 @@ class SessionManager:
             logger.debug("SQLite save skipped for %s (JSON already written)", session.session_id)
     
     async def load(self, session_id: str) -> Optional[Session]:
+        """按 session_id 从 JSON 或 SQLite 加载会话, 并加入内存缓存。"""
         path = self.save_dir / f"{session_id.replace(':', '_')}.json"
         if path.exists():
             data = json.loads(path.read_text(encoding="utf-8"))

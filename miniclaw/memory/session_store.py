@@ -37,8 +37,12 @@ class SessionStore:
 
     def open(self) -> None:
         self._conn = sqlite3.connect(str(self._db_path), check_same_thread=False)
+        # Use Row factory for dict-like access
         self._conn.row_factory = sqlite3.Row
+        # WAL可以实现更高的并发性能，允许同时读取和写入，主要是通过写的时候缓存一个新文件来实现
         self._conn.execute("PRAGMA journal_mode=WAL")
+        # 启用外键约束
+        # sessions_fts表中的session_id是sessions表的外键，启用外键约束可以确保在删除sessions表中的记录时，相关的sessions_fts记录也会被删除，从而保持数据的一致性。
         self._conn.execute("PRAGMA foreign_keys=ON")
         self._migrate()
 
@@ -181,6 +185,7 @@ class SessionStore:
                 c.execute("SELECT session_id FROM sessions WHERE chat_id = ?", (chat_id,)).fetchall()]
         c.execute("DELETE FROM sessions WHERE chat_id = ?", (chat_id,))
         for sid in sids:
+            # FTS5 虚拟表根本不支持这种级联删除的外键约束
             c.execute("DELETE FROM sessions_fts WHERE session_id = ?", (sid,))
         self.conn.commit()
         return len(sids) > 0
