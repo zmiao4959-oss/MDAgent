@@ -1,0 +1,300 @@
+{
+  "report": "post-fast-route.json",
+  "passed": 43,
+  "total": 43,
+  "checks": [
+    {
+      "check": "common dt",
+      "actual": 1,
+      "expected": 1,
+      "passed": true
+    },
+    {
+      "check": "tau_T_fs",
+      "actual": 100,
+      "expected": 100,
+      "passed": true
+    },
+    {
+      "check": "tau_P_fs",
+      "actual": 1000,
+      "expected": 1000,
+      "passed": true
+    },
+    {
+      "check": "input_tau_T_over_dt",
+      "actual": 100,
+      "expected": 100,
+      "passed": true
+    },
+    {
+      "check": "input_tau_P_over_dt",
+      "actual": 1000,
+      "expected": 1000,
+      "passed": true
+    },
+    {
+      "check": "thermo_steps",
+      "actual": 100,
+      "expected": 100,
+      "passed": true
+    },
+    {
+      "check": "trajectory_steps",
+      "actual": 1000,
+      "expected": 1000,
+      "passed": true
+    },
+    {
+      "check": "N01 counts",
+      "actual": {
+        "Cu": 2000,
+        "Ni": 2000
+      },
+      "expected": {
+        "Cu": 2000,
+        "Ni": 2000
+      },
+      "passed": true
+    },
+    {
+      "check": "N01 N",
+      "actual": 4000,
+      "expected": 4000,
+      "passed": true
+    },
+    {
+      "check": "G01 counts",
+      "actual": {
+        "Pd": 5400,
+        "Cu": 4050,
+        "Ni": 1350,
+        "P": 2700
+      },
+      "expected": {
+        "Pd": 5400,
+        "Cu": 4050,
+        "Ni": 1350,
+        "P": 2700
+      },
+      "passed": true
+    },
+    {
+      "check": "G01 N",
+      "actual": 13500,
+      "expected": 13500,
+      "passed": true
+    },
+    {
+      "check": "N01 initial steps",
+      "actual": 200000,
+      "expected": 200000,
+      "passed": true
+    },
+    {
+      "check": "N01 maximum steps",
+      "actual": 300000,
+      "expected": 300000,
+      "passed": true
+    },
+    {
+      "check": "N01 duration",
+      "actual": 200000,
+      "expected": 200000,
+      "passed": true
+    },
+    {
+      "check": "N02 initial steps",
+      "actual": 1800000,
+      "expected": 1800000,
+      "passed": true
+    },
+    {
+      "check": "N02 maximum steps",
+      "actual": 2500000,
+      "expected": 2500000,
+      "passed": true
+    },
+    {
+      "check": "N02 duration",
+      "actual": 1800000,
+      "expected": 1800000,
+      "passed": true
+    },
+    {
+      "check": "N01 stage sum",
+      "actual": 200000,
+      "expected": 200000,
+      "passed": true
+    },
+    {
+      "check": "N02 compatible HCP count",
+      "actual": 10080,
+      "expected": 10080,
+      "passed": true
+    },
+    {
+      "check": "N02 stage sum",
+      "actual": 1800000,
+      "expected": 1800000,
+      "passed": true
+    },
+    {
+      "check": "N02 platform grid",
+      "actual": [
+        800,
+        900,
+        1000,
+        1100,
+        1200,
+        1300,
+        1400,
+        1500
+      ],
+      "expected": [
+        800,
+        900,
+        1000,
+        1100,
+        1200,
+        1300,
+        1400,
+        1500
+      ],
+      "passed": true
+    },
+    {
+      "check": "N02 external prior",
+      "actual": 1166,
+      "expected": 1166,
+      "passed": true
+    },
+    {
+      "check": "fast cooling steps",
+      "actual": 1100000,
+      "expected": 1100000,
+      "passed": true
+    },
+    {
+      "check": "fast total steps",
+      "actual": 2200000,
+      "expected": 2200000,
+      "passed": true
+    },
+    {
+      "check": "fast stage sum",
+      "actual": 2200000,
+      "expected": 2200000,
+      "passed": true
+    },
+    {
+      "check": "fast cooling time",
+      "actual": 1100.0,
+      "expected": 1100,
+      "passed": true
+    },
+    {
+      "check": "fast thermo_steps",
+      "actual": 500,
+      "expected": 500,
+      "passed": true
+    },
+    {
+      "check": "fast trajectory_steps",
+      "actual": 2500,
+      "expected": 2500,
+      "passed": true
+    },
+    {
+      "check": "Pd-hot duration",
+      "actual": 1000000,
+      "expected": 1000000,
+      "passed": true
+    },
+    {
+      "check": "Pd-fast-cool duration",
+      "actual": 1100000,
+      "expected": 1100000,
+      "passed": true
+    },
+    {
+      "check": "Pd-end duration",
+      "actual": 100000,
+      "expected": 100000,
+      "passed": true
+    },
+    {
+      "check": "slow_reference cooling steps",
+      "actual": 110000000,
+      "expected": 110000000,
+      "passed": true
+    },
+    {
+      "check": "slow_reference total steps",
+      "actual": 111100000,
+      "expected": 111100000,
+      "passed": true
+    },
+    {
+      "check": "slow_reference stage sum",
+      "actual": 111100000,
+      "expected": 111100000,
+      "passed": true
+    },
+    {
+      "check": "slow_reference cooling time",
+      "actual": 110000.0,
+      "expected": 110000,
+      "passed": true
+    },
+    {
+      "check": "slow_reference thermo_steps",
+      "actual": 1000,
+      "expected": 1000,
+      "passed": true
+    },
+    {
+      "check": "slow_reference trajectory_steps",
+      "actual": 250000,
+      "expected": 250000,
+      "passed": true
+    },
+    {
+      "check": "Pd-hot-slow duration",
+      "actual": 1000000,
+      "expected": 1000000,
+      "passed": true
+    },
+    {
+      "check": "Pd-slow-cool duration",
+      "actual": 110000000,
+      "expected": 110000000,
+      "passed": true
+    },
+    {
+      "check": "Pd-end-slow duration",
+      "actual": 100000,
+      "expected": 100000,
+      "passed": true
+    },
+    {
+      "check": "N01 registered citations",
+      "actual": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "check": "N02 registered citations",
+      "actual": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "check": "G01 registered citations",
+      "actual": true,
+      "expected": true,
+      "passed": true
+    }
+  ],
+  "scope": "Numbers, conservation and citation registration only; initial compact provenance grouping receives a separate targeted correction"
+}

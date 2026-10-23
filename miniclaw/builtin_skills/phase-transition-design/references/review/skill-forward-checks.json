@@ -1,0 +1,117 @@
+{
+  "scope": "Two fresh-agent Skill-use cases; numerical expectations, user constraints, runtime reference and registered leaf provenance. Not a live project LLM or MD run.",
+  "passed": 18,
+  "total": 18,
+  "checks": [
+    {
+      "check": "A valid source vocabulary",
+      "actual": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "check": "A direct registered rules",
+      "actual": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "check": "A actual successful helper calls",
+      "actual": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "check": "B valid source vocabulary",
+      "actual": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "check": "B direct registered rules",
+      "actual": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "check": "B actual successful helper calls",
+      "actual": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "check": "A production steps",
+      "actual": 200000,
+      "expected": 200000,
+      "passed": true
+    },
+    {
+      "check": "A temperature coupling input",
+      "actual": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "check": "A pressure coupling input",
+      "actual": 2000,
+      "expected": 2000,
+      "passed": true
+    },
+    {
+      "check": "A seed retained",
+      "actual": 42,
+      "expected": 42,
+      "passed": true
+    },
+    {
+      "check": "A no repeated relaxation",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "B loading steps",
+      "actual": 10000000,
+      "expected": 10000000,
+      "passed": true
+    },
+    {
+      "check": "B loading ns",
+      "actual": 10,
+      "expected": 10,
+      "passed": true
+    },
+    {
+      "check": "B axis retained",
+      "actual": "z",
+      "expected": "z",
+      "passed": true
+    },
+    {
+      "check": "B actual N not fabricated",
+      "actual": "RUNTIME",
+      "expected": "RUNTIME",
+      "passed": true
+    },
+    {
+      "check": "B formal reference pending",
+      "actual": "RUNTIME",
+      "expected": "RUNTIME",
+      "passed": true
+    },
+    {
+      "check": "B helper cannot fabricate Lz increments",
+      "actual": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "check": "B load outputs resolve requested strain",
+      "actual": true,
+      "expected": true,
+      "passed": true
+    }
+  ],
+  "raw_report": "skill-forward-report.json",
+  "helper_calls": 6
+}

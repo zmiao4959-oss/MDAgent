@@ -79,7 +79,7 @@ python -m miniclaw.rag.cli build --full
 ### 修改 GPUMD Skill
 
 - Skill 文件：`~/.miniclaw/workspace/skills/gpumd-script/SKILL.md`
-- 语料文件：`~/.miniclaw/workspace/skills/gpumd-script/references/corpus.jsonl`
+- 语料文件：`~/.miniclaw/workspace/rag/gpumd-script/corpus.jsonl`
 - 修改后运行 Skill 校验，并重启长期运行的 MiniClaw 进程以刷新工具和技能缓存。
 - 不要手工维护大批官方正文；优先修改 `rag/sync_gpumd.py` 后重新同步。
 

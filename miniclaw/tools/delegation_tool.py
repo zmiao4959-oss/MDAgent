@@ -28,7 +28,6 @@ def _require_manager() -> "SubAgentManager":
 
 @tool_registry.register(
     name="list_agents",
-    description="List available Agent profiles and their capabilities.",
     schema={
         "type": "function",
         "function": {
@@ -53,7 +52,6 @@ def list_agents_tool(**kwargs: Any) -> str:
 
 @tool_registry.register(
     name="list_tasks",
-    description="Reconcile delegated tasks owned by the current conversation.",
     schema={
         "type": "function",
         "function": {
@@ -136,7 +134,6 @@ def list_tasks_tool(
 
 @tool_registry.register(
     name="delegate_task",
-    description="Start a task using a selected Agent profile.",
     schema={
         "type": "function",
         "function": {
@@ -198,6 +195,7 @@ async def delegate_task_tool(
         parent_session_id=context.get("chat_id"),
         agent_name=agent,
         sandbox=bool(sandbox),
+        workspace_dir=context.get("workspace_dir") or None,
         event_callback=context.get("task_event_callback"),
         idempotency_key=idempotency_key or None,
         force_new=bool(force_new),
@@ -205,8 +203,46 @@ async def delegate_task_tool(
 
 
 @tool_registry.register(
+    name="continue_task",
+    schema={
+        "type": "function",
+        "function": {
+            "name": "continue_task",
+            "description": (
+                "Continue a finished task with a follow-up instruction, preserving its "
+                "Agent, conversation history and workspace. Returns immediately; inspect "
+                "or wait using the same task_id. Active tasks cannot be continued. "
+                "Tasks must still be tracked by the current process. "
+                "If the result is uncertain, inspect the task before retrying."
+            ),
+            "parameters": {
+                "type": "object",
+                "required": ["task_id", "instruction"],
+                "additionalProperties": False,
+                "properties": {
+                    "task_id": {"type": "string", "description": _TASK_ID_DESCRIPTION},
+                    "instruction": {"type": "string", "description": "Follow-up work to append to the original conversation."},
+                },
+            },
+        },
+    },
+    tags=["coordination"],
+)
+async def continue_task_tool(task_id: str, instruction: str, _context=None, **kwargs: Any) -> dict:
+    context = _context or {}
+    if not context.get("chat_id"):
+        return {"status": "error", "task_id": task_id, "error": "Current parent conversation is unavailable"}
+    try:
+        return await _require_manager().continue_task(
+            task_id, instruction, parent_session_id=context["chat_id"],
+            event_callback=context.get("task_event_callback"),
+        )
+    except (ValueError, RuntimeError) as exc:
+        return {"status": "error", "task_id": task_id, "error": str(exc)}
+
+
+@tool_registry.register(
     name="inspect_task",
-    description="Inspect the current state and result of a delegated task.",
     schema={
         "type": "function",
         "function": {
@@ -242,7 +278,6 @@ def inspect_task_tool(task_id: str, **kwargs: Any) -> dict:
 
 @tool_registry.register(
     name="wait_task",
-    description="Wait for a delegated task and return its result.",
     schema={
         "type": "function",
         "function": {
@@ -280,7 +315,6 @@ async def wait_task_tool(
 
 @tool_registry.register(
     name="cancel_task",
-    description="Cancel a delegated task.",
     schema={
         "type": "function",
         "function": {

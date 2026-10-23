@@ -78,10 +78,6 @@ def build_planning_system_prompt(
 
 @tool_registry.register(
     name="plan_add_tasks",
-    description=(
-        "Add a list of tasks to the current project's plan. "
-        "Each task needs a clear title describing what to accomplish."
-    ),
     schema={
         "type": "function",
         "function": {

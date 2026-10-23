@@ -1,0 +1,2077 @@
+{
+  "kb_version": "v0.2 (agent-entry.md; evidence dated 2026-10-20)",
+  "test_scope": "Independent post-NPT test. Started at agent-entry.md, followed only needed KB links. No network, no MD, no knowledge edits, no reference/baseline/fixture/other-agent result reads.",
+  "cases": [
+    {
+      "case_id": "N01",
+      "answer_markdown": "可以交给建模和 generator 一套完整的首轮候选设计。用户锁定 UNEP-v1、Cu50Ni50、300 K 和 0 GPa；其余采用明确的 bulk 随机单晶假设。目标是观察这一个制备态在有限时间内的结构表现，不把 200 ps 内没有事件解释为普遍稳定或平衡相图。\n\n| 参数 | 首轮值 | 状态与依据 |\n| --- | --- | --- |\n| 势 | 16元/UNEP-v1-main.txt；SHA-256 8f97c30cc366c30e687a8672bd8d76e624a16caf4337b1277a44aa166c5bceb4；Cu/Ni 均被支持 | USER 势名；FILE 本地核实记录 U-01/资产快照 |\n| 模型/初态 | FCC 随机替换单晶，10×10×10 四原子常规胞，Cu=2000、Ni=2000，N=4000；[100]//x、[010]//y、[001]//z | CAND，U-D01；整数计数 CALC |\n| 初始盒子 | 正交 bulk、三向周期；模型晶格常数及实际盒长由 model-worker 按其资料/工具选择并报告 | CAND；实际矩阵 RUNTIME，不伪造盒长 |\n| 温压与盒自由度 | 300 K；Pxx=Pyy=Pzz=0 GPa；三轴长度独立变化，倾斜固定，不宣称控制了剪切应力 | T/P USER；盒模式 CAND |\n| 控制 | GPUMD 5.5 npt_scr；温控/压控物理耦合时间 100/1000 fs；控制模量 x/y/z=100/100/100 GPa | CAND，D-01、C-01、M-02；100 GPa 为粗控制尺度，不是材料弹性常数 |\n| 步长/实际输入 | dt=1 fs；T_coup=100，P_coup=1000 | dt CAND；输入 tau/dt 为 CALC |\n| 预平衡 | 300 K/0 GPa，100 ps=100000 步 | 时间 CAND、步数 CALC |\n| 生产 | 沿用正式预平衡末态与速度，300 K/0 GPa，100 ps=100000 步 | CAND/CALC |\n| 随机化 | 首次新模型元素替换和速度初始化记录 seed=20261020 的实际用途；速度仅在首段按 300 K 初始化一次 | CAND，D-02；生产不重新分配速度 |\n| 输出 | 两段各声明 thermo=100 步、轨迹=1000 步、末态 restart；请求轨迹势能属性并检查实际输出；PTM cutoff=0.1 | CAND，D-03；分别 0.1/1 ps |\n| 预算 | 首轮 200 ps/200000 步；只允许一次 100 ps 预平衡延长，主路径上限 300 ps/300000 步 | CALC，N-01/D-02 |\n| 观察量 | 固定模板的 FCC/HCP/BCC/ICO/Other 比例、U/N、V/N；总 RDF 可作结构补充 | 现有分析能力；没有化学有序度功能 |\n\n闭合计算：t(ps)=steps×dt(fs)/1000；100000×1/1000=100 ps，两个阶段合计 200 ps。耦合输入分别 100/1=100 和 1000/1=1000。首轮约 4000×200000=8.0×10^8 atom-steps，不据此承诺 GPU 墙钟时间。名义上 thermo 约 2000 行、结构轨迹约 200 帧，但必须由实际首个输出步核对，不能虚设 t=0 帧。\n\n检查按 D-04：固定平台末两个相邻 20 ps 窗口，T 均值偏差≤max(5 K,2%T)=6 K，压力均值偏差≤0.1 GPa，体积均值相对差≤0.5%，每原子势能均值差≤0.005 eV。当前专用 thermo 温压窗口统计尚未确认，所以是 CHECK_PENDING，不能宣布已通过。若需要数值敏感性，再从同一正式 restart 做各 10 ps 的 1/0.5 fs 对照，分别 10000/20000 步；保持 tau 为 100/1000 fs，0.5 fs 时输入改为 200/2000。此项额外 20 ps/30000 步单列，非首轮必跑。若连同主路径最大延期和这项对照，全体轨迹累计上限为 320 ps/330000 步。没有自动安排尺寸/种子全套测试；结果依赖尺寸时再明确一个对照预算。\n\n交接：model-worker 可按以上假设建模并回报盒子/文件；generator 可准备两段输入及隔离的约 200 步流程试跑；runner 负责正式运行；postprocessor 使用已有指标。设计状态 DESIGN_READY；实际模型、盒矩阵、正式 restart、运行资源和首输出步为 RUNTIME_PENDING。只读参数包不是已经运行的输入验收。PTM 不区分同晶格化学有序，纯 MD 有限时间也不能替代 UNEP 论文可能使用的 MC/MD 化学采样；没有材料专用相变精度、尺寸收敛、置信区间或平衡相界验证。",
+      "parameters": {
+        "pbc": [
+          true,
+          true,
+          true
+        ],
+        "pressure_GPa": 0,
+        "P_tensor_GPa": {
+          "xx": 0,
+          "yy": 0,
+          "zz": 0,
+          "shear_target": null
+        },
+        "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+        "ensemble": "npt_scr",
+        "dt_fs": 1,
+        "thermostat": "GPUMD 5.5 npt_scr temperature control",
+        "barostat": "GPUMD 5.5 npt_scr independent orthorhombic cell rescaling",
+        "tau_T_fs": 100,
+        "tau_P_fs": 1000,
+        "T_coup": 100,
+        "P_coup": 1000,
+        "control_moduli_GPa": {
+          "x": 100,
+          "y": 100,
+          "z": 100
+        },
+        "seed": 20261020,
+        "thermo_interval_steps": 100,
+        "trajectory_interval_steps": 1000,
+        "ptm_cutoff": 0.1,
+        "trajectory_has_potential": true,
+        "potential_id": "UNEP-v1",
+        "potential_sha256": "8f97c30cc366c30e687a8672bd8d76e624a16caf4337b1277a44aa166c5bceb4",
+        "potential_file": "C:/Users/35059/Desktop/MDAgent/机器学习势/NEP/16元/UNEP-v1-main.txt",
+        "composition": {
+          "atomic_percent": {
+            "Cu": 50,
+            "Ni": 50
+          },
+          "atomic_counts": {
+            "Cu": 2000,
+            "Ni": 2000
+          }
+        },
+        "initial_state": {
+          "phase": "FCC",
+          "chemical_state": "random_substitutional_single_crystal",
+          "conventional_cell_atoms": 4,
+          "replication": [
+            10,
+            10,
+            10
+          ],
+          "orientation": {
+            "x": "[100]",
+            "y": "[010]",
+            "z": "[001]"
+          },
+          "lattice_parameter_A": null,
+          "actual_cell_matrix_A": null
+        },
+        "N": 4000,
+        "temperature_K": 300,
+        "relax_ps": 100,
+        "relax_steps": 100000,
+        "production_ps": 100,
+        "production_steps": 100000,
+        "total_ps": 200,
+        "total_steps": 200000,
+        "stages": [
+          {
+            "stage_id": "N01_equil",
+            "T_start_K": 300,
+            "T_end_K": 300,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "global_start_ps": 0,
+            "global_end_ps": 100,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "initialize_new_velocities_300K_once_seed_20261020",
+            "restart_input": "model-worker asset",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0"
+          },
+          {
+            "stage_id": "N01_production",
+            "T_start_K": 300,
+            "T_end_K": 300,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "global_start_ps": 100,
+            "global_end_ps": 200,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "preserve_upstream_restart",
+            "restart_input": "preceding formal stage restart",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0"
+          }
+        ],
+        "budget": {
+          "initial_atom_steps": 800000000,
+          "maximum_main_ps": 300,
+          "maximum_main_steps": 300000,
+          "extension": {
+            "count": 1,
+            "duration_ps": 100,
+            "steps": 100000,
+            "placement": "pre-equilibration only if health screen requires"
+          },
+          "optional_numerical_test_steps": 30000,
+          "maximum_including_optional_tests_ps": 320,
+          "maximum_including_optional_tests_steps": 330000,
+          "wall_clock": "RUNTIME: runner benchmark/configuration required"
+        },
+        "validation": {
+          "screen_status": "CHECK_PENDING; no simulation or numerical health assessment executed",
+          "fixed_platform_windows_ps": [
+            20,
+            20
+          ],
+          "temperature_mean_error_limit": "max(5 K, 0.02*T_target)",
+          "pressure_mean_error_limit_GPa": "max(0.1, 0.02*abs(P_target))",
+          "relative_volume_mean_difference_limit": 0.005,
+          "potential_energy_per_atom_mean_difference_limit_eV": 0.005,
+          "meaning": "engineering health screen, not proof of equilibrium, ergodicity, or correct fluctuations",
+          "tool_limit": "Dedicated thermo T/P window statistics and confidence intervals are not confirmed. Do not use LLM table reading or temporary scripts to pretend this check passed.",
+          "numerical_sensitivity_optional": {
+            "required_in_initial_budget": false,
+            "trigger": "instability, unexplained drift, or conclusion sensitive to numerical settings",
+            "branches": [
+              {
+                "dt_fs": 1,
+                "duration_ps": 10,
+                "run_steps": 10000,
+                "T_coup": 100,
+                "P_coup": 1000
+              },
+              {
+                "dt_fs": 0.5,
+                "duration_ps": 10,
+                "run_steps": 20000,
+                "T_coup": 200,
+                "P_coup": 2000
+              }
+            ],
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "additional_aggregate_ps": 20,
+            "additional_steps": 30000,
+            "comparison": "same starting formal restart and physical duration; compare statistics, not atomwise trajectory agreement",
+            "scope": "separately stated optional numerical budget; not silently deducted from or added to main-path caps"
+          }
+        }
+      },
+      "parameter_status": {
+        "potential_id": "USER",
+        "potential_sha256": "FILE",
+        "potential_file": "FILE",
+        "composition": "USER",
+        "composition.atomic_counts": "CALC",
+        "initial_state": "CAND",
+        "N": "CAND",
+        "pbc": "CAND",
+        "temperature_K": "USER",
+        "pressure_GPa": "USER",
+        "P_tensor_GPa": "USER",
+        "box_mode": "CAND",
+        "ensemble": "CAND",
+        "dt_fs": "CAND",
+        "thermostat": "CAND",
+        "barostat": "CAND",
+        "tau_T_fs": "CAND",
+        "tau_P_fs": "CAND",
+        "T_coup": "CALC",
+        "P_coup": "CALC",
+        "control_moduli_GPa": "CAND",
+        "relax_ps": "CAND",
+        "relax_steps": "CALC",
+        "production_ps": "CAND",
+        "production_steps": "CALC",
+        "seed": "CAND",
+        "thermo_interval_steps": "CAND",
+        "trajectory_interval_steps": "CAND",
+        "ptm_cutoff": "CAND",
+        "trajectory_has_potential": "CAND",
+        "stages": "CAND",
+        "stages.run_steps": "CALC",
+        "total_steps": "CALC",
+        "total_ps": "CALC",
+        "actual_model_asset": "RUNTIME",
+        "actual_initial_cell_A": "RUNTIME",
+        "formal_restart": "RUNTIME",
+        "first_output_step": "RUNTIME",
+        "health_screening": "RUNTIME",
+        "initial_state.lattice_parameter_A": "RUNTIME",
+        "initial_state.actual_cell_matrix_A": "RUNTIME",
+        "budget.initial_atom_steps": "CALC",
+        "budget.maximum_main_steps": "CALC"
+      },
+      "source_ids": [
+        "U-01",
+        "U-02",
+        "U-D01",
+        "N-01",
+        "D-01",
+        "D-02",
+        "D-03",
+        "D-04",
+        "D-05",
+        "D-06",
+        "D-08",
+        "C-01",
+        "M-02"
+      ],
+      "assumptions": [
+        "No existing model is supplied; choose a random substitutional FCC single crystal as an explicit preparation assumption.",
+        "Bulk PBC without free surfaces, grain boundaries, or imposed chemical order.",
+        "npt_scr and 1 fs are exploration candidates, not Cu50Ni50-specific validated settings.",
+        "Potential identity and sha are FILE facts documented by the KB snapshot dated 2026-10-20; this test did not rehash the potential file."
+      ],
+      "questions": [
+        {
+          "blocking": false,
+          "question": "若研究对象实际是多晶、有序相或已有样品，请提供该研究定义；当前可先按 FCC 随机单晶 bulk 基线交接。",
+          "reason": "Would change physical object, not numerical settings."
+        }
+      ],
+      "runtime_dependencies": [
+        {
+          "item": "model asset and actual cell",
+          "owner": "model-worker",
+          "status": "RUNTIME_PENDING",
+          "binding": "generate proposed model, verify exact species counts/PBC/no pathological overlaps; report lattice parameter sources, actual cell matrix, positions, atom IDs and random assignment"
+        },
+        {
+          "item": "GPUMD input",
+          "owner": "gpumd-generator",
+          "status": "DESIGN_READY",
+          "binding": "instantiate all stage fields, confirm installed 5.5 syntax/NEP element mapping, redeclare outputs per run and end restart; independent ~200-step workflow trial only"
+        },
+        {
+          "item": "production resources",
+          "owner": "simulation-runner",
+          "status": "RUNTIME_PENDING",
+          "binding": "confirm machine/GPU access, executable/environment and wall-clock limits from actual configuration or benchmark; no wall-time estimate invented"
+        },
+        {
+          "item": "formal outputs and mapping",
+          "owner": "gpumd-generator + simulation-runner",
+          "status": "RUNTIME_PENDING",
+          "binding": "save stage ID, run steps, dt, stage start time, actual first written step, file append rules, actual T, U/K, six pressure and nine cell components; verify trajectory energy properties"
+        },
+        {
+          "item": "existing analysis",
+          "owner": "postprocessor",
+          "status": "RUNTIME_PENDING",
+          "binding": "confirm actual input/dependencies and execute supported PTM, U/V, total RDF, summaries and plots; preserve transient frames"
+        }
+      ],
+      "handoff_status": {
+        "overall": "DESIGN_READY",
+        "model_worker": "DESIGN_READY; output asset RUNTIME_PENDING",
+        "generator": "DESIGN_READY; model binding and workflow check RUNTIME_PENDING",
+        "runner": "RUNTIME_PENDING",
+        "health_checks": "CHECK_PENDING",
+        "final_interpretation": "limited finite-time structural observations; chemical-order/equilibrium claims unsupported"
+      },
+      "capability_gaps": [
+        "Dedicated thermo T/P window statistics, autocorrelation/effective sample size and confidence intervals are unconfirmed.",
+        "Chemical order, phase-resolved composition, MC/MD and free-energy/coexistence workflows are not provided as a verified complete contract.",
+        "Cu50Ni50 phase accuracy and size/time convergence are unverified; PTM labels alone do not establish a phase diagram."
+      ],
+      "used_files": [
+        "agent-entry.md",
+        "decisions/parameter-table.md",
+        "decisions/npt.md",
+        "decisions/unep-v1.md",
+        "decisions/calculation.md",
+        "evidence/U-01-local-model.md",
+        "evidence/U-02-paper-scope.md",
+        "evidence/C-01-gpumd55.md",
+        "evidence/M-02-barostat.md",
+        "assets/local-inventory.json",
+        "potentials/unep-v1/README.md",
+        "common/npt-parameters.md",
+        "common/capabilities.md"
+      ]
+    },
+    {
+      "case_id": "N02",
+      "answer_markdown": "这项任务可以先做有限温区的 α/HCP→β/BCC 结构探索。先验来自知识库保存的 NIST-JANAF Ti 表：标准压力 0.1 MPa 下列出 α↔β 1166 K（U-D02 引用）。这不是 UNEP-v1 的预测，也没有证明本次会在 1166 K 转变。当前不联网补查；以下温区和阶段明确标 CAND。\n\n| 参数 | 首轮值 | 状态与依据 |\n| --- | --- | --- |\n| 势/元素 | UNEP-v1；SHA-256 8f97c30cc366c30e687a8672bd8d76e624a16caf4337b1277a44aa166c5bceb4；纯 Ti | 势与纯 Ti USER；哈希/元素覆盖 FILE，U-01 |\n| 初态/模型 | HCP 单晶，约 10000 原子；具体提议四原子正交 HCP 单元 20×12×10，N=9600、Ti=9600；c 轴 [0001]//z，基面取相容正交 x/y | CAND：U-D02 的约万原子起点；9600 与复制方案为本次显式设计，非文献原值；model-worker 必须核对相容胞与实际计数 |\n| 边界/盒 | 三向周期 bulk，正交盒，x/y/z 长度独立压控，固定倾斜 | CAND；此初筛不提供任意剪切路径 |\n| 温压 | 起点 300 K，零压 Pxx=Pyy=Pzz=0 GPa；800–1500 K 八个平台 | CAND，U-D02；0 GPa 为近常压探索假设，与文献 0.1 MPa 不完全相同 |\n| 数值控制 | GPUMD 5.5 npt_scr，dt=1 fs，tauT=100 fs、tauP=1000 fs，T_coup/P_coup=100/1000；控制模量 100/100/100 GPa | 物理参数 CAND，输入比值 CALC，D-01/C-01/M-02 |\n| 速度/随机种子 | 初始 300 K 速度只初始化一次，seed=20261020；随后沿正式 restart 保留速度 | CAND，D-02 |\n| 输出 | 每段 thermo=100 步、轨迹=1000 步、阶段末 restart；PTM cutoff=0.1 | CAND，D-03；0.1/1 ps |\n\n完整温度路径：先 300 K 100 ps=100000 步；再 300→800 K 线性升温 100 ps=100000 步，其目标速率为 5×10^12 K/s。随后按 800、900、1000、1100、1200、1300、1400、1500 K 顺序，每个平台 100 ps 适应＋100 ps 采样，各 200000 步。平台适应段的温控目标为该平台固定值；相邻平台在段边界改变目标，实际温度必须由 thermo 记录，不能声称原子温度瞬间跳变。各温度独立目录，明确链接上一正式 restart；不能重新随机速度冒充一条温扫路径。\n\n闭合预算为 100+100+8×200=1800 ps=1.8 ns=1800000 步，约 9600×1800000=1.728×10^10 atom-steps。这里 relax_ps=1000 ps 指初始预平衡、升温桥接和八段适应的合计，production_ps=800 ps 是八个正式采样段合计。每个平台主要统计其后 100 ps 采样段，报告实际温度与 PTM 的 HCP/BCC/Other 等比例、U/N、V/N；名义总轨迹约 1800 帧，但时间必须按真实阶段和首输出步恢复。\n\n候选事件判据先固定：相邻采样平台主要结构标签比例变化≥0.10（10 个百分点），或 U/V 出现需要核查的路径变化，才选一个相邻 100 K 区间做一次加密。在该区间内加入 Tlow+25、+50、+75 K 三个内部节点，每点仍 100 ps 适应＋100 ps 采样，增加 600 ps/600000 步；从低温边正式 restart 开分支并单独标记历史。全部流程最多另延长预平衡 100 ps/100000 步。因此主路径与加密/延期的绝对上限为 2500 ps=2.5 ns=2500000 步、2.4×10^10 atom-steps。不能重复加密多个区间或自动向更高温扩张。无信号时只报告 800–1500 K 和本次时长内未见明确候选事件；如果首个平台或升温桥接已有变化，应报告区间受限，不能强造转变温度。\n\n固定平台健康筛查按 D-04 的末两段 20 ps：T 偏差≤max(5 K,2%T)，P 偏差≤0.1 GPa，体积差≤0.5%，U/N 差≤0.005 eV。当前 thermo 温压专用窗口统计未确认，状态 CHECK_PENDING；已有 U/V 区间摘要可在工具实际运行后使用。保留转变段，不为通过平稳性筛查删去事件。步长敏感性不列为本轮强制项目；若出现数值风险，另有各 10 ps 的 1/0.5 fs 对照候选，增加 30000 步，并将输入耦合改为 100/1000 和 200/2000以保持物理 tau。若启用该单列数值对照，总计算上限明确变为累计 2520 ps/2530000 步，不能仍报成主路径 2.5 ns/2500000 步。\n\n交接状态 DESIGN_READY：model-worker 建 HCP 并给实际 N、a/c、盒矩阵和取向，generator 可按 18 段计划准备输入，runner 执行有限预算，postprocessor 输出支持的结构/U/V 数据。实际资产、资源、restart、首输出步仍 RUNTIME_PENDING；有事件也只是候选温区。正交盒的剪切限制、单初态升温的动力学滞后、没有降温回程/重复种子/尺寸收敛，以及 ω 相或精确相界判据缺口，决定本轮不能交付平衡 α/β 相界。",
+      "parameters": {
+        "pbc": [
+          true,
+          true,
+          true
+        ],
+        "pressure_GPa": 0,
+        "P_tensor_GPa": {
+          "xx": 0,
+          "yy": 0,
+          "zz": 0,
+          "shear_target": null
+        },
+        "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+        "ensemble": "npt_scr",
+        "dt_fs": 1,
+        "thermostat": "GPUMD 5.5 npt_scr temperature control",
+        "barostat": "GPUMD 5.5 npt_scr independent orthorhombic cell rescaling",
+        "tau_T_fs": 100,
+        "tau_P_fs": 1000,
+        "T_coup": 100,
+        "P_coup": 1000,
+        "control_moduli_GPa": {
+          "x": 100,
+          "y": 100,
+          "z": 100
+        },
+        "seed": 20261020,
+        "thermo_interval_steps": 100,
+        "trajectory_interval_steps": 1000,
+        "ptm_cutoff": 0.1,
+        "trajectory_has_potential": true,
+        "potential_id": "UNEP-v1",
+        "potential_sha256": "8f97c30cc366c30e687a8672bd8d76e624a16caf4337b1277a44aa166c5bceb4",
+        "potential_file": "C:/Users/35059/Desktop/MDAgent/机器学习势/NEP/16元/UNEP-v1-main.txt",
+        "composition": {
+          "atomic_percent": {
+            "Ti": 100
+          },
+          "atomic_counts": {
+            "Ti": 9600
+          }
+        },
+        "initial_state": {
+          "phase": "HCP",
+          "chemical_state": "pure_Ti_single_crystal",
+          "target_size": "approximately_10000",
+          "proposed_orthorhombic_cell_atoms": 4,
+          "replication": [
+            20,
+            12,
+            10
+          ],
+          "orientation": {
+            "z": "[0001]",
+            "x_y": "compatible orthogonal basal directions to be explicitly reported by model-worker"
+          },
+          "a_A": null,
+          "c_A": null,
+          "actual_cell_matrix_A": null,
+          "cell_compatibility": "RUNTIME confirm with model-worker; do not silently change actual count"
+        },
+        "N": 9600,
+        "temperature_K": {
+          "initial": 300,
+          "heating_bridge": [
+            300,
+            800
+          ],
+          "sampling_plateaux": [
+            800,
+            900,
+            1000,
+            1100,
+            1200,
+            1300,
+            1400,
+            1500
+          ]
+        },
+        "literature_prior": {
+          "alpha_beta_K": 1166,
+          "pressure_MPa": 0.1,
+          "source": "NIST-JANAF Ti table as quoted by U-D02",
+          "is_UNEP_prediction": false
+        },
+        "relax_ps": 1000,
+        "relax_steps": 1000000,
+        "production_ps": 800,
+        "production_steps": 800000,
+        "total_ps": 1800,
+        "total_steps": 1800000,
+        "stages": [
+          {
+            "stage_id": "Ti_300_equil",
+            "T_start_K": 300,
+            "T_end_K": 300,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "global_start_ps": 0,
+            "global_end_ps": 100,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "initialize_new_velocities_300K_once_seed_20261020",
+            "restart_input": "model-worker asset",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0"
+          },
+          {
+            "stage_id": "Ti_300_to_800",
+            "T_start_K": 300,
+            "T_end_K": 800,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "global_start_ps": 100,
+            "global_end_ps": 200,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "preserve_upstream_restart",
+            "restart_input": "preceding formal stage restart",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0"
+          },
+          {
+            "stage_id": "Ti_800_adapt",
+            "T_start_K": 800,
+            "T_end_K": 800,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "global_start_ps": 200,
+            "global_end_ps": 300,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "preserve_upstream_restart",
+            "restart_input": "preceding formal stage restart",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0",
+            "target_transition": "continue 800K after heating ramp"
+          },
+          {
+            "stage_id": "Ti_800_sample",
+            "T_start_K": 800,
+            "T_end_K": 800,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "global_start_ps": 300,
+            "global_end_ps": 400,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "preserve_upstream_restart",
+            "restart_input": "preceding formal stage restart",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0"
+          },
+          {
+            "stage_id": "Ti_900_adapt",
+            "T_start_K": 900,
+            "T_end_K": 900,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "global_start_ps": 400,
+            "global_end_ps": 500,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "preserve_upstream_restart",
+            "restart_input": "preceding formal stage restart",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0",
+            "target_transition": "change thermostat target at stage boundary; actual T not assumed to jump"
+          },
+          {
+            "stage_id": "Ti_900_sample",
+            "T_start_K": 900,
+            "T_end_K": 900,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "global_start_ps": 500,
+            "global_end_ps": 600,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "preserve_upstream_restart",
+            "restart_input": "preceding formal stage restart",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0"
+          },
+          {
+            "stage_id": "Ti_1000_adapt",
+            "T_start_K": 1000,
+            "T_end_K": 1000,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "global_start_ps": 600,
+            "global_end_ps": 700,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "preserve_upstream_restart",
+            "restart_input": "preceding formal stage restart",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0",
+            "target_transition": "change thermostat target at stage boundary; actual T not assumed to jump"
+          },
+          {
+            "stage_id": "Ti_1000_sample",
+            "T_start_K": 1000,
+            "T_end_K": 1000,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "global_start_ps": 700,
+            "global_end_ps": 800,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "preserve_upstream_restart",
+            "restart_input": "preceding formal stage restart",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0"
+          },
+          {
+            "stage_id": "Ti_1100_adapt",
+            "T_start_K": 1100,
+            "T_end_K": 1100,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "global_start_ps": 800,
+            "global_end_ps": 900,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "preserve_upstream_restart",
+            "restart_input": "preceding formal stage restart",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0",
+            "target_transition": "change thermostat target at stage boundary; actual T not assumed to jump"
+          },
+          {
+            "stage_id": "Ti_1100_sample",
+            "T_start_K": 1100,
+            "T_end_K": 1100,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "global_start_ps": 900,
+            "global_end_ps": 1000,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "preserve_upstream_restart",
+            "restart_input": "preceding formal stage restart",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0"
+          },
+          {
+            "stage_id": "Ti_1200_adapt",
+            "T_start_K": 1200,
+            "T_end_K": 1200,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "global_start_ps": 1000,
+            "global_end_ps": 1100,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "preserve_upstream_restart",
+            "restart_input": "preceding formal stage restart",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0",
+            "target_transition": "change thermostat target at stage boundary; actual T not assumed to jump"
+          },
+          {
+            "stage_id": "Ti_1200_sample",
+            "T_start_K": 1200,
+            "T_end_K": 1200,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "global_start_ps": 1100,
+            "global_end_ps": 1200,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "preserve_upstream_restart",
+            "restart_input": "preceding formal stage restart",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0"
+          },
+          {
+            "stage_id": "Ti_1300_adapt",
+            "T_start_K": 1300,
+            "T_end_K": 1300,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "global_start_ps": 1200,
+            "global_end_ps": 1300,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "preserve_upstream_restart",
+            "restart_input": "preceding formal stage restart",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0",
+            "target_transition": "change thermostat target at stage boundary; actual T not assumed to jump"
+          },
+          {
+            "stage_id": "Ti_1300_sample",
+            "T_start_K": 1300,
+            "T_end_K": 1300,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "global_start_ps": 1300,
+            "global_end_ps": 1400,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "preserve_upstream_restart",
+            "restart_input": "preceding formal stage restart",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0"
+          },
+          {
+            "stage_id": "Ti_1400_adapt",
+            "T_start_K": 1400,
+            "T_end_K": 1400,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "global_start_ps": 1400,
+            "global_end_ps": 1500,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "preserve_upstream_restart",
+            "restart_input": "preceding formal stage restart",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0",
+            "target_transition": "change thermostat target at stage boundary; actual T not assumed to jump"
+          },
+          {
+            "stage_id": "Ti_1400_sample",
+            "T_start_K": 1400,
+            "T_end_K": 1400,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "global_start_ps": 1500,
+            "global_end_ps": 1600,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "preserve_upstream_restart",
+            "restart_input": "preceding formal stage restart",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0"
+          },
+          {
+            "stage_id": "Ti_1500_adapt",
+            "T_start_K": 1500,
+            "T_end_K": 1500,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "global_start_ps": 1600,
+            "global_end_ps": 1700,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "preserve_upstream_restart",
+            "restart_input": "preceding formal stage restart",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0",
+            "target_transition": "change thermostat target at stage boundary; actual T not assumed to jump"
+          },
+          {
+            "stage_id": "Ti_1500_sample",
+            "T_start_K": 1500,
+            "T_end_K": 1500,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "global_start_ps": 1700,
+            "global_end_ps": 1800,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "preserve_upstream_restart",
+            "restart_input": "preceding formal stage restart",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0"
+          }
+        ],
+        "refinement": {
+          "trigger": {
+            "major_label_absolute_fraction_change_gte": 0.1,
+            "alternative": "U/V path change requiring investigation"
+          },
+          "maximum_intervals": 1,
+          "coarse_interval_K": 100,
+          "interior_offsets_K": [
+            25,
+            50,
+            75
+          ],
+          "adapt_ps_per_node": 100,
+          "sample_ps_per_node": 100,
+          "steps_per_node": 200000,
+          "additional_ps": 600,
+          "additional_steps": 600000,
+          "restart_binding": "formal restart at lower bracketing platform; fine branch history retained; no hidden replay of extra nodes"
+        },
+        "budget": {
+          "initial_atom_steps": 17280000000,
+          "maximum_global_equil_extension_ps": 100,
+          "maximum_global_equil_extension_steps": 100000,
+          "maximum_main_ps": 2500,
+          "maximum_main_steps": 2500000,
+          "maximum_main_atom_steps": 24000000000,
+          "optional_numerical_test_steps": 30000,
+          "maximum_including_optional_tests_ps": 2520,
+          "maximum_including_optional_tests_steps": 2530000,
+          "wall_clock": "RUNTIME: runner benchmark/configuration required"
+        },
+        "validation": {
+          "screen_status": "CHECK_PENDING; no simulation or numerical health assessment executed",
+          "fixed_platform_windows_ps": [
+            20,
+            20
+          ],
+          "temperature_mean_error_limit": "max(5 K, 0.02*T_target)",
+          "pressure_mean_error_limit_GPa": "max(0.1, 0.02*abs(P_target))",
+          "relative_volume_mean_difference_limit": 0.005,
+          "potential_energy_per_atom_mean_difference_limit_eV": 0.005,
+          "meaning": "engineering health screen, not proof of equilibrium, ergodicity, or correct fluctuations",
+          "tool_limit": "Dedicated thermo T/P window statistics and confidence intervals are not confirmed. Do not use LLM table reading or temporary scripts to pretend this check passed.",
+          "numerical_sensitivity_optional": {
+            "required_in_initial_budget": false,
+            "trigger": "instability, unexplained drift, or conclusion sensitive to numerical settings",
+            "branches": [
+              {
+                "dt_fs": 1,
+                "duration_ps": 10,
+                "run_steps": 10000,
+                "T_coup": 100,
+                "P_coup": 1000
+              },
+              {
+                "dt_fs": 0.5,
+                "duration_ps": 10,
+                "run_steps": 20000,
+                "T_coup": 200,
+                "P_coup": 2000
+              }
+            ],
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "additional_aggregate_ps": 20,
+            "additional_steps": 30000,
+            "comparison": "same starting formal restart and physical duration; compare statistics, not atomwise trajectory agreement",
+            "scope": "separately stated optional numerical budget; not silently deducted from or added to main-path caps"
+          }
+        },
+        "calculator_verified": {
+          "mode": "temperature_ramp",
+          "start_K": 300,
+          "end_K": 800,
+          "rate_K_s": 5000000000000,
+          "dt_fs": 1,
+          "duration_ps": 100,
+          "steps": 100000,
+          "rounding_added_fs": 0
+        }
+      },
+      "parameter_status": {
+        "potential_id": "USER",
+        "potential_sha256": "FILE",
+        "potential_file": "FILE",
+        "composition": "USER",
+        "composition.atomic_counts": "CALC",
+        "initial_state": "CAND",
+        "N": "CAND",
+        "pbc": "CAND",
+        "temperature_K": "CAND",
+        "pressure_GPa": "CAND",
+        "P_tensor_GPa": "CAND",
+        "box_mode": "CAND",
+        "ensemble": "CAND",
+        "dt_fs": "CAND",
+        "thermostat": "CAND",
+        "barostat": "CAND",
+        "tau_T_fs": "CAND",
+        "tau_P_fs": "CAND",
+        "T_coup": "CALC",
+        "P_coup": "CALC",
+        "control_moduli_GPa": "CAND",
+        "relax_ps": "CAND",
+        "relax_steps": "CALC",
+        "production_ps": "CAND",
+        "production_steps": "CALC",
+        "seed": "CAND",
+        "thermo_interval_steps": "CAND",
+        "trajectory_interval_steps": "CAND",
+        "ptm_cutoff": "CAND",
+        "trajectory_has_potential": "CAND",
+        "stages": "CAND",
+        "stages.run_steps": "CALC",
+        "total_steps": "CALC",
+        "total_ps": "CALC",
+        "actual_model_asset": "RUNTIME",
+        "actual_initial_cell_A": "RUNTIME",
+        "formal_restart": "RUNTIME",
+        "first_output_step": "RUNTIME",
+        "health_screening": "RUNTIME",
+        "initial_state.a_A": "RUNTIME",
+        "initial_state.c_A": "RUNTIME",
+        "initial_state.actual_cell_matrix_A": "RUNTIME",
+        "initial_state.cell_compatibility": "RUNTIME",
+        "literature_prior.alpha_beta_K": "LIT",
+        "literature_prior.pressure_MPa": "LIT",
+        "refinement.interior_offsets_K": "CAND",
+        "refinement.additional_steps": "CALC",
+        "budget.maximum_main_steps": "CALC",
+        "calculator_verified": "CALC"
+      },
+      "source_ids": [
+        "U-01",
+        "U-02",
+        "U-D02",
+        "N-02",
+        "N-03",
+        "D-01",
+        "D-02",
+        "D-03",
+        "D-04",
+        "D-05",
+        "D-06",
+        "D-08",
+        "C-01",
+        "M-02",
+        "NIST-JANAF Ti-002 (quoted in U-D02; not independently opened)"
+      ],
+      "assumptions": [
+        "Pure HCP Ti is a preparation baseline, not an assertion that UNEP has a verified alpha/beta boundary.",
+        "Choose 0 GPa, 300 K initial state, bulk PBC and a finite 800–1500 K sampling range; none was user-specified.",
+        "9600-atom 20×12×10 four-atom orthorhombic HCP construction is a new CAND implementation of the KB's approximately 10000-atom recommendation.",
+        "Potential sha and element coverage are from local FILE evidence; no fresh hash, MD, or web verification was performed.",
+        "The 1166 K/0.1 MPa prior guides bracketing only; actual model transition and finite-rate hysteresis remain unknown."
+      ],
+      "questions": [
+        {
+          "blocking": false,
+          "question": "当前按 bulk HCP 单晶升温初筛推进；若目标包含 ω 相、剪切路径或平衡相界精度，需另定盒型、方法与研究边界。",
+          "reason": "Would change the scientific target beyond this finite exploration."
+        }
+      ],
+      "runtime_dependencies": [
+        {
+          "item": "model asset and actual cell",
+          "owner": "model-worker",
+          "status": "RUNTIME_PENDING",
+          "binding": "generate proposed model, verify exact species counts/PBC/no pathological overlaps; report lattice parameter sources, actual cell matrix, positions, atom IDs and random assignment"
+        },
+        {
+          "item": "GPUMD input",
+          "owner": "gpumd-generator",
+          "status": "DESIGN_READY",
+          "binding": "instantiate all stage fields, confirm installed 5.5 syntax/NEP element mapping, redeclare outputs per run and end restart; independent ~200-step workflow trial only"
+        },
+        {
+          "item": "production resources",
+          "owner": "simulation-runner",
+          "status": "RUNTIME_PENDING",
+          "binding": "confirm machine/GPU access, executable/environment and wall-clock limits from actual configuration or benchmark; no wall-time estimate invented"
+        },
+        {
+          "item": "formal outputs and mapping",
+          "owner": "gpumd-generator + simulation-runner",
+          "status": "RUNTIME_PENDING",
+          "binding": "save stage ID, run steps, dt, stage start time, actual first written step, file append rules, actual T, U/K, six pressure and nine cell components; verify trajectory energy properties"
+        },
+        {
+          "item": "existing analysis",
+          "owner": "postprocessor",
+          "status": "RUNTIME_PENDING",
+          "binding": "confirm actual input/dependencies and execute supported PTM, U/V, total RDF, summaries and plots; preserve transient frames"
+        },
+        {
+          "item": "HCP compatible cell and exact atom count",
+          "owner": "model-worker",
+          "status": "RUNTIME_PENDING",
+          "binding": "validate proposed four-atom orthorhombic HCP construction and N=9600; record actual a/c, orientation and matrix; if implementation differs, explicitly revise N/cost before running"
+        },
+        {
+          "item": "bracketing interval and fine nodes",
+          "owner": "research design + postprocessor",
+          "status": "RUNTIME_PENDING",
+          "binding": "select at most one observed 100K bracket by the declared trigger, bind three 25K internal nodes and their restart branch; no fabricated transition point"
+        }
+      ],
+      "handoff_status": {
+        "overall": "DESIGN_READY",
+        "model_worker": "DESIGN_READY; compatible HCP asset RUNTIME_PENDING",
+        "generator": "DESIGN_READY for initial 18 stages; adaptive fine-node temperatures RUNTIME_PENDING on observed bracket",
+        "runner": "RUNTIME_PENDING; finite budget explicit",
+        "health_checks": "CHECK_PENDING",
+        "equilibrium_phase_boundary": "UNSUPPORTED by this single heating path and current final-analysis capabilities"
+      },
+      "capability_gaps": [
+        "Dedicated T/P window statistics, autocorrelation/effective sample size and confidence intervals are unconfirmed.",
+        "Orthorhombic template does not cover arbitrary shear paths; omega-phase classification and equilibrium phase-boundary fitting are not established.",
+        "No size convergence, cooling return, alternate initial phase or repeated seed is included in the initial budget; cannot claim equilibrium transition from one heating event.",
+        "Potential-specific Ti phase accuracy and the NIST pressure/method correspondence are unverified."
+      ],
+      "used_files": [
+        "agent-entry.md",
+        "decisions/parameter-table.md",
+        "decisions/npt.md",
+        "decisions/unep-v1.md",
+        "decisions/calculation.md",
+        "evidence/U-01-local-model.md",
+        "evidence/U-02-paper-scope.md",
+        "evidence/C-01-gpumd55.md",
+        "evidence/M-02-barostat.md",
+        "assets/local-inventory.json",
+        "potentials/unep-v1/README.md",
+        "common/npt-parameters.md",
+        "common/capabilities.md"
+      ]
+    },
+    {
+      "case_id": "G01",
+      "answer_markdown": "推荐先交接“快速探索”路径，同时把文献冷速参照的完整成本列出。用户锁定本地 PdCuNiP/nep4.txt 和 Pd40Cu30Ni10P20；没有初始模型。势文件的元素顺序为 Pd、Cu、Ni、P，SHA-256=aec2bc972783f58e523c90574a96ebaad6b37a29bc3853e16099d4d43af96ad8（P-01/资产快照 FILE）。以下是候选制备路径，不是已复现的论文制备契约，也没有把 2500 K 自动认定为合格液态。\n\n模型候选采用 N=13500、Pd=5400/Cu=4050/Ni=1350/P=2700，三向周期、正交 bulk。为使无模型任务可交接，本次显式提议 model-worker 先建 15×15×15 四原子 FCC 装填骨架，再按精确计数随机替换元素；这只是便于构造的非重叠起始装填，不声称 Pd40Cu30Ni10P20 的稳定晶相是 FCC，也不把初始模型称作玻璃。N 和具体装填方案为 CAND，13500 位于论文常规验证规模内但未证明尺寸收敛。初始晶格尺度/密度、最短原子距和实际盒矩阵由 model-worker 按资料与工具选并报告，不能凭空捏造；高温准备要消除对该装填的历史依赖并检查真实状态。\n\n所有正式阶段采用 GPUMD 5.5 npt_scr，Pxx=Pyy=Pzz=0 GPa，三向长度独立变化、固定正交倾斜；dt=1 fs，tauT=100 fs、tauP=1000 fs，T_coup/P_coup=100/1000，控制模量=100/100/100 GPa。除文献零压 NPT/1 fs 提供参照外，这套具体控制选择均为 CAND，不是论文已核对的全部控制细节。seed=20261020；只在新建模型的首个 2500 K 阶段初始化速度，其后沿正式 restart 保留，不在降温中重复分配速度。\n\n| 级别/阶段 | 温度与时间 | 1 fs 步数 | thermo/轨迹间隔 |\n| --- | --- | --- | --- |\n| 两级共同：高温准备与观察 | 2500 K、0 GPa，1 ns | 1000000 | 100/1000 步 |\n| 推荐快速：线性冷却 | 2500→300 K，2×10^12 K/s，1.1 ns | 1100000 | 500/2500 步 |\n| 文献冷速参照：线性冷却 | 2500→300 K，2×10^10 K/s，110 ns | 110000000 | 1000/250000 步 |\n| 两级共同：末态观察 | 300 K、0 GPa，100 ps | 100000 | 100/1000 步 |\n\n完整快速级=1+1.1+0.1=2.2 ns=2200000 步；完整文献冷速级=1+110+0.1=111.1 ns=111100000 步。各自高温最多追加一次 1 ns/1000000 步，故主路径最大分别 3.2 ns/3200000 步和 112.1 ns/112100000 步；仍不满足高温制备/健康需要就停止并报告，不无限保温或盲目降温后称“合格玻璃”。各级成本分别约 2.97×10^10 和 1.49985×10^12 atom-steps；慢级完整步数是快级的 50.5 倍。无法由此给 GPU 墙钟时间。若作为速率对照同时跑两级，可从同一个已接受的高温正式 restart 分叉；只共享一次 1 ns 高温阶段时，总成本为 112.3 ns/112300000 步，而不是把共享阶段重复计算。\n\n闭合算术按知识库只读计算器核对：ΔT=2200 K；t=ΔT/q，故快速 t=1.1×10^-9 s=1100 ps=1100000 步，慢速 t=1.1×10^-7 s=110000 ps=110000000 步，无取整增量。快速 thermo=500 步对应 0.5 ps/目标温差1 K；慢速=1000 步对应1 ps/目标温差0.02 K，均满足≤1 K 且≤1 ps。结构轨迹快速2500步对应2.5 ps/5 K，慢速250000步对应250 ps/5 K，各约440个冷却帧。连同两端1000+100帧，各完整路径名义轨迹约1540帧；实际首帧与时间映射仍要查输出，不能假设帧0就是t=0。慢速稀疏冷却轨迹不能直接用于可靠 PBC 展开 MSD 或扩散系数；若需要运动学，应另保存明确的高频连续区间和成本。\n\n每段必须重新声明不传播的输出、末态 restart、阶段 ID、dt、累计起始时间、实际首输出步；保存 thermo 实际 T、U/K、压力张量和盒矩阵并核对轨迹势能属性。Tg 的原始主数据是 U/N–实际温度及 V/N–实际温度。已有工具可提供 U/V 曲线、逐帧总 RDF、PTM 结构标签、现有区间摘要与图；这些能描述给定路径的致密化和局部结构演化。PTM 的 Other≈100% 不能替代玻璃判定。\n\n验证先检查高温段 U/V 的稳定趋势、实际 T/P、结构及必要的连续高频动力学证据；低温也按 D-04 的末两个相邻20 ps工程筛查，体积差≤0.5%、U/N差≤0.005 eV，T偏差≤max(5 K,2%T)，P偏差≤0.1 GPa。专用 thermo T/P 窗口统计尚未确认，不能谎报通过。1/0.5 fs 各10 ps数值对照为另外明确的可选验证，保持物理 tau，新增20 ps/30000步；若执行，快/慢级含主路径最大延期的累计上限分别3220 ps/3230000步和112120 ps/112130000步。\n\nP-02 报告同一成分作者 Tg=590 K、冷速2×10^10 K/s；这是作者路径结果，不是本次测量，更不是快速级的答案。2500 K来自论文独立结构验证分支，本方案1 ns保温、2500→300端点与控制细节是新设计，不把不同分支拼成“论文原方案”。正式 Tg 可预设未来分析规则为对 U/N–实际 T 的高温支与低温支做分段线性拟合并取交点；候选窗口可先声明高温900–1200 K、低温300–450 K，但必须验证支内线性和窗口敏感性，失败时拒绝输出精确 Tg，不能拿590 K强行约束交点。这里的窗口是 CAND，尚未运行拟合。\n\n交接状态：数据生成方案 DESIGN_READY；模型、初始密度/盒矩阵、实际高温状态、运行资源与正式 restart 为 RUNTIME_PENDING。model-worker 建装填种子，generator 准备逐阶段输入和隔离流程试跑，runner 在预算内正式运行，postprocessor 执行已有指标。当前 Tg 自动拟合、thermo–轨迹实际温度联合映射、误差/置信区间、元素对分 RDF/化学有序/Voronoi 等专用能力尚缺，所以可交付路径相关原始数据与结构/U/V结果，尚不能完成可靠数值 Tg 和不确定度的最终科学交付。",
+      "parameters": {
+        "pbc": [
+          true,
+          true,
+          true
+        ],
+        "pressure_GPa": 0,
+        "P_tensor_GPa": {
+          "xx": 0,
+          "yy": 0,
+          "zz": 0,
+          "shear_target": null
+        },
+        "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+        "ensemble": "npt_scr",
+        "dt_fs": 1,
+        "thermostat": "GPUMD 5.5 npt_scr temperature control",
+        "barostat": "GPUMD 5.5 npt_scr independent orthorhombic cell rescaling",
+        "tau_T_fs": 100,
+        "tau_P_fs": 1000,
+        "T_coup": 100,
+        "P_coup": 1000,
+        "control_moduli_GPa": {
+          "x": 100,
+          "y": 100,
+          "z": 100
+        },
+        "seed": 20261020,
+        "thermo_interval_steps": {
+          "high": 100,
+          "cooling_fast": 500,
+          "cooling_literature_rate": 1000,
+          "final": 100
+        },
+        "trajectory_interval_steps": {
+          "high": 1000,
+          "cooling_fast": 2500,
+          "cooling_literature_rate": 250000,
+          "final": 1000
+        },
+        "ptm_cutoff": 0.1,
+        "trajectory_has_potential": true,
+        "potential_id": "PdCuNiP/nep4.txt",
+        "potential_sha256": "aec2bc972783f58e523c90574a96ebaad6b37a29bc3853e16099d4d43af96ad8",
+        "potential_file": "C:/Users/35059/Desktop/MDAgent/机器学习势/NEP/PdCuNiP/nep4.txt",
+        "composition": {
+          "atomic_percent": {
+            "Pd": 40,
+            "Cu": 30,
+            "Ni": 10,
+            "P": 20
+          },
+          "atomic_counts": {
+            "Pd": 5400,
+            "Cu": 4050,
+            "Ni": 1350,
+            "P": 2700
+          }
+        },
+        "initial_state": {
+          "phase": "FCC_packing_scaffold_only_not_equilibrium_phase_claim",
+          "chemical_state": "random_species_assignment_seed_then_high_temperature_preparation",
+          "conventional_cell_atoms": 4,
+          "replication": [
+            15,
+            15,
+            15
+          ],
+          "orientation": "arbitrary aligned cubic packing scaffold",
+          "lattice_parameter_A": null,
+          "initial_density": null,
+          "actual_cell_matrix_A": null,
+          "liquid_certified": false
+        },
+        "N": 13500,
+        "temperature_K": {
+          "high": 2500,
+          "linear_cooling": [
+            2500,
+            300
+          ],
+          "final": 300
+        },
+        "relax_ps": 1000,
+        "relax_steps": 1000000,
+        "production_ps": 1200,
+        "production_steps": 1200000,
+        "selected_tier": "fast_exploration",
+        "total_ps": 2200,
+        "total_steps": 2200000,
+        "stages": [
+          {
+            "stage_id": "Pd_highT_prepare",
+            "T_start_K": 2500,
+            "T_end_K": 2500,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 1000,
+            "run_steps": 1000000,
+            "global_start_ps": 0,
+            "global_end_ps": 1000,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "initialize_new_velocities_2500K_once_seed_20261020",
+            "restart_input": "model-worker asset",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0"
+          },
+          {
+            "stage_id": "Pd_fast_cooling",
+            "T_start_K": 2500,
+            "T_end_K": 300,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 1100,
+            "run_steps": 1100000,
+            "global_start_ps": 1000,
+            "global_end_ps": 2100,
+            "thermo_interval_steps": 500,
+            "trajectory_interval_steps": 2500,
+            "velocity_handling": "preserve_validated_highT_restart",
+            "restart_input": "preceding formal stage restart",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0"
+          },
+          {
+            "stage_id": "Pd_300_observe",
+            "T_start_K": 300,
+            "T_end_K": 300,
+            "P_tensor_GPa": {
+              "xx": 0,
+              "yy": 0,
+              "zz": 0,
+              "shear_target": null
+            },
+            "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+            "ensemble": "npt_scr",
+            "dt_fs": 1,
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "T_coup": 100,
+            "P_coup": 1000,
+            "control_moduli_GPa": {
+              "x": 100,
+              "y": 100,
+              "z": 100
+            },
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "global_start_ps": 2100,
+            "global_end_ps": 2200,
+            "thermo_interval_steps": 100,
+            "trajectory_interval_steps": 1000,
+            "velocity_handling": "preserve_upstream_restart",
+            "restart_input": "preceding formal stage restart",
+            "restart_output": "required_stage_end_restart",
+            "outputs_redeclared": true,
+            "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0"
+          }
+        ],
+        "tiers": {
+          "fast": {
+            "cooling_rate_K_s": 2000000000000,
+            "cooling_ps": 1100,
+            "cooling_steps": 1100000,
+            "total_ps": 2200,
+            "total_steps": 2200000,
+            "relax_ps": 1000,
+            "relax_steps": 1000000,
+            "production_ps": 1200,
+            "production_steps": 1200000,
+            "maximum_main_ps": 3200,
+            "maximum_main_steps": 3200000,
+            "initial_atom_steps": 29700000000,
+            "maximum_main_atom_steps": 43200000000,
+            "nominal_cooling_thermo_rows": 2200,
+            "nominal_cooling_trajectory_frames": 440,
+            "nominal_total_trajectory_frames": 1540,
+            "maximum_including_optional_numerical_tests_ps": 3220,
+            "maximum_including_optional_numerical_tests_steps": 3230000,
+            "stages": [
+              {
+                "stage_id": "Pd_highT_prepare",
+                "T_start_K": 2500,
+                "T_end_K": 2500,
+                "P_tensor_GPa": {
+                  "xx": 0,
+                  "yy": 0,
+                  "zz": 0,
+                  "shear_target": null
+                },
+                "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+                "ensemble": "npt_scr",
+                "dt_fs": 1,
+                "tau_T_fs": 100,
+                "tau_P_fs": 1000,
+                "T_coup": 100,
+                "P_coup": 1000,
+                "control_moduli_GPa": {
+                  "x": 100,
+                  "y": 100,
+                  "z": 100
+                },
+                "duration_ps": 1000,
+                "run_steps": 1000000,
+                "global_start_ps": 0,
+                "global_end_ps": 1000,
+                "thermo_interval_steps": 100,
+                "trajectory_interval_steps": 1000,
+                "velocity_handling": "initialize_new_velocities_2500K_once_seed_20261020",
+                "restart_input": "model-worker asset",
+                "restart_output": "required_stage_end_restart",
+                "outputs_redeclared": true,
+                "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0"
+              },
+              {
+                "stage_id": "Pd_fast_cooling",
+                "T_start_K": 2500,
+                "T_end_K": 300,
+                "P_tensor_GPa": {
+                  "xx": 0,
+                  "yy": 0,
+                  "zz": 0,
+                  "shear_target": null
+                },
+                "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+                "ensemble": "npt_scr",
+                "dt_fs": 1,
+                "tau_T_fs": 100,
+                "tau_P_fs": 1000,
+                "T_coup": 100,
+                "P_coup": 1000,
+                "control_moduli_GPa": {
+                  "x": 100,
+                  "y": 100,
+                  "z": 100
+                },
+                "duration_ps": 1100,
+                "run_steps": 1100000,
+                "global_start_ps": 1000,
+                "global_end_ps": 2100,
+                "thermo_interval_steps": 500,
+                "trajectory_interval_steps": 2500,
+                "velocity_handling": "preserve_validated_highT_restart",
+                "restart_input": "preceding formal stage restart",
+                "restart_output": "required_stage_end_restart",
+                "outputs_redeclared": true,
+                "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0"
+              },
+              {
+                "stage_id": "Pd_300_observe",
+                "T_start_K": 300,
+                "T_end_K": 300,
+                "P_tensor_GPa": {
+                  "xx": 0,
+                  "yy": 0,
+                  "zz": 0,
+                  "shear_target": null
+                },
+                "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+                "ensemble": "npt_scr",
+                "dt_fs": 1,
+                "tau_T_fs": 100,
+                "tau_P_fs": 1000,
+                "T_coup": 100,
+                "P_coup": 1000,
+                "control_moduli_GPa": {
+                  "x": 100,
+                  "y": 100,
+                  "z": 100
+                },
+                "duration_ps": 100,
+                "run_steps": 100000,
+                "global_start_ps": 2100,
+                "global_end_ps": 2200,
+                "thermo_interval_steps": 100,
+                "trajectory_interval_steps": 1000,
+                "velocity_handling": "preserve_upstream_restart",
+                "restart_input": "preceding formal stage restart",
+                "restart_output": "required_stage_end_restart",
+                "outputs_redeclared": true,
+                "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0"
+              }
+            ]
+          },
+          "literature_rate": {
+            "cooling_rate_K_s": 20000000000,
+            "cooling_ps": 110000,
+            "cooling_steps": 110000000,
+            "total_ps": 111100,
+            "total_steps": 111100000,
+            "relax_ps": 1000,
+            "relax_steps": 1000000,
+            "production_ps": 110100,
+            "production_steps": 110100000,
+            "maximum_main_ps": 112100,
+            "maximum_main_steps": 112100000,
+            "initial_atom_steps": 1499850000000,
+            "maximum_main_atom_steps": 1513350000000,
+            "nominal_cooling_thermo_rows": 110000,
+            "nominal_cooling_trajectory_frames": 440,
+            "nominal_total_trajectory_frames": 1540,
+            "maximum_including_optional_numerical_tests_ps": 112120,
+            "maximum_including_optional_numerical_tests_steps": 112130000,
+            "stages": [
+              {
+                "stage_id": "Pd_highT_prepare",
+                "T_start_K": 2500,
+                "T_end_K": 2500,
+                "P_tensor_GPa": {
+                  "xx": 0,
+                  "yy": 0,
+                  "zz": 0,
+                  "shear_target": null
+                },
+                "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+                "ensemble": "npt_scr",
+                "dt_fs": 1,
+                "tau_T_fs": 100,
+                "tau_P_fs": 1000,
+                "T_coup": 100,
+                "P_coup": 1000,
+                "control_moduli_GPa": {
+                  "x": 100,
+                  "y": 100,
+                  "z": 100
+                },
+                "duration_ps": 1000,
+                "run_steps": 1000000,
+                "global_start_ps": 0,
+                "global_end_ps": 1000,
+                "thermo_interval_steps": 100,
+                "trajectory_interval_steps": 1000,
+                "velocity_handling": "initialize_new_velocities_2500K_once_seed_20261020",
+                "restart_input": "model-worker asset",
+                "restart_output": "required_stage_end_restart",
+                "outputs_redeclared": true,
+                "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0"
+              },
+              {
+                "stage_id": "Pd_literature_rate_cooling",
+                "T_start_K": 2500,
+                "T_end_K": 300,
+                "P_tensor_GPa": {
+                  "xx": 0,
+                  "yy": 0,
+                  "zz": 0,
+                  "shear_target": null
+                },
+                "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+                "ensemble": "npt_scr",
+                "dt_fs": 1,
+                "tau_T_fs": 100,
+                "tau_P_fs": 1000,
+                "T_coup": 100,
+                "P_coup": 1000,
+                "control_moduli_GPa": {
+                  "x": 100,
+                  "y": 100,
+                  "z": 100
+                },
+                "duration_ps": 110000,
+                "run_steps": 110000000,
+                "global_start_ps": 1000,
+                "global_end_ps": 111000,
+                "thermo_interval_steps": 1000,
+                "trajectory_interval_steps": 250000,
+                "velocity_handling": "preserve_validated_highT_restart",
+                "restart_input": "preceding formal stage restart",
+                "restart_output": "required_stage_end_restart",
+                "outputs_redeclared": true,
+                "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0"
+              },
+              {
+                "stage_id": "Pd_300_observe",
+                "T_start_K": 300,
+                "T_end_K": 300,
+                "P_tensor_GPa": {
+                  "xx": 0,
+                  "yy": 0,
+                  "zz": 0,
+                  "shear_target": null
+                },
+                "box_mode": "orthorhombic_independent_xyz_lengths_fixed_zero_tilts",
+                "ensemble": "npt_scr",
+                "dt_fs": 1,
+                "tau_T_fs": 100,
+                "tau_P_fs": 1000,
+                "T_coup": 100,
+                "P_coup": 1000,
+                "control_moduli_GPa": {
+                  "x": 100,
+                  "y": 100,
+                  "z": 100
+                },
+                "duration_ps": 100,
+                "run_steps": 100000,
+                "global_start_ps": 111000,
+                "global_end_ps": 111100,
+                "thermo_interval_steps": 100,
+                "trajectory_interval_steps": 1000,
+                "velocity_handling": "preserve_upstream_restart",
+                "restart_input": "preceding formal stage restart",
+                "restart_output": "required_stage_end_restart",
+                "outputs_redeclared": true,
+                "first_output_step": "RUNTIME: read actual output/log; do not assume frame zero is t=0"
+              }
+            ]
+          }
+        },
+        "high_temperature_extension": {
+          "max_count": 1,
+          "additional_ps": 1000,
+          "additional_steps": 1000000,
+          "still_unqualified_action": "stop and report; do not claim qualified melt or glass"
+        },
+        "both_tiers_shared_accepted_highT_restart": {
+          "total_ps": 112300,
+          "total_steps": 112300000,
+          "shared_highT_ps": 1000
+        },
+        "literature_reference": {
+          "cooling_rate_K_s": 20000000000,
+          "author_Tg_K": 590,
+          "author_Tg_is_this_run": false,
+          "temperature_2500K_origin": "separate structural-validation branch, not a verified melt-preparation contract"
+        },
+        "future_Tg_analysis": {
+          "status": "BLOCK: dedicated implementation missing",
+          "observable": "potential energy per atom vs actual thermo temperature",
+          "criterion": "intersection of separately validated high/low-temperature linear branches; reject if linearity inadequate",
+          "candidate_high_branch_window_K": [
+            900,
+            1200
+          ],
+          "candidate_low_branch_window_K": [
+            300,
+            450
+          ],
+          "requires": [
+            "actual T alignment",
+            "validated fit windows",
+            "residual diagnostics",
+            "window sensitivity",
+            "uncertainty and repeat policy"
+          ]
+        },
+        "validation": {
+          "screen_status": "CHECK_PENDING; no simulation or numerical health assessment executed",
+          "fixed_platform_windows_ps": [
+            20,
+            20
+          ],
+          "temperature_mean_error_limit": "max(5 K, 0.02*T_target)",
+          "pressure_mean_error_limit_GPa": "max(0.1, 0.02*abs(P_target))",
+          "relative_volume_mean_difference_limit": 0.005,
+          "potential_energy_per_atom_mean_difference_limit_eV": 0.005,
+          "meaning": "engineering health screen, not proof of equilibrium, ergodicity, or correct fluctuations",
+          "tool_limit": "Dedicated thermo T/P window statistics and confidence intervals are not confirmed. Do not use LLM table reading or temporary scripts to pretend this check passed.",
+          "numerical_sensitivity_optional": {
+            "required_in_initial_budget": false,
+            "trigger": "instability, unexplained drift, or conclusion sensitive to numerical settings",
+            "branches": [
+              {
+                "dt_fs": 1,
+                "duration_ps": 10,
+                "run_steps": 10000,
+                "T_coup": 100,
+                "P_coup": 1000
+              },
+              {
+                "dt_fs": 0.5,
+                "duration_ps": 10,
+                "run_steps": 20000,
+                "T_coup": 200,
+                "P_coup": 2000
+              }
+            ],
+            "tau_T_fs": 100,
+            "tau_P_fs": 1000,
+            "additional_aggregate_ps": 20,
+            "additional_steps": 30000,
+            "comparison": "same starting formal restart and physical duration; compare statistics, not atomwise trajectory agreement",
+            "scope": "separately stated optional numerical budget; not silently deducted from or added to main-path caps"
+          }
+        },
+        "calculator_verified": [
+          {
+            "start_K": 2500,
+            "end_K": 300,
+            "rate_K_s": 2000000000000,
+            "dt_fs": 1,
+            "steps": 1100000,
+            "duration_ps": 1100,
+            "rounding_added_fs": 0,
+            "dump_delta_K": 5,
+            "interval_steps": 2500
+          },
+          {
+            "start_K": 2500,
+            "end_K": 300,
+            "rate_K_s": 2000000000000,
+            "dt_fs": 1,
+            "steps": 1100000,
+            "duration_ps": 1100,
+            "rounding_added_fs": 0,
+            "dump_delta_K": 1,
+            "dump_max_ps": 1,
+            "interval_steps": 500
+          },
+          {
+            "start_K": 2500,
+            "end_K": 300,
+            "rate_K_s": 20000000000,
+            "dt_fs": 1,
+            "steps": 110000000,
+            "duration_ps": 110000,
+            "rounding_added_fs": 0,
+            "dump_delta_K": 1,
+            "dump_max_ps": 1,
+            "interval_steps": 1000
+          },
+          {
+            "start_K": 2500,
+            "end_K": 300,
+            "rate_K_s": 20000000000,
+            "dt_fs": 1,
+            "steps": 110000000,
+            "duration_ps": 110000,
+            "rounding_added_fs": 0,
+            "dump_delta_K": 5,
+            "interval_steps": 250000
+          }
+        ]
+      },
+      "parameter_status": {
+        "potential_id": "USER",
+        "potential_sha256": "FILE",
+        "potential_file": "FILE",
+        "composition": "USER",
+        "composition.atomic_counts": "CALC",
+        "initial_state": "CAND",
+        "N": "CAND",
+        "pbc": "CAND",
+        "temperature_K": "CAND",
+        "pressure_GPa": "CAND",
+        "P_tensor_GPa": "CAND",
+        "box_mode": "CAND",
+        "ensemble": "CAND",
+        "dt_fs": "CAND",
+        "thermostat": "CAND",
+        "barostat": "CAND",
+        "tau_T_fs": "CAND",
+        "tau_P_fs": "CAND",
+        "T_coup": "CALC",
+        "P_coup": "CALC",
+        "control_moduli_GPa": "CAND",
+        "relax_ps": "CAND",
+        "relax_steps": "CALC",
+        "production_ps": "CAND",
+        "production_steps": "CALC",
+        "seed": "CAND",
+        "thermo_interval_steps": "CAND",
+        "trajectory_interval_steps": "CAND",
+        "ptm_cutoff": "CAND",
+        "trajectory_has_potential": "CAND",
+        "stages": "CAND",
+        "stages.run_steps": "CALC",
+        "total_steps": "CALC",
+        "total_ps": "CALC",
+        "actual_model_asset": "RUNTIME",
+        "actual_initial_cell_A": "RUNTIME",
+        "formal_restart": "RUNTIME",
+        "first_output_step": "RUNTIME",
+        "health_screening": "RUNTIME",
+        "initial_state.lattice_parameter_A": "RUNTIME",
+        "initial_state.initial_density": "RUNTIME",
+        "initial_state.actual_cell_matrix_A": "RUNTIME",
+        "initial_state.liquid_certified": "RUNTIME",
+        "selected_tier": "CAND",
+        "tiers.fast.cooling_rate_K_s": "CAND",
+        "tiers.literature_rate.cooling_rate_K_s": "LIT",
+        "tiers.fast.cooling_steps": "CALC",
+        "tiers.fast.total_steps": "CALC",
+        "tiers.literature_rate.cooling_steps": "CALC",
+        "tiers.literature_rate.total_steps": "CALC",
+        "tiers.fast.maximum_main_steps": "CALC",
+        "tiers.literature_rate.maximum_main_steps": "CALC",
+        "tiers.*.stages": "CAND",
+        "tiers.*.stages.run_steps": "CALC",
+        "literature_reference.cooling_rate_K_s": "LIT",
+        "literature_reference.author_Tg_K": "LIT",
+        "literature_reference.temperature_2500K_origin": "LIT",
+        "future_Tg_analysis": "BLOCK",
+        "future_Tg_analysis.candidate_high_branch_window_K": "CAND",
+        "future_Tg_analysis.candidate_low_branch_window_K": "CAND",
+        "both_tiers_shared_accepted_highT_restart.total_steps": "CALC",
+        "calculator_verified": "CALC"
+      },
+      "source_ids": [
+        "P-01",
+        "P-02",
+        "P-D01",
+        "P-D02",
+        "P-D03",
+        "N-03",
+        "N-04",
+        "D-01",
+        "D-02",
+        "D-03",
+        "D-04",
+        "D-05",
+        "D-06",
+        "D-08",
+        "C-01",
+        "M-02"
+      ],
+      "assumptions": [
+        "No existing model; propose a random-element FCC packing scaffold solely for initial construction, not as equilibrium crystal or glass.",
+        "N=13500 and exact composition are proposed; lattice parameter/density must be chosen and reported by model-worker, not fabricated.",
+        "2500 K/1 ns preparation, 300 K final state, npt_scr control details and fast cooling are new CAND choices.",
+        "The 2e10 K/s rate and 590 K author Tg are literature reference facts from P-02; no local reproduction is claimed.",
+        "Recommend fast tier because user did not lock the rate; show slow tier without silently substituting it for a user constraint.",
+        "Future fit windows are CAND and unexecuted; no exact Tg can be delivered with the presently confirmed analysis tools.",
+        "Potential file identity is documented by KB local evidence, not freshly rehashed during this test."
+      ],
+      "questions": [
+        {
+          "blocking": false,
+          "question": "当前先推荐2×10^12 K/s快速探索；若研究目标必须与论文冷速比较，应锁定2×10^10 K/s参照级，并接受111.1 ns主路径成本及制备/拟合仍未完全匹配的限制。",
+          "reason": "The scientific comparison changes with cooling rate; full finite alternatives have already been supplied."
+        }
+      ],
+      "runtime_dependencies": [
+        {
+          "item": "model asset and actual cell",
+          "owner": "model-worker",
+          "status": "RUNTIME_PENDING",
+          "binding": "generate proposed model, verify exact species counts/PBC/no pathological overlaps; report lattice parameter sources, actual cell matrix, positions, atom IDs and random assignment"
+        },
+        {
+          "item": "GPUMD input",
+          "owner": "gpumd-generator",
+          "status": "DESIGN_READY",
+          "binding": "instantiate all stage fields, confirm installed 5.5 syntax/NEP element mapping, redeclare outputs per run and end restart; independent ~200-step workflow trial only"
+        },
+        {
+          "item": "production resources",
+          "owner": "simulation-runner",
+          "status": "RUNTIME_PENDING",
+          "binding": "confirm machine/GPU access, executable/environment and wall-clock limits from actual configuration or benchmark; no wall-time estimate invented"
+        },
+        {
+          "item": "formal outputs and mapping",
+          "owner": "gpumd-generator + simulation-runner",
+          "status": "RUNTIME_PENDING",
+          "binding": "save stage ID, run steps, dt, stage start time, actual first written step, file append rules, actual T, U/K, six pressure and nine cell components; verify trajectory energy properties"
+        },
+        {
+          "item": "existing analysis",
+          "owner": "postprocessor",
+          "status": "RUNTIME_PENDING",
+          "binding": "confirm actual input/dependencies and execute supported PTM, U/V, total RDF, summaries and plots; preserve transient frames"
+        },
+        {
+          "item": "packing scaffold density and high-temperature state",
+          "owner": "model-worker + runner + postprocessor",
+          "status": "RUNTIME_PENDING",
+          "binding": "record actual density, cell and no-overlap checks; inspect high-T state rather than assume 2500 K guarantees melting; at most one extra 1 ns"
+        },
+        {
+          "item": "Tg analysis and thermo/trajectory actual-temperature mapping",
+          "owner": "future confirmed dedicated analysis capability",
+          "status": "BLOCK",
+          "binding": "current roles cannot be assumed to supply automatic fits, uncertainty or joint mapping; do not substitute LLM visual estimation, temporary programming or role switching"
+        }
+      ],
+      "handoff_status": {
+        "overall": "DESIGN_READY for both finite data-generation tiers",
+        "model_worker": "DESIGN_READY with explicit packing assumption; actual density/cell/asset RUNTIME_PENDING",
+        "generator": "DESIGN_READY; highT/cooling/final stages and branch-specific outputs specified",
+        "runner": "RUNTIME_PENDING; no actual MD or resource verification",
+        "health_checks": "CHECK_PENDING; highT preparation acceptance not observed",
+        "supported_postprocessing": "RUNTIME_PENDING; U/V, total RDF, PTM, summaries and plots are declared available",
+        "quantitative_Tg_with_uncertainty": "UNSUPPORTED with presently confirmed specialized tools"
+      },
+      "capability_gaps": [
+        "Tg automatic fitting, thermo–trajectory actual-temperature joint mapping, uncertainty/confidence intervals, autocorrelation and effective sample size are not provided as confirmed specialized tools.",
+        "Other PTM labels do not prove glass; pair-resolved RDF, chemical order and Voronoi diagnostics are not provided.",
+        "Sparse cooling trajectory is inadequate for reliable PBC-unwrapped MSD/diffusion analysis; high-frequency continuous data and a validated workflow would be needed.",
+        "Complete author preparation and fit windows are not verified; mixing 2500 K structural validation with the Tg cooling rate is a new candidate protocol, not paper reproduction.",
+        "Actual high-temperature liquid state, size convergence, material-specific errors and local runtime stability remain unverified."
+      ],
+      "used_files": [
+        "agent-entry.md",
+        "decisions/parameter-table.md",
+        "decisions/npt.md",
+        "decisions/pdcunip.md",
+        "decisions/calculation.md",
+        "evidence/P-01-local-model.md",
+        "evidence/P-02-paper-protocols.md",
+        "evidence/C-01-gpumd55.md",
+        "evidence/M-02-barostat.md",
+        "assets/local-inventory.json",
+        "potentials/pdcunip/README.md",
+        "common/npt-parameters.md",
+        "common/capabilities.md"
+      ]
+    }
+  ],
+  "read_files": [
+    "agent-entry.md",
+    "decisions/parameter-table.md",
+    "decisions/npt.md",
+    "decisions/unep-v1.md",
+    "decisions/pdcunip.md",
+    "decisions/calculation.md",
+    "evidence/U-01-local-model.md",
+    "evidence/U-02-paper-scope.md",
+    "evidence/P-01-local-model.md",
+    "evidence/P-02-paper-protocols.md",
+    "evidence/C-01-gpumd55.md",
+    "evidence/M-02-barostat.md",
+    "assets/local-inventory.json",
+    "potentials/unep-v1/README.md",
+    "potentials/pdcunip/README.md",
+    "common/npt-parameters.md",
+    "common/capabilities.md",
+    "review/agent-tests/post-npt.json"
+  ],
+  "calculation_execution": {
+    "tool": "maintenance/calculate_plan.py",
+    "source_code_read": false,
+    "execution_only": true,
+    "input_transport": "Only permitted report path was temporarily used for JSON calculator requests, then replaced with this final report; no other file was written.",
+    "calls": 5,
+    "md_started": false
+  },
+  "conclusion": "三个请求均可完成候选研究参数与模型/generator的数据生成交接；实际模型、运行资产和检查仍待上游执行。当前不能完成平衡Ti相界、CuNi化学有序结论或含不确定度的可靠数值Tg，相关能力缺口已单列。",
+  "read_file_scope_note": "17 KB input documents plus this own output report read only for JSON self-verification. No other review/ file was read.",
+  "output_verification": {
+    "json_parse": "passed",
+    "verified_case_ids": [
+      "N01",
+      "N02",
+      "G01"
+    ],
+    "verification_file": "review/agent-tests/post-npt.json"
+  }
+}

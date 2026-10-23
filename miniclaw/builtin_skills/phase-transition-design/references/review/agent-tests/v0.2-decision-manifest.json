@@ -1,0 +1,41 @@
+{
+  "version": "0.2",
+  "files": [
+    {
+      "path": "agent-entry.md",
+      "sha256": "88fe92ca0b0f5b9f2b56164b887c029d923bcce7f1db35c8b5b301c69b853659",
+      "bytes": 4300
+    },
+    {
+      "path": "decisions/calculation.md",
+      "sha256": "2c43dea974b38620a7de3af774ed6a6ef197539a22f34e474ad2230947a5cd04",
+      "bytes": 1497
+    },
+    {
+      "path": "decisions/npt.md",
+      "sha256": "7919ff245887f87a8e7cd69d3b57621b4ae7aafdc778c30583825b580e1a58f7",
+      "bytes": 3449
+    },
+    {
+      "path": "decisions/parameter-table.md",
+      "sha256": "e063dca77eb3031f9ab4ec8d4d1053964e82c47c50e351d2f118dbdcf71152c7",
+      "bytes": 4926
+    },
+    {
+      "path": "decisions/pdcunip.md",
+      "sha256": "70dac289f7c82433276cc39540815d2600b61903b668f557e9d333f03f509eed",
+      "bytes": 4204
+    },
+    {
+      "path": "decisions/tension.md",
+      "sha256": "d4d93ae4d8aea9ad7ffcf50e2c96589ce67222fac0d374739ecfe76ca6e4c46a",
+      "bytes": 4765
+    },
+    {
+      "path": "decisions/unep-v1.md",
+      "sha256": "97eb28a58ef55dde13f0f6900e0061592a17927afa508933bdd57e51420645a4",
+      "bytes": 3694
+    }
+  ],
+  "note": "Final entry also enforces leaf-level provenance. Earlier first-pass route test is pinned separately in v0.2-fast-route-manifest.json; targeted provenance checks follow."
+}

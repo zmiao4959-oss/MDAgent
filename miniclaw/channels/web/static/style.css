@@ -1005,6 +1005,8 @@ html, body {
 }
 .project-dialog-card input:focus, .project-dialog-card textarea:focus { border-color: rgba(110,231,255,.7); box-shadow: 0 0 0 3px rgba(110,231,255,.08); }
 .project-dialog-note { color: #7889a3; font-size: 11px; line-height: 1.5; }
+.project-title-warning { color: #ff7a7a; font-size: 12px; line-height: 1.4; margin: 6px 0 0; }
+html[data-theme="light"] .project-title-warning { color: #c62828; }
 .project-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
 
 /* ── WebChat settings ─────────────────────────────────────────────── */

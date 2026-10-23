@@ -155,3 +155,22 @@ def test_project_run_service_retries_before_success(tmp_path):
         assert any(event["kind"] == "retry" for event in restored.timeline)
 
     asyncio.run(scenario())
+
+
+def test_project_workspace_folder_uses_title_and_dedups(tmp_path):
+    projects = ProjectManager(tmp_path / "projects.json")
+    workspaces = ProjectWorkspaceService(projects, None, tmp_path)
+
+    first = projects.create("My Research", "", "webchat:a")
+    duplicate = projects.create("My Research", "", "webchat:b")
+    invalid = projects.create("A:B/C?", "", "webchat:c")
+
+    ws_first = workspaces.create(first)
+    ws_dup = workspaces.create(duplicate)
+    ws_invalid = workspaces.create(invalid)
+
+    assert ws_first.name == "My Research"
+    assert ws_dup.name == "My Research-2"
+    assert ws_invalid.name == "A_B_C_"
+    assert ws_first.parent == ws_dup.parent == ws_invalid.parent
+    assert ws_first.parent.name == "projects"

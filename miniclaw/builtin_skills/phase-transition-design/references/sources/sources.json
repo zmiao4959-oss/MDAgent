@@ -1,0 +1,337 @@
+{
+  "schema_version": 1,
+  "checked_on": "2026-10-20",
+  "sources": [
+    {
+      "id": "S01",
+      "title": "General-purpose machine-learned potential for 16 elemental metals and their alloys",
+      "url": "https://www.nature.com/articles/s41467-024-54554-x",
+      "doi": "10.1038/s41467-024-54554-x",
+      "kind": "primary_paper",
+      "read_scope": [
+        "Results: training-data construction",
+        "Fig. 2",
+        "Fig. 7",
+        "Methods: MCMD paragraphs"
+      ],
+      "limitations": [
+        "Supplementary PDF not read in detail",
+        "Not reproduced locally"
+      ],
+      "checked_on": "2026-10-20"
+    },
+    {
+      "id": "S02",
+      "title": "Dataset for UNEP-v1, version v2",
+      "url": "https://zenodo.org/records/11533864",
+      "doi": "10.5281/zenodo.11533864",
+      "kind": "author_release",
+      "read_scope": [
+        "File listing",
+        "UNEP-v1-main.txt published MD5"
+      ],
+      "limitations": [
+        "Large training and test archives not downloaded"
+      ],
+      "checked_on": "2026-10-20"
+    },
+    {
+      "id": "S03",
+      "title": "Development of a neuroevolution machine learning potential of Pd-Cu-Ni-P alloys",
+      "url": "https://doi.org/10.1016/j.matdes.2023.112012",
+      "doi": "10.1016/j.matdes.2023.112012",
+      "kind": "primary_paper",
+      "read_scope": [
+        "Publisher-indexed body sections: section 3 opening",
+        "section 3.2 and Fig. 4",
+        "section 3.3 and Fig. 5",
+        "section 4",
+        "section 3.4 and Fig. 6 mechanical loading conditions"
+      ],
+      "limitations": [
+        "Supplementary Word document not read",
+        "Detailed fitting and complete preparation protocol not established",
+        "Not reproduced locally"
+      ],
+      "checked_on": "2026-10-20"
+    },
+    {
+      "id": "S04",
+      "title": "PdCuNiP_NEP author repository",
+      "url": "https://github.com/grtheaory/PdCuNiP_NEP",
+      "kind": "author_repository",
+      "read_scope": [
+        "README",
+        "Local distribution package"
+      ],
+      "limitations": [
+        "Current online ZIP not compared byte for byte"
+      ],
+      "checked_on": "2026-10-20"
+    },
+    {
+      "id": "S05",
+      "title": "ensemble (overview)",
+      "url": "https://github.com/brucefan1983/GPUMD/blob/v5.5/doc/gpumd/input_parameters/ensemble.rst",
+      "kind": "versioned_software_documentation",
+      "version": "5.5",
+      "read_scope": [
+        "Units and suggested parameters"
+      ],
+      "local_path": "C:\\Users\\35059\\.miniclaw\\workspace\\skills\\gpumd-script\\commands\\ensemble.md",
+      "local_sha256": "5f70bcebdb0f36781d23cd7c99b120a2181fd38d5efc081ec861dad46ce50bcc",
+      "catalog_content_hash": "5f70bcebdb0f36781d23cd7c99b120a2181fd38d5efc081ec861dad46ce50bcc",
+      "catalog_source_content_hash": "e3954eeffbc1e2c1eb411d16dd60cb3b8ba7632b3ee17fdd76d76850058f6fc0",
+      "limitations": [
+        "Read locally installed text; original RST not re-fetched in this curation"
+      ],
+      "checked_on": "2026-10-20"
+    },
+    {
+      "id": "S06",
+      "title": "ensemble (standard)",
+      "url": "https://github.com/brucefan1983/GPUMD/blob/v5.5/doc/gpumd/input_parameters/ensemble_standard.rst",
+      "kind": "versioned_software_documentation",
+      "version": "5.5",
+      "read_scope": [
+        "npt_ber pressure control; npt_scr"
+      ],
+      "local_path": "C:\\Users\\35059\\.miniclaw\\workspace\\skills\\gpumd-script\\commands\\ensemble_standard.md",
+      "local_sha256": "a8fb6e6feac78fbdb1d3d9242795ce9db877b91f85f662c6d51e4ec2ae934288",
+      "catalog_content_hash": "a8fb6e6feac78fbdb1d3d9242795ce9db877b91f85f662c6d51e4ec2ae934288",
+      "catalog_source_content_hash": "1215f4c199d4eafc94ec0ca1fabaac9add2077bde6cf927fac21d4d93d90fe70",
+      "limitations": [
+        "Read locally installed text; original RST not re-fetched in this curation"
+      ],
+      "checked_on": "2026-10-20"
+    },
+    {
+      "id": "S07",
+      "title": "time_step",
+      "url": "https://github.com/brucefan1983/GPUMD/blob/v5.5/doc/gpumd/input_parameters/time_step.rst",
+      "kind": "versioned_software_documentation",
+      "version": "5.5",
+      "read_scope": [
+        "Syntax; Caveats"
+      ],
+      "local_path": "C:\\Users\\35059\\.miniclaw\\workspace\\skills\\gpumd-script\\commands\\time_step.md",
+      "local_sha256": "18a033469b28b2f67c338ccb9019328d055516f4696a7b733654771dd596fa33",
+      "catalog_content_hash": "18a033469b28b2f67c338ccb9019328d055516f4696a7b733654771dd596fa33",
+      "catalog_source_content_hash": "f03b9c5bc3a14ed392d9e6cc011b8b28a464fa8561ad882bd5c9c11e90ce817c",
+      "limitations": [
+        "Read locally installed text; original RST not re-fetched in this curation"
+      ],
+      "checked_on": "2026-10-20"
+    },
+    {
+      "id": "S08",
+      "title": "dump_exyz",
+      "url": "https://github.com/brucefan1983/GPUMD/blob/v5.5/doc/gpumd/input_parameters/dump_exyz.rst",
+      "kind": "versioned_software_documentation",
+      "version": "5.5",
+      "read_scope": [
+        "Syntax; Caveats"
+      ],
+      "local_path": "C:\\Users\\35059\\.miniclaw\\workspace\\skills\\gpumd-script\\commands\\dump_exyz.md",
+      "local_sha256": "64273832a75782191dc96fec5b955a1d240191c234e5f22673a50cb7908b3605",
+      "catalog_content_hash": "64273832a75782191dc96fec5b955a1d240191c234e5f22673a50cb7908b3605",
+      "catalog_source_content_hash": "048ded5fd0461ee074a046db6c6aa5be8e5c8e03a8b06cab0dc6dce407b989b7",
+      "limitations": [
+        "Read locally installed text; original RST not re-fetched in this curation"
+      ],
+      "checked_on": "2026-10-20"
+    },
+    {
+      "id": "S09",
+      "title": "thermo.out",
+      "url": "https://github.com/brucefan1983/GPUMD/blob/v5.5/doc/gpumd/output_files/thermo_out.rst",
+      "kind": "versioned_software_documentation",
+      "version": "5.5",
+      "read_scope": [
+        "File format; classical MD scope"
+      ],
+      "local_path": "C:\\Users\\35059\\.miniclaw\\workspace\\skills\\gpumd-script\\files\\output\\thermo_out.md",
+      "local_sha256": "ddbfbc0775d20a394e8e5dfc34090c473e0c50f3b9980c7b703d1acec576f795",
+      "catalog_content_hash": "ddbfbc0775d20a394e8e5dfc34090c473e0c50f3b9980c7b703d1acec576f795",
+      "catalog_source_content_hash": "11e66b979bd446c72aa67504f82e70e6b24376483bd9c66489e9348098b91b80",
+      "limitations": [
+        "Read locally installed text; original RST not re-fetched in this curation"
+      ],
+      "checked_on": "2026-10-20"
+    },
+    {
+      "id": "S10",
+      "title": "OVITO Polyhedral template matching manual",
+      "url": "https://www.ovito.org/manual/reference/pipelines/modifiers/polyhedral_template_matching.html",
+      "kind": "official_documentation",
+      "page_version": "3.16.1",
+      "read_scope": [
+        "Structure Type",
+        "RMSD cutoff",
+        "Ordering types"
+      ],
+      "limitations": [
+        "Local OVITO runtime version not checked"
+      ],
+      "checked_on": "2026-10-20"
+    },
+    {
+      "id": "S11",
+      "title": "Robust Structural Identification via Polyhedral Template Matching",
+      "url": "https://arxiv.org/abs/1603.05143",
+      "doi": "10.1088/0965-0393/24/5/055007",
+      "kind": "primary_method_paper",
+      "read_scope": [
+        "Abstract"
+      ],
+      "limitations": [
+        "Full paper not read for this version"
+      ],
+      "checked_on": "2026-10-20"
+    },
+    {
+      "id": "S12",
+      "title": "Pressure control using stochastic cell rescaling",
+      "url": "https://arxiv.org/abs/2006.09250",
+      "doi": "10.1063/5.0020514",
+      "kind": "primary_method_paper",
+      "read_scope": [
+        "Abstract"
+      ],
+      "limitations": [
+        "Algorithm not benchmarked locally"
+      ],
+      "checked_on": "2026-10-20"
+    },
+    {
+      "id": "S13",
+      "title": "A Simple Method for Automated Equilibration Detection in Molecular Simulations",
+      "url": "https://pubs.acs.org/doi/10.1021/acs.jctc.5b00784",
+      "doi": "10.1021/acs.jctc.5b00784",
+      "additional_urls": [
+        "https://www.choderalab.org/publications/2015/6/30/a-simple-method-for-automated-equilibration-detection-in-molecular-simulations"
+      ],
+      "kind": "primary_method_paper",
+      "read_scope": [
+        "Abstract",
+        "Author method description"
+      ],
+      "limitations": [
+        "Algorithm not implemented or evaluated in this project run"
+      ],
+      "checked_on": "2026-10-20"
+    },
+    {
+      "id": "S14",
+      "title": "Current project postprocessor profile and system instructions",
+      "kind": "local_project_declaration",
+      "read_scope": [
+        "miniclaw/agents/profiles/postprocessor/agent.yaml",
+        "miniclaw/agents/profiles/postprocessor/SYSTEM.md"
+      ],
+      "local_files": [
+        {
+          "path": "miniclaw/agents/profiles/postprocessor/agent.yaml",
+          "sha256": "5c928a7f0beefd486201acf3317c55323955694f5ec22f522f95bc8ebf8950c0"
+        },
+        {
+          "path": "miniclaw/agents/profiles/postprocessor/SYSTEM.md",
+          "sha256": "5135c417a982409426ab2cc3145d5d6097f0694aa36c2ae76574e6c96b069ade"
+        }
+      ],
+      "limitations": [
+        "Declaration audit only; tools were not executed"
+      ],
+      "checked_on": "2026-10-20"
+    },
+    {
+      "id": "L01",
+      "title": "Read-only local potential and XYZ inventory",
+      "kind": "local_computation",
+      "path": "../assets/local-inventory.json",
+      "read_scope": [
+        "Model headers and hashes",
+        "XYZ frame counts, atom counts, metadata fields"
+      ],
+      "limitations": [
+        "No NEP predictions",
+        "No phase validation",
+        "No train-test independence assessment"
+      ],
+      "checked_on": "2026-10-20"
+    },
+    {
+      "id": "S15",
+      "title": "GPUMD 5.5 deform",
+      "url": "https://github.com/brucefan1983/GPUMD/blob/v5.5/doc/gpumd/input_parameters/deform.rst",
+      "kind": "versioned_software_documentation",
+      "version": "5.5",
+      "read_scope": [
+        "6-parameter syntax",
+        "per-step units",
+        "NPT coupling and fixed transverse directions",
+        "Caveats"
+      ],
+      "local_path": "C:\\Users\\35059\\.miniclaw\\workspace\\skills\\gpumd-script\\commands\\deform.md",
+      "local_sha256": "bc9f92f8127c169da889301c1ae7c3e7da51656a9589639db2e56935d33e51b9",
+      "catalog_content_hash": "bc9f92f8127c169da889301c1ae7c3e7da51656a9589639db2e56935d33e51b9",
+      "checked_on": "2026-10-20",
+      "limitations": [
+        "Read installed versioned text; not a material rate validation"
+      ]
+    },
+    {
+      "id": "S16",
+      "title": "Installed GPUMD NPT/tension/annealing examples and project helper CLI",
+      "kind": "local_example_and_implementation",
+      "checked_on": "2026-10-20",
+      "read_scope": [
+        "NPT example",
+        "Uniaxial/biaxial examples",
+        "Annealing example",
+        "tension_workflow.main and _validate_parameters"
+      ],
+      "local_files": [
+        {
+          "absolute_path": "C:\\Users\\35059\\.miniclaw\\workspace\\skills\\gpumd-script\\examples\\npt-relaxation\\example.md",
+          "sha256": "0078c72750419c46046c703771460784d30a82906d493b133d5fd2cf710625cf"
+        },
+        {
+          "absolute_path": "C:\\Users\\35059\\.miniclaw\\workspace\\skills\\gpumd-script\\examples\\uniaxial-tension\\example.md",
+          "sha256": "b74e099d058a7050f1c6c054189e7dabaf1a16ae0027dc77cef4c9eeca2b9029"
+        },
+        {
+          "absolute_path": "C:\\Users\\35059\\.miniclaw\\workspace\\skills\\gpumd-script\\examples\\biaxial-tension\\example.md",
+          "sha256": "d8c09b66306e0d254f5e299ee1dcc2de0ab5e71d4a4bafabd21a220db79813e9"
+        },
+        {
+          "absolute_path": "C:\\Users\\35059\\.miniclaw\\workspace\\skills\\gpumd-script\\examples\\annealing\\example.md",
+          "sha256": "c2061d23e4f36020039247858ed82a61952e99b1bdbf6df1fda2b97f528c9e15"
+        },
+        {
+          "path": "miniclaw/rag/gpumd_examples/tension_workflow.py",
+          "sha256": "e1e3f610991beb992748def0636abaee7969afd84d7fd8c4d4d3394119820e1a"
+        }
+      ],
+      "limitations": [
+        "Examples give engineering starting values",
+        "Only x/xy accepted by existing project helper",
+        "No MD launched"
+      ]
+    },
+    {
+      "id": "S17",
+      "title": "NIST-JANAF Titanium Alpha table",
+      "url": "https://janaf.nist.gov/tables/Ti-002.html",
+      "kind": "primary_thermochemical_table",
+      "checked_on": "2026-10-20",
+      "read_scope": [
+        "Standard-state pressure 0.1 MPa",
+        "Alpha-beta marker at 1166 K"
+      ],
+      "limitations": [
+        "External thermochemical prior, not a UNEP-v1 transition prediction"
+      ]
+    }
+  ]
+}

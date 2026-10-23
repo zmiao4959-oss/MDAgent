@@ -1,0 +1,31 @@
+name: model-worker
+description: >-
+  原子建模：输入体系成分、晶体结构、尺寸、边界条件和目标文件格式，使用 Atomsk 构建或转换模型；
+  交付实际路径、原子数、元素计数、盒子参数、生成方法与随机种子。
+  Atomsk 输出的扩展 XYZ（.xyz）可直接作为 GPUMD 的 model.xyz 使用，无需额外格式转换。
+  有 execute，仅用于 Atomsk、Skill 已提供的建模脚本和必要文件准备；不现场编写辅助程序，不执行后处理脚本或模拟输出统计。
+  无模拟提交、等待和 OVITO 专用工具；功能不支持时报告缺口，交付可完成部分。
+prompt: SYSTEM.md
+# skills: ["*"]
+skills: ["atomsk"]
+tools:
+  allow:
+    # - browser_snapshot
+    # - copy_file
+    - execute
+    # - generate_lammps_script
+    # - grep
+    # - list
+    - make_dir
+    - read
+    - read_skill
+    # - remember
+    # - search_gpumd_docs
+    # - send_message
+    # - system_info
+    # - update_json
+    # - web_search
+    # - write
+    # - write_json
+runtime:
+  max_tool_rounds: 200

@@ -35,6 +35,34 @@ def test_packaged_config_is_parseable():
     assert loaded.evolution.source_evolution_enabled is False
     assert loaded.webchat.port == 8000
     assert loaded.multi_agent.default_profile == "coordinator"
+    assert loaded.execution.shell == "auto"
+
+
+def test_execution_shell_is_configurable(tmp_path):
+    path = tmp_path / "config.yaml"
+    path.write_text("execution:\n  shell: powershell\n", encoding="utf-8")
+    assert Config(path).execution.shell == "powershell"
+
+
+def test_local_gpumd_target_reuses_shared_runtime_settings(tmp_path):
+    path = tmp_path / "config.yaml"
+    path.write_text(
+        "gpumd:\n  wsl_distribution: LabLinux\n  executable: /opt/gpumd\n"
+        "simulation:\n  targets:\n    local-gpumd:\n"
+        "      scheduler: local\n      engine: gpumd\n",
+        encoding="utf-8",
+    )
+    loaded = Config(path)
+    target = loaded.simulation.targets["local-gpumd"]
+    assert target["executable"] == "/opt/gpumd"
+    assert target["wsl_distribution"] == "LabLinux"
+
+
+def test_simulation_startup_buffer_is_bounded(tmp_path):
+    path = tmp_path / "config.yaml"
+    for configured, expected in ((-1, 0), (7, 7), (1000, 60)):
+        path.write_text(f"simulation:\n  submission_check_delay_sec: {configured}\n", encoding="utf-8")
+        assert Config(path).simulation.submission_check_delay_sec == expected
 
 
 def test_app_paths_are_portable_and_environment_wins(tmp_path: Path):

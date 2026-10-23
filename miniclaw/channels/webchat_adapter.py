@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import nullcontext
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
@@ -68,13 +69,20 @@ class WebChatAdapter(BaseChannelAdapter):
             return
 
         app = create_web_app(self)
+
+        class EmbeddedServer(uvicorn.Server):
+            def capture_signals(self):
+                # Ctrl+C 由 main.py 统一处理，先停止 Agent，再关闭 HTTP 服务。
+                return nullcontext()
+
         config = uvicorn.Config(
             app,
             host=self.host,
             port=self.port,
             log_level="warning",
+            timeout_graceful_shutdown=5.0,
         )
-        self._uvicorn_server = uvicorn.Server(config)
+        self._uvicorn_server = EmbeddedServer(config)
         logger.info("WebChat at http://%s:%s", self.host, self.port)
         try:
             await self._uvicorn_server.serve()

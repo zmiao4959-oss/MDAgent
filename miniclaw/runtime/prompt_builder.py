@@ -11,7 +11,6 @@ from ..tools.registry import ToolRegistry, tool_registry
 if TYPE_CHECKING:
     from ..agents.profile import AgentProfile
 
-_TOOL_DESC_LIMIT = 120
 _SKILL_DESC_LIMIT = 160
 _MAX_SKILLS_IN_PROMPT = 12
 
@@ -87,31 +86,10 @@ class PromptBuilder:
                 parts.append(path.read_text(encoding="utf-8"))
         if self.profile is not None and self.profile.system_prompt:
             parts.append(self.profile.system_prompt)
-        parts.append(self.build_tool_summary())
         skills = self.visible_skills()
         if skills:
             parts.append(self.build_skill_summary(skills))
         return "\n\n".join(parts)
-
-    def build_tool_summary(self) -> str:
-        lines = [
-            "## Tooling",
-            "Function schemas are provided separately. Use those schemas for exact arguments and field names.",
-        ]
-        for tool_name in self.visible_tool_names():
-            tool = self.registry.get(tool_name)
-            if tool is None:
-                continue
-            desc = " ".join((tool.description or "").split())
-            if len(desc) > _TOOL_DESC_LIMIT:
-                desc = desc[: _TOOL_DESC_LIMIT - 3].rstrip() + "..."
-            suffix = ""
-            if tool.risk_level != "low":
-                suffix += f" [{tool.risk_level} risk]"
-            if tool.require_approval:
-                suffix += " [requires approval]"
-            lines.append(f"- `{tool_name}`: {desc or 'No description.'}{suffix}")
-        return "\n".join(lines)
 
     @staticmethod
     def build_skill_summary(skills: List[Any]) -> str:
@@ -119,8 +97,7 @@ class PromptBuilder:
             "## Available Skills",
             (
                 "If a skill clearly matches the task, call `read_skill` with the exact "
-                "skill name before acting. Skill files are named SKILL.md; do not guess "
-                "README.md or other filenames."
+                "skill name before acting."
             ),
         ]
         ordered = sorted(skills, key=lambda skill: skill.name.lower())

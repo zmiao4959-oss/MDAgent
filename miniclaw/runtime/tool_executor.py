@@ -14,6 +14,7 @@ from ..llm.base import LLMMessage
 from ..logger import get_logger
 from ..stats import RunStats
 from ..tools.registry import ToolRegistry, tool_registry
+from ..tools.lammps_execution import find_lammps_input
 
 logger = get_logger(__name__)
 
@@ -141,10 +142,8 @@ class ToolExecutor:
             return
         loop = asyncio.get_running_loop()
         total: Optional[int] = None
-        command = str(arguments.get("command", ""))
-        match = re.search(r'(?:^|\s)-in\s+(?:"([^"]+)"|(\S+))', command)
-        if match:
-            input_path = match.group(1) or match.group(2)
+        input_path = find_lammps_input(arguments.get("command", ""))
+        if input_path:
             try:
                 path = Path(input_path)
                 if not path.is_absolute():

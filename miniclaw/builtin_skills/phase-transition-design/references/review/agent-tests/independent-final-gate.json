@@ -1,0 +1,60 @@
+{
+  "audit_version": "1.0",
+  "audit_date": "2026-10-20",
+  "audit_type": "independent final targeted provenance gate",
+  "scope": {
+    "read_files": ["agent-entry.md", "decisions/handoff-contract.json", "review/agent-tests/post-fast-route.json", "review/agent-tests/post-fast-provenance.json"],
+    "preserved_history": ["review/agent-tests/independent-audit.json", "review/agent-tests/independent-remediation-audit.json"],
+    "network_used": false,
+    "md_started": false,
+    "other_reports_reaudited": false,
+    "original_files_modified": false
+  },
+  "verdict": "PASS_FOR_ORIGINAL_PLUS_TARGETED_OVERLAY",
+  "resolved": [
+    {
+      "item": "coupling与候选/计算来源分离",
+      "evidence": "物理tau_T=100fs、tau_P=1000fs保留CAND；tau/dt输入100/1000为CALC，0.5fs候选与200/2000计算比值分开。公共输出100/1000步是CAND，0.1/1ps是CALC。原混合容器不能覆盖逐叶表。"
+    },
+    {
+      "item": "初态候选与实际资产分离",
+      "evidence": "N01的FCC/取向/复制方案与N4000是CAND，10a关系CALC，a与真实盒长RUNTIME。N02的HCP/N10080与取向是本次CAND，14a/15sqrt(3)a/12c关系CALC，实际a/c和盒RUNTIME。G01的N13500、周期正交bulk及混合体系准备政策是CAND，实际结构/密度/尺寸/构建记录RUNTIME。"
+    },
+    {
+      "item": "阶段步数与预算来源",
+      "evidence": "候选平台/高温/末态物理时长保留CAND，run_steps、冷却时长、累计预算与可选数值对照合计为CALC，并给公式。N01仍200000/最多300000步，N02仍1800000/最多2500000步；G01快速2200000/最多3200000、慢级111100000/最多112100000步，数值没有被修复替换。"
+    },
+    {
+      "item": "CHECK_PENDING离开参数来源枚举",
+      "evidence": "公共health_screen及N01/N02/G01的parameter_status.CHECK_PENDING均被映射为parameter_source=null、execution_status=CHECK_PENDING；可选数值对照的未执行状态为NOT_RUN。G01的Tg/玻璃工具缺口从BLOCK来源索引拆成capability_status=UNSUPPORTED，未冒称检查通过。"
+    },
+    {
+      "item": "直接规则ID与路径可定位",
+      "evidence": "76条修复含200个批量/逻辑拆分路径；独立解析原fast JSON后，所有路径在去除::逻辑后缀、展开数组/字典通配后均有落点。没有缺source_ids的修复行，所用18个规则/证据ID均在此前独立审计已核验的登记集合内；没有自由名称或非法字符串来源状态。"
+    },
+    {
+      "item": "文献与本次采用分离",
+      "evidence": "N02的1166K/0.1MPa只是U-D02转述LIT先验；G01的2500K文献分支与本次高温采用、2e10K/s论文报告与本次慢速采用均拆成LIT与CAND，未把全文或势文件重新核验伪称为已完成。"
+    }
+  ],
+  "unresolved_in_this_targeted_scope": [],
+  "mechanical_checks": {
+    "corrections": 76,
+    "paths": 200,
+    "unresolved_base_paths": [],
+    "rows_missing_direct_source_ids": 0,
+    "unknown_ids_against_prior_registered_set": [],
+    "invalid_string_source_states": [],
+    "original_fast_report_bytes": 29928,
+    "targeted_addendum_bytes": 33100,
+    "registration_limit": "按本轮限定范围，未再读reference-index或证据正文；ID核对沿用前次审计已确认的登记集合。"
+  },
+  "boundaries": [
+    "本次验收对象是保留的post-fast-route原件加post-fast-provenance定向覆盖层；原件仍保留原来的混合标签，不能把单独原件宣称为已被改写的规范JSON。消费时应按覆盖层优先级读取。",
+    "post-fast-provenance明确是targeted补充，不是新的无历史盲测；首轮效率证据仍来自post-fast-route，不能把补充稿33KB计作原首轮读取量，也不能将其修复倒归为首轮已正确。",
+    "只检查本次来源、执行/能力轴分离、路径与旧数值保留；未重新审全部案例或物理适用性。",
+    "此前z实现、恒真应变helper、温压统计、Tg与最终结构判据等运行能力边界不因本次通过而消失。",
+    "未运行MD、势文件实时hash验证、统计或科学判据；小批人为案例不能证明普遍正确或物理最优。"
+  ],
+  "conclusion": "先前fast元数据pending现已在本次定向覆盖层中解决，没有发现阻碍本次文档修复验收的剩余问题。此前remediation审计的pending是当时状态，保留原文不倒改。"
+}

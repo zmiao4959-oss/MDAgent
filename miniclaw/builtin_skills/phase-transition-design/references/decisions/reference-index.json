@@ -1,0 +1,231 @@
+{
+  "version": "0.2",
+  "references": {
+    "D-01": {
+      "path": "decisions/parameter-table.md",
+      "kind": "design_policy"
+    },
+    "D-02": {
+      "path": "decisions/parameter-table.md",
+      "kind": "design_policy"
+    },
+    "D-03": {
+      "path": "decisions/parameter-table.md",
+      "kind": "design_policy"
+    },
+    "D-04": {
+      "path": "decisions/parameter-table.md",
+      "kind": "design_policy"
+    },
+    "D-05": {
+      "path": "decisions/parameter-table.md",
+      "kind": "design_policy"
+    },
+    "D-06": {
+      "path": "decisions/parameter-table.md",
+      "kind": "design_policy"
+    },
+    "D-07": {
+      "path": "decisions/parameter-table.md",
+      "kind": "design_policy"
+    },
+    "D-08": {
+      "path": "decisions/parameter-table.md",
+      "kind": "design_policy"
+    },
+    "N-01": {
+      "path": "decisions/npt.md",
+      "kind": "design_policy"
+    },
+    "N-02": {
+      "path": "decisions/npt.md",
+      "kind": "design_policy"
+    },
+    "N-03": {
+      "path": "decisions/npt.md",
+      "kind": "design_policy"
+    },
+    "N-04": {
+      "path": "decisions/npt.md",
+      "kind": "design_policy"
+    },
+    "T-01": {
+      "path": "decisions/tension.md",
+      "kind": "design_policy"
+    },
+    "T-02": {
+      "path": "decisions/tension.md",
+      "kind": "design_policy"
+    },
+    "T-03": {
+      "path": "decisions/tension.md",
+      "kind": "design_policy"
+    },
+    "T-04": {
+      "path": "decisions/tension.md",
+      "kind": "design_policy"
+    },
+    "T-05": {
+      "path": "decisions/tension.md",
+      "kind": "design_policy"
+    },
+    "U-D01": {
+      "path": "decisions/unep-v1.md",
+      "kind": "design_policy"
+    },
+    "U-D02": {
+      "path": "decisions/unep-v1.md",
+      "kind": "design_policy"
+    },
+    "U-D03": {
+      "path": "decisions/unep-v1.md",
+      "kind": "design_policy"
+    },
+    "P-D01": {
+      "path": "decisions/pdcunip.md",
+      "kind": "design_policy"
+    },
+    "P-D02": {
+      "path": "decisions/pdcunip.md",
+      "kind": "design_policy"
+    },
+    "P-D03": {
+      "path": "decisions/pdcunip.md",
+      "kind": "design_policy"
+    },
+    "P-D04": {
+      "path": "decisions/pdcunip.md",
+      "kind": "design_policy"
+    },
+    "C-01": {
+      "path": "evidence/C-01-gpumd55.md",
+      "kind": "evidence_card"
+    },
+    "C-02": {
+      "path": "evidence/C-02-deformation.md",
+      "kind": "evidence_card"
+    },
+    "M-01": {
+      "path": "evidence/M-01-ptm.md",
+      "kind": "evidence_card"
+    },
+    "M-02": {
+      "path": "evidence/M-02-barostat.md",
+      "kind": "evidence_card"
+    },
+    "M-03": {
+      "path": "evidence/M-03-equilibration.md",
+      "kind": "evidence_card"
+    },
+    "P-01": {
+      "path": "evidence/P-01-local-model.md",
+      "kind": "evidence_card"
+    },
+    "P-02": {
+      "path": "evidence/P-02-paper-protocols.md",
+      "kind": "evidence_card"
+    },
+    "P-03": {
+      "path": "evidence/P-03-paper-mechanics.md",
+      "kind": "evidence_card"
+    },
+    "U-01": {
+      "path": "evidence/U-01-local-model.md",
+      "kind": "evidence_card"
+    },
+    "U-02": {
+      "path": "evidence/U-02-paper-scope.md",
+      "kind": "evidence_card"
+    },
+    "S01": {
+      "path": "sources/sources.json",
+      "locator": "S01",
+      "kind": "registered_source"
+    },
+    "S02": {
+      "path": "sources/sources.json",
+      "locator": "S02",
+      "kind": "registered_source"
+    },
+    "S03": {
+      "path": "sources/sources.json",
+      "locator": "S03",
+      "kind": "registered_source"
+    },
+    "S04": {
+      "path": "sources/sources.json",
+      "locator": "S04",
+      "kind": "registered_source"
+    },
+    "S05": {
+      "path": "sources/sources.json",
+      "locator": "S05",
+      "kind": "registered_source"
+    },
+    "S06": {
+      "path": "sources/sources.json",
+      "locator": "S06",
+      "kind": "registered_source"
+    },
+    "S07": {
+      "path": "sources/sources.json",
+      "locator": "S07",
+      "kind": "registered_source"
+    },
+    "S08": {
+      "path": "sources/sources.json",
+      "locator": "S08",
+      "kind": "registered_source"
+    },
+    "S09": {
+      "path": "sources/sources.json",
+      "locator": "S09",
+      "kind": "registered_source"
+    },
+    "S10": {
+      "path": "sources/sources.json",
+      "locator": "S10",
+      "kind": "registered_source"
+    },
+    "S11": {
+      "path": "sources/sources.json",
+      "locator": "S11",
+      "kind": "registered_source"
+    },
+    "S12": {
+      "path": "sources/sources.json",
+      "locator": "S12",
+      "kind": "registered_source"
+    },
+    "S13": {
+      "path": "sources/sources.json",
+      "locator": "S13",
+      "kind": "registered_source"
+    },
+    "S14": {
+      "path": "sources/sources.json",
+      "locator": "S14",
+      "kind": "registered_source"
+    },
+    "L01": {
+      "path": "sources/sources.json",
+      "locator": "L01",
+      "kind": "registered_source"
+    },
+    "S15": {
+      "path": "sources/sources.json",
+      "locator": "S15",
+      "kind": "registered_source"
+    },
+    "S16": {
+      "path": "sources/sources.json",
+      "locator": "S16",
+      "kind": "registered_source"
+    },
+    "S17": {
+      "path": "sources/sources.json",
+      "locator": "S17",
+      "kind": "registered_source"
+    }
+  }
+}

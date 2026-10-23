@@ -11,7 +11,17 @@ from ..logger import get_logger
 from ..viz.auto import AutoVisualizer
 from ..viz.snapshot import snapshot_workspace
 
-logger = get_logger(__name__)
+#logger = get_logger(__name__)
+import logging
+from pprint import pformat
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+logger.propagate = False
+handler = logging.FileHandler("C:\\Users\\35059\\.miniclaw\\logs\\test.log", encoding="utf-8")
+handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter("%(asctime)s [%(levelname)-5s] %(name)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 
 @dataclass
@@ -80,7 +90,11 @@ class AgentLoop:
                     LLMMessage(role="system", content=system_prompt),
                     *session.messages,
                 ]
-
+            # logger.info(
+            #     "\n\nRound %s:\n%s",
+            #     round_num,
+            #     pformat(messages, width=100)
+            # )
             response = await self.call_llm(
                 messages,
                 tools,
@@ -94,6 +108,12 @@ class AgentLoop:
             if response.content:
                 final_response = response.content
             if not response.tool_calls:
+                if not (response.content or "").strip():
+                    raise RuntimeError(
+                        "LLM returned neither text nor tool calls; the task is unfinished "
+                        f"(finish_reason={response.finish_reason}, "
+                        f"reasoning_chars={len(response.reasoning_content or '')}, usage={response.usage})"
+                    )
                 if response.content:
                     session.add_message(
                         LLMMessage(

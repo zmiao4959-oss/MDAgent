@@ -200,7 +200,6 @@ def _format_results(instant: Optional[str], results: List[dict]) -> str:
 
 @tool_registry.register(
     name="web_search",
-    description="Search the web using Tavily API (preferred) or DuckDuckGo (fallback).",
     schema={
         "type": "function",
         "function": {

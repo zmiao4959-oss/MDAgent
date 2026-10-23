@@ -88,10 +88,6 @@ def _subprocess_environment(source: Path, include_api_key: bool) -> dict[str, st
 
 @tool_registry.register(
     name="generate_lammps_script",
-    description=(
-        "Compile a natural-language molecular-dynamics goal into a validated LAMMPS "
-        "script and evidence package using MDSynth."
-    ),
     schema={
         "type": "function",
         "function": {

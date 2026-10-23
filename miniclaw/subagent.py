@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 
 from .agent import Agent, AgentContext
 from .agents.catalog import AgentCatalog
-from .settings import WORKSPACE_DIR, MEMORY_FILE
+from .settings import WORKSPACE_DIR, MEMORY_FILE, active_workspace_dir
 from .memory.session import SessionManager
 from .logger import get_logger
 
@@ -45,6 +45,7 @@ class SubAgentTask:
     parent_session_id: Optional[str] = None
     idempotency_key: Optional[str] = None
     sandbox_dir: Optional[str] = None  # 隔离工作区路径
+    workspace_dir: Optional[str] = None
     collected_files: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict:
@@ -56,6 +57,7 @@ class SubAgentTask:
             "result": self.result,
             "idempotency_key": self.idempotency_key,
             "sandbox_dir": self.sandbox_dir,
+            "workspace_dir": self.workspace_dir,
             "collected_files": list(self.collected_files),
         }
 
@@ -87,6 +89,7 @@ class SubAgentManager:
         agent_name: str = "general-worker",
         sandbox: bool = True,
         seed_files: Optional[List[str]] = None,
+        workspace_dir: Optional[str] = None,
         event_callback: Optional[TaskEventCallback] = None,
         idempotency_key: Optional[str] = None,
         force_new: bool = False,
@@ -100,6 +103,7 @@ class SubAgentManager:
             agent_name=agent_name,
             sandbox=sandbox,
             seed_files=seed_files,
+            workspace_dir=workspace_dir,
             event_callback=event_callback,
             idempotency_key=idempotency_key,
             force_new=force_new,
@@ -116,6 +120,7 @@ class SubAgentManager:
         agent_name: str = "general-worker",
         sandbox: bool = True,
         seed_files: Optional[List[str]] = None,
+        workspace_dir: Optional[str] = None,
         event_callback: Optional[TaskEventCallback] = None,
         idempotency_key: Optional[str] = None,
         force_new: bool = False,
@@ -131,6 +136,7 @@ class SubAgentManager:
             thinking=thinking,
             sandbox=sandbox,
             seed_files=seed_files,
+            workspace_dir=workspace_dir,
             idempotency_key=idempotency_key,
         )
         existing_id = self._delegation_keys.get(delegation_key)
@@ -149,6 +155,7 @@ class SubAgentManager:
             model=model,
             thinking=thinking,
             parent_session_id=parent_session_id,
+            workspace_dir=str(Path(workspace_dir or active_workspace_dir()).resolve()),
             idempotency_key=(
                 idempotency_key.strip()
                 if idempotency_key and idempotency_key.strip()
@@ -162,12 +169,45 @@ class SubAgentManager:
 
         await self._emit_event(task, event_callback)
         coro = self._run_subagent(
-            task, parent_session_id, sandbox, seed_files, event_callback
+            task, parent_session_id, sandbox, seed_files, event_callback, task.workspace_dir
         )
         self._running[task_id] = asyncio.create_task(coro)
 
         logger.info("Sub-agent spawned: %s (sandbox=%s, model=%s)", task_id, sandbox, model)
         return self._receipt(task, reused=False)
+
+    async def continue_task(
+        self, task_id: str, instruction: str, *, parent_session_id: str,
+        event_callback: Optional[TaskEventCallback] = None,
+    ) -> Dict[str, Any]:
+        """Append a turn to a finished task using its original session and workspace."""
+        if not isinstance(instruction, str) or not instruction.strip():
+            raise ValueError("instruction must be a non-empty string")
+        task = self._tasks.get(task_id)
+        if task is None:
+            raise ValueError("Unknown task; use list_tasks to check the original task_id")
+        if task.parent_session_id != parent_session_id:
+            raise ValueError("Task does not belong to the current parent conversation")
+        running = self._running.get(task_id)
+        if task.status not in {"done", "error"} or (running is not None and not running.done()):
+            raise ValueError("Task is still active; inspect or wait for it before continuing")
+        workspace = task.sandbox_dir or task.workspace_dir
+        if not workspace or not Path(workspace).is_dir():
+            raise ValueError("Original workspace no longer exists; this task cannot be continued")
+        self.catalog.refresh()
+        self.catalog.require(task.agent_name)
+        callback = event_callback or self._event_callbacks.get(task_id)
+        if callback is not None:
+            self._event_callbacks[task_id] = callback
+        # Claim the next turn before yielding, so parallel continuation calls cannot overlap.
+        task.status = "pending"
+        task.result = None
+        self._running[task_id] = asyncio.create_task(self._run_subagent(
+            task, task.parent_session_id, bool(task.sandbox_dir), None, callback,
+            task.workspace_dir, instruction=instruction,
+        ))
+        await self._emit_event(task, callback)
+        return {**self._receipt(task, reused=True), "continued": True}
 
     @staticmethod
     def _delegation_key(
@@ -179,14 +219,17 @@ class SubAgentManager:
         thinking: str,
         sandbox: bool,
         seed_files: Optional[List[str]],
+        workspace_dir: Optional[str],
         idempotency_key: Optional[str],
     ) -> Tuple[Any, ...]:
         parent = parent_session_id or ""
+        workspace = str(Path(workspace_dir).resolve()) if workspace_dir else ""
         if idempotency_key and idempotency_key.strip():
-            return ("explicit", parent, idempotency_key.strip())
+            return ("explicit", parent, workspace, idempotency_key.strip())
         return (
             "automatic",
             parent,
+            workspace,
             agent_name,
             " ".join(task_prompt.split()),
             model,
@@ -203,7 +246,7 @@ class SubAgentManager:
             "reused": reused,
             "instruction": (
                 "Treat task_id as opaque. Copy it verbatim, including the "
-                "'subagent:' prefix, for inspect_task, wait_task, or cancel_task."
+                "'subagent:' prefix, for inspect_task, wait_task, continue_task, or cancel_task."
             ),
         }
 
@@ -231,6 +274,8 @@ class SubAgentManager:
         sandbox: bool,
         seed_files: Optional[List[str]],
         event_callback: Optional[TaskEventCallback],
+        workspace_dir: Optional[str],
+        instruction: Optional[str] = None,
     ) -> None:
         """在独立上下文中执行子 Agent。"""
         task.status = "running"
@@ -239,19 +284,41 @@ class SubAgentManager:
             metadata: Dict = {
                 "parent_session": parent_session_id,
                 "is_subagent": True,
+                "task_id": task.task_id,
             }
+            if instruction is not None:
+                previous = await self.sessions.resolve_session(f"subagent:{task.task_id}")
+                if previous is None:
+                    raise ValueError("Original task session is unavailable; refusing to continue without its history")
+                for key in ("project_id", "parent_session_id", "root_session_id"):
+                    if previous.metadata.get(key):
+                        metadata[key] = previous.metadata[key]
+            elif parent_session_id:
+                # Delegation passes the parent's chat ID; persist its actual session ID.
+                parent = self.sessions.get(parent_session_id) or await self.sessions.resolve_session(parent_session_id)
+                metadata["parent_session_id"] = parent.session_id if parent else parent_session_id
+                metadata["root_session_id"] = (
+                    parent.metadata.get("root_session_id") or parent.session_id
+                    if parent else parent_session_id
+                )
+                if parent and parent.metadata.get("project_id"):
+                    metadata["project_id"] = parent.metadata["project_id"]
 
             if sandbox:
-                sandbox_dir = await self._prepare_sandbox(task, seed_files)
+                sandbox_dir = Path(task.sandbox_dir) if task.sandbox_dir else await self._prepare_sandbox(task, seed_files)
+                if not sandbox_dir.is_dir():
+                    raise ValueError("Original sandbox no longer exists")
                 metadata["sandbox_dir"] = str(sandbox_dir)
                 metadata["original_workspace"] = str(WORKSPACE_DIR)
                 metadata["workspace_dir"] = str(sandbox_dir)
+            elif workspace_dir:
+                metadata["workspace_dir"] = str(Path(workspace_dir).resolve())
 
             ctx = AgentContext(
                 chat_id=f"subagent:{task.task_id}",
                 channel="subagent",
                 account_id="system",
-                user_message=task.task_prompt,
+                user_message=instruction if instruction is not None else task.task_prompt,
                 metadata=metadata,
             )
 
@@ -285,6 +352,7 @@ class SubAgentManager:
         sandbox = Path(task.sandbox_dir)
         if not sandbox or not sandbox.is_dir():
             return
+        task.collected_files.clear()
         for p in sandbox.rglob("*"):
             if p.is_file():
                 rel = str(p.relative_to(sandbox))

@@ -4,17 +4,18 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from ..settings import WORKSPACE_DIR, config
+from ..settings import config
 from .embedding import create_embedding_client
+from .paths import gpumd_corpus_path, gpumd_index_path
 from .store import BuildStats, JsonVectorStore, load_documents
 
 
 def default_corpus() -> Path:
-    return WORKSPACE_DIR / "skills" / "gpumd-script" / "references" / "corpus.jsonl"
+    return gpumd_corpus_path()
 
 
 def default_index() -> Path:
-    return WORKSPACE_DIR / "rag" / "gpumd-script" / "index.json"
+    return gpumd_index_path()
 
 
 def build_index(corpus: Path, index: Path, *, full: bool = False) -> BuildStats:

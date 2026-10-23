@@ -19,6 +19,9 @@ def ensure_tools_loaded() -> None:
     from . import system_tool  # noqa: F401
     from . import skill_tool  # noqa: F401
     from . import rag_tool  # noqa: F401
+    from . import local_simulation_tools  # noqa: F401
+    from . import simulation_tools  # noqa: F401
+    from . import postprocessing  # noqa: F401
     from . import lammps_script_tool  # noqa: F401
     from . import delegation_tool  # noqa: F401
     try:

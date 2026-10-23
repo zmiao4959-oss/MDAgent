@@ -1,0 +1,202 @@
+{
+  "audit_version": "1.0",
+  "audit_date": "2026-10-20",
+  "auditor_role": "独立只读审计 agent",
+  "scope": {
+    "knowledge_root": "knowledge/phase-transition/",
+    "case_specification": "review/agent-tests/agent-case-specs.json",
+    "reports": ["review/agent-tests/post-npt.json", "review/agent-tests/post-tension.json", "review/agent-tests/post-holdouts.json"],
+    "written_file": "review/agent-tests/independent-audit.json",
+    "internet_used": false,
+    "md_started": false,
+    "env_read": false,
+    "knowledge_or_agent_reports_modified": false,
+    "arithmetic_method": "独立重算时间、步数、增量、耦合比与主要预算；未把计算器自报通过视为独立证据。",
+    "snapshot_note": "先读原 agent-entry 和全部七个 decisions 核心文件，再读三个原始复测报告。审计期间根 agent 收紧 agent-entry、增加 reference-index，核心数值政策及原始复测报告未改。本审计评价原始报告，不把后来定向复测结果倒灌进原报告。"
+  },
+  "report_snapshots": [
+    {"path": "review/agent-tests/post-npt.json", "bytes": 93880, "sha256": "f6e4575baca5ccd23eefcf9ad1036186f0f3af9ccaab6aca6b557c832bf98211"},
+    {"path": "review/agent-tests/post-tension.json", "bytes": 52022, "sha256": "bdb350216951a8d2cd2a1bd6d989a289b0cef8a14df82dd7293e63a5b04037cb"},
+    {"path": "review/agent-tests/post-holdouts.json", "bytes": 30413, "sha256": "427a9e5bd467cc692bb028851622aab8510167f86d0724ccc9d863e90a165b94"}
+  ],
+  "verdict_semantics": {
+    "case_pass": "严格交付符合性：关键数值/约束/能力边界成立，且登记来源与明确参数状态无已发现错误。false 不等于科学设想错误或 MD 失败。",
+    "core_design_policy": "只评价原报告是否遵守已记录的设计政策，不证明这些候选具有材料专用精度。",
+    "implementation": "核对报告是否诚实标明工具与运行时缺口；没有运行 generator/helper/统计工具，不能据此验收实现。",
+    "scientific_validation": "全部未执行，且不是本批设计评测的通过条件。"
+  },
+  "summary": {
+    "cases_reviewed": 10,
+    "core_design_policy_pass": 10,
+    "major_arithmetic_and_constraint_handling_pass": 10,
+    "strict_delivery_pass": 5,
+    "strict_delivery_fail": 5,
+    "strict_fail_case_ids": ["N02", "T01", "T02", "T03", "X03"],
+    "failure_categories": ["两处 source_ids 未使用登记 ID", "三份拉伸回答把已记录势文件标签标为 CAND", "T03 把混合文献/候选/计算的 paper_comparison 整体标为 LIT"],
+    "implementation_status": "NOT_EXECUTED；z 参考绑定、恒真应变路径、温压窗口统计和最终科学分析仍需相应入口或实现，原报告大体如实披露。",
+    "scientific_validation_status": "NOT_PERFORMED；未做 MD、材料精度、尺寸/速率收敛、平衡相界或 Tg 不确定度验证。",
+    "generalization_limit": "只有 10 个手工编排的小样本，且答案直接读取同一库的政策；不能证明普遍准确、物理最优或任意模型/载荷适用。"
+  },
+  "cases": [
+    {
+      "case_id": "N01", "pass": true, "core_design_policy": "PASS", "strict_delivery": "PASS",
+      "report": "review/agent-tests/post-npt.json", "json_pointer": "/cases/0",
+      "evidence": [
+        "FCC随机替换、取向、4000原子及正交PBC均为CAND；2000Cu+2000Ni=4000，不捏造实际晶格/盒长。",
+        "100000步×1fs=100ps；两段200000步=200ps，最多追加100000步；可选10ps/1fs与10ps/0.5fs共30000步，累计320ps/330000步正确。",
+        "物理tau=100/1000fs对应输入100/1000；T/P来自USER，健康筛查是CHECK_PENDING而非已观察到通过。",
+        "来源ID可登记定位；化学有序、MC/MD、平衡相图和统计工具缺口明确。"
+      ],
+      "necessary_repairs": [], "optional_improvements": ["O-01", "O-02"]
+    },
+    {
+      "case_id": "N02", "pass": false, "core_design_policy": "PASS", "strict_delivery": "FAIL_TRACEABILITY",
+      "report": "review/agent-tests/post-npt.json", "json_pointer": "/cases/1",
+      "evidence": [
+        "4×20×12×10=9600；HCP/[0001]、0GPa和温区均为CAND，不把1166K/0.1MPa外部先验当UNEP预测。",
+        "100+100+8×200=1800ps/1800000步；一个邻区加三个200ps节点及全流程100ps延长，最多2500ps/2500000步；可选数值对照后2520ps/2530000步正确。",
+        "加密沿低温端正式restart分支，不暗中重跑或无限扩区；承认剪切、omega分类、单程滞后和平衡相界缺口。",
+        "source_ids含自由字符串 NIST-JANAF Ti-002 (quoted in U-D02; not independently opened)，不在reference-index中；应使用S17，并保留U-D02证据链。"
+      ],
+      "necessary_repairs": ["A-01"], "optional_improvements": ["O-01", "O-02"]
+    },
+    {
+      "case_id": "G01", "pass": true, "core_design_policy": "PASS", "strict_delivery": "PASS",
+      "report": "review/agent-tests/post-npt.json", "json_pointer": "/cases/2",
+      "evidence": [
+        "5400+4050+1350+2700=13500，比例40/30/10/20正确；FCC只作为CAND装填骨架，高温液态状态没有被预先认证。",
+        "2200K/(2e12K/s)=1.1ns/1100000步；快速全程2200000步。2e10K/s对应110ns/110000000步，完整111100000步；共享一次高温的双分支112300000步正确。",
+        "快速thermo500步为0.5ps/1K；慢速1000步为1ps/0.02K。结构2500/250000步均为5K，冷却各440帧。",
+        "2500K端点、保温、控制和拟合窗口均标新CAND；作者590K与2e10K/s为LIT，明确不是本地观测或完整论文复现。",
+        "高温最多加一次1ns；稀疏轨迹不当可靠MSD展开；Tg拟合、实际温度联合映射、不确定度缺口明确。"
+      ],
+      "necessary_repairs": [], "optional_improvements": ["O-01", "O-02"]
+    },
+    {
+      "case_id": "T01", "pass": false, "core_design_policy": "PASS", "strict_delivery": "FAIL_PARAMETER_STATUS",
+      "report": "review/agent-tests/post-tension.json", "json_pointer": "/cases/0",
+      "evidence": [
+        "4000原子FCC随机单晶为CAND；用户300K、z工程应变0.1和x/y零横压被保留。",
+        "0.1/1e8=1ns；1fs下1000000加载步，另100000预平衡步共1100000；dLz=1e-7Lz0，不填未来Lz0。",
+        "thermo100/轨迹1000步对应1e-5/1e-4；z为驱动轴，未假称Pzz为0；明确当前helper仅x/xy且z绑定需generator实现。",
+        "参数状态potential_file_label=CAND，但该值是U-01记录的16元/UNEP-v1-main.txt文件标签，叙述也称其为文件事实；该字段应为FILE。"
+      ],
+      "necessary_repairs": ["A-02"], "optional_improvements": ["O-03"]
+    },
+    {
+      "case_id": "T02", "pass": false, "core_design_policy": "PASS", "strict_delivery": "FAIL_PARAMETER_STATUS",
+      "report": "review/agent-tests/post-tension.json", "json_pointer": "/cases/1",
+      "evidence": [
+        "HCP/[0001]//z、300K、周期bulk、N=9600等是清楚的CAND基线，只有一组研究定义问题，没有让用户代选dt/tau/输出。",
+        "1e8/s、0.1、1fs闭合为1ns/1000000步；100ps预平衡后1100000步；一个基面取向对照另1100000步，合计2200000步。",
+        "正式Lz0是RUNTIME，不用trial或初始盒替代；z helper、omega与最终转变判据缺口已披露。",
+        "parameter_status.potential_file_label=CAND，与已记录UNEP文件标签的FILE属性不一致。"
+      ],
+      "necessary_repairs": ["A-02"], "optional_improvements": ["O-03"]
+    },
+    {
+      "case_id": "T03", "pass": false, "core_design_policy": "PASS", "strict_delivery": "FAIL_PARAMETER_STATUS",
+      "report": "review/agent-tests/post-tension.json", "json_pointer": "/cases/2",
+      "evidence": [
+        "沿用已有热处理玻璃、速度、N与历史，不强制13500、不重熔冷却，也不冒称论文2e10-glass。",
+        "1e7/s工程候选率到0.1为10ns/10000000步；新增100ps合计10100000步；合格参考可免预平衡，论文2ns前置替代方案12000000步。",
+        "thermo1000/轨迹10000步分别1e-5/1e-4；dLz=1e-8Lz0；正式参考及z实现缺口明确。",
+        "parameter_status.potential_file_label=CAND应为FILE。另paper_comparison整体标LIT，但其中if_selected_instead_of_100ps的relax_steps、load_steps、total_steps是本方案计算值，不是论文直接报告；文献2ns前置、候选替换与CALC步数必须拆开状态。"
+      ],
+      "necessary_repairs": ["A-02", "A-03"], "optional_improvements": ["O-03"]
+    },
+    {
+      "case_id": "X01", "pass": true, "core_design_policy": "PASS", "strict_delivery": "PASS",
+      "report": "review/agent-tests/post-holdouts.json", "json_pointer": "/cases/0",
+      "evidence": [
+        "已知合格Lx0=35Å、Ly0=36Å直接绑定，不再询问或重做预平衡。",
+        "100000步×1fs=100ps；0.30/100ps=3e9/s；dLx=0.000105Å/步、dLy=0.000108Å/步，保持两轴同工程应变。",
+        "单步3e-6，输出3/33步对应9e-6/9.9e-5，未错误套用100/1000步；精确终点用restart保存。",
+        "xy兼容helper；z零压与驱动x/y的实际应力正确区分；数值验证有限预算额外最多20ps。"
+      ],
+      "necessary_repairs": [], "optional_improvements": []
+    },
+    {
+      "case_id": "X02", "pass": true, "core_design_policy": "PASS", "strict_delivery": "PASS",
+      "report": "review/agent-tests/post-holdouts.json", "json_pointer": "/cases/1",
+      "evidence": [
+        "保留USER的0.5fs、100/1000fs物理耦合、seed42、N4000和合格参考，新增预平衡0。",
+        "tau/dt为200/2000；0.1/1e8=1000ps，2000000步；dLz=0.1×100/2000000=0.000005Å/步。",
+        "Lz0已知，不误标待测；x/y零横压是CAND，未冒充USER；z不换轴且helper缺口明确。",
+        "100/1000步输出为0.05/0.5ps及5e-6/5e-5；最多一次2倍速率对照另500ps/1000000步。"
+      ],
+      "necessary_repairs": [], "optional_improvements": []
+    },
+    {
+      "case_id": "X03", "pass": false, "core_design_policy": "PASS", "strict_delivery": "FAIL_TRACEABILITY",
+      "report": "review/agent-tests/post-holdouts.json", "json_pointer": "/cases/2",
+      "evidence": [
+        "UNEP不含Fe，正确给BLOCK/UNSUPPORTED及NEEDS_DECISION；未换元素、未输出假可运行包，初始预算0。",
+        "300K/0GPa的USER来源已由根agent提供的最初任务原文确认；不能仅因简写spec曾省略温压就判为臆造。",
+        "source_ids中的UNEP-v1 元素覆盖不是登记ID，且U-D01是CuNi设计规则，不能代替本地模型覆盖事实的U-01。"
+      ],
+      "necessary_repairs": ["A-01"], "optional_improvements": ["O-04"]
+    },
+    {
+      "case_id": "X04", "pass": true, "core_design_policy": "PASS", "strict_delivery": "PASS",
+      "report": "review/agent-tests/post-holdouts.json", "json_pointer": "/cases/3",
+      "evidence": [
+        "恒真应变率要求L=L0exp(rate×t)；0.1/1e8=1ns，最终L/L0=1.105170918，工程应变约0.105170918，不当工程10%。",
+        "正确识别规定z长度与独立z零压的硬约束冲突，合并询问研究选择，整体NEEDS_DECISION而非DESIGN_READY。",
+        "当前helper同时缺z与指数路径；1fs/1000000步只作条件数学需求，变增量公式正确，未用恒增量冒充。",
+        "CuNi比例不自动补50/50，先读模型；未来正式Lz0不向用户索取，输出和0/100/最多200ps预平衡预算均条件明确。",
+        "300K的USER来源已由根agent提供的最初任务原文确认。"
+      ],
+      "necessary_repairs": [], "optional_improvements": ["O-04"]
+    }
+  ],
+  "necessary_repairs": [
+    {
+      "id": "A-01", "priority": "required", "status": "OPEN_IN_ORIGINAL_REPORTS", "cases": ["N02", "X03"],
+      "problem": "source_ids混入自由名称，登记ID解析失败。",
+      "locations": ["post-npt.json:1201 /cases/1/source_ids", "post-holdouts.json:373 /cases/2/source_ids"],
+      "repair": "N02使用S17和U-D02；X03使用U-01。保留原报告作证据，新定向回归检验source_ids全体在reference-index中可解析，并确认对应事实可在落点定位。"
+    },
+    {
+      "id": "A-02", "priority": "required", "status": "OPEN_IN_ORIGINAL_REPORTS", "cases": ["T01", "T02", "T03"],
+      "problem": "parameter_status.potential_file_label=CAND把文件事实标为设计候选。",
+      "locations": ["post-tension.json:199", "post-tension.json:518", "post-tension.json:863"],
+      "repair": "将已记录文件标签与哈希等事实标FILE；USER锁定势身份另标USER，不能混合身份来源与候选数值。候选模型、步长、速率继续标CAND。"
+    },
+    {
+      "id": "A-03", "priority": "required", "status": "OPEN_IN_ORIGINAL_REPORTS", "cases": ["T03"],
+      "problem": "paper_comparison整体LIT覆盖本次候选分支与计算步数，污染文献/候选/计算边界。",
+      "locations": ["post-tension.json:847 /cases/2/parameters/paper_comparison", "post-tension.json:908 /cases/2/parameter_status/paper_comparison"],
+      "repair": "reported_preload_ps=2000保留LIT；是否采用其替换100ps是CAND；if_selected...的2000000/10000000/12000000步为CALC；制备态未知/不匹配是明确限制。采用叶级状态或明确覆盖规则。"
+    }
+  ],
+  "optional_improvements": [
+    {
+      "id": "O-01", "topic": "读取效率",
+      "finding": "原NPT复测自报读取17份知识文件，未沿最短四页路径；它还输出93880字节报告。拉伸7文件/52022字节、holdout7文件/30413字节。完整参数改善不等于读取成本改善。",
+      "recommendation": "用新的独立blind agent验证四页路由；分别报告逐题/整组三题的知识读取文件数、字节及答案字节。不要从文件字节直接声称API token减少。",
+      "caution": "审计期间entry已更新，所以不将当前磁盘字节冒充原测试精确读入量。可用初次manifest恢复原entry后计算。"
+    },
+    {
+      "id": "O-02", "topic": "NPT阶段状态",
+      "finding": "stages整体CAND同时重复USER温压、CALC时间步数和RUNTIME首输出步。正文有清楚区分，但机器消费尚无固定的继承/覆盖契约。",
+      "recommendation": "定义共享参数继承与叶级覆盖；要求关键阶段温压、步数、输出与运行时字段可以机械解析到唯一状态。"
+    },
+    {
+      "id": "O-03", "topic": "有限验证总成本",
+      "finding": "拉伸主路径上限、步长对照和一个速率/取向对照分别给了有限预算，未见无限续跑；但缺少选择多项时唯一的总预算字段。",
+      "recommendation": "明确可选对照互斥/可并行的策略，并给所选组合总步数；不要把所有对照强制为每题必做。"
+    },
+    {
+      "id": "O-04", "topic": "评测输入可追溯",
+      "finding": "spec最初的prompt_summary省略部分原始温压，需要根agent回查最初题目才确认USER来源。",
+      "recommendation": "在spec保存逐字原始prompt及测试版本/决策manifest。summary仍可用于展示，但不作完整USER约束的唯一凭据。"
+    }
+  ],
+  "ability_and_science_boundary_audit": {
+    "correctly_disclosed": ["x/xy helper轴范围", "z generator运行时参考代入尚需明确实现", "恒真应变指数路径缺完整helper", "thermo T/P窗口统计与置信区间没有确认入口", "Tg与应力应变联合分析和局部塑性等工具缺口", "PTM Other不等于玻璃、普通拉伸MSD不等于扩散"],
+    "not_verified_by_this_audit": ["本地势文件实时哈希", "generator生成输入能通过200步试跑", "helper或GPUMD运行行为", "任何正式统计或健康筛查", "实际液态/玻璃/相变", "物理参数最优性与普遍泛化"],
+    "assessment": "原报告大体正确区分设计可交接、上游待绑定、当前实现缺口和最终科学结论。未运行MD本身不构成设计评测失败；来源/状态缺陷必须单独修复。"
+  },
+  "resolution_note": "截至本审计写入时，A-01至A-03在上述原始报告中仍然存在。根agent已告知会收紧入口、登记ID与叶级状态并开展新定向回归；本审计未读取或验收那些后续结果，不能据此把原失败改为通过。"
+}

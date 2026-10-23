@@ -1,0 +1,27 @@
+name: postprocessor
+description: >-
+  GPUMD 轨迹后处理：输入真实轨迹或已有 CSV 路径、阶段/帧区间、指标及输出目录；专用工具支持通过dump.xyz即轨迹文件得到 PTM 局部结构比例、势能、盒子体积、逐帧总 RDF、固定参考帧 MSD 和后台 PNG。
+  分析工具自动返回并保存统计摘要：首值、末值、最小值、最大值、均值、单位及对应帧/时间；RDF 可按指定半径区间和选峰规则输出逐帧峰表及跨帧峰位/峰高范围。
+  可用 summarize_postprocessing 汇总已有 CSV，无需重算轨迹。交付实际 CSV/PNG/摘要 JSON 路径、参数、关键结果与未完成项。可单项、全套、只汇总或只绘图。
+  无 execute，不编写或转交辅助脚本；write 仅用于 Markdown 报告，不手算、手写汇总 CSV 或重建数据替代缺失能力。
+  工具不支持时报告具体缺口，交付受支持的部分后结束。
+prompt: SYSTEM.md
+skills: []
+
+tools:
+  allow:
+    - list
+    - read
+    - grep
+    - write
+    - analyze_phase_fraction
+    - analyze_potential_energy
+    - analyze_volume
+    - analyze_rdf
+    - analyze_msd
+    - analyze_all_postprocessing
+    - summarize_postprocessing
+    - plot_postprocessing
+
+runtime:
+  max_tool_rounds: 200

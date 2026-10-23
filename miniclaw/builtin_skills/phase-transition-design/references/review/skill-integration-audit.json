@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-10-21",
+  "reviewer": "independent skill-integration review agent",
+  "status": "passed",
+  "scope": "Skill packaging, researcher/coordinator routing, existing read_skill/read/execute integration and permission claims. This audit does not establish live LLM behavior or scientific validation.",
+  "blocking_findings": [],
+  "independent_checks": {
+    "knowledge_source": {
+      "skill": "miniclaw/builtin_skills/phase-transition-design",
+      "references_root": "references",
+      "scripts_root": "scripts",
+      "legacy_knowledge_directory_exists": false,
+      "local_markdown_links_checked": 243,
+      "missing_local_markdown_links": []
+    },
+    "migration_integrity": {
+      "manifest": "references/review/skill-migration.json",
+      "mapped_files_checked": 73,
+      "current_hash_or_size_mismatches": [],
+      "historical_evaluation_files": 24,
+      "historical_original_and_migrated_hashes_and_sizes_equal": true,
+      "note": "All 73 current targets were read and compared to migrated_sha256/migrated_bytes. For 24 historical evaluation targets, the manifest also retains equal original and migrated fingerprints. Original pre-move bytes were not separately available to this reviewer. generated_validation is a regenerable report, not a stable historical artifact."
+    },
+    "role_routing": {
+      "researcher_profile": "miniclaw/agents/profiles/researcher/agent.yaml",
+      "researcher_system": "miniclaw/agents/profiles/researcher/SYSTEM.md",
+      "coordinator_system": "miniclaw/agents/profiles/coordinator/SYSTEM.md",
+      "researcher_has_read_skill_read_and_execute": true,
+      "researcher_other_read_only_tools_retained": true,
+      "coordinator_has_execute": false,
+      "coordinator_routes_design_to_researcher": true,
+      "general_evidence_research_retained": true,
+      "new_registered_business_tool_required": false
+    },
+    "path_contract": {
+      "skill_location_source": "Parent directory of File: returned by read_skill for the selected skill name",
+      "reference_read": "Absolute path under the selected Skill references directory",
+      "helper_execution": "Configured Python interpreter plus absolute scripts/calculate_plan.py path; execute.working_dir remains the active project workspace",
+      "relative_path_warning_resolved": "Both SKILL.md and references/decisions/calculation.md now use this contract. Neither requires the project working directory to be the Skill directory.",
+      "scalar_cli_modes_documented": ["state", "tension", "ramp"],
+      "temporary_json_request_required": false,
+      "legacy_json_input": "Optional read of an existing request file; it is not required for researcher operation"
+    },
+    "helper_source_review": {
+      "file": "scripts/calculate_plan.py",
+      "imports": "Python standard library only",
+      "result_channel": "JSON on stdout with explicit success/error exit status",
+      "asset_write_or_md_launch_in_calculator": false,
+      "missing_reference_behavior": "RUNTIME with unresolved-axis formulas, without invented reference lengths",
+      "unsupported_true_strain_or_conflict_behavior": "Structured error"
+    }
+  },
+  "root_test_evidence": {
+    "provenance": "Root agent execution record; this reviewer inspected tests/test_phase_design_skill.py but did not rerun the tests",
+    "integration_tests": {
+      "file": "tests/test_phase_design_skill.py",
+      "passed": 8,
+      "failed": 0,
+      "coverage": [
+        "AgentCatalog discovers the restored researcher profile and PromptBuilder exposes the Skill",
+        "Real ToolRegistry read_skill returns the selected absolute Skill file path",
+        "Real read accesses Skill references from a different active project workspace",
+        "Real execute invokes scalar state and tension commands using the selected absolute helper path",
+        "100 ps / 0.5 fs gives 200000 steps and supplied tau/dt ratios 200 and 2000",
+        "xy loading gives independent per-axis increments 0.000105 and 0.000108 angstrom per step",
+        "Missing z reference stays RUNTIME; true strain and conflicting hard constraints return JSON errors",
+        "No request or asset files are created in the active test project workspace",
+        "The researcher profile rejects the write tool"
+      ]
+    },
+    "existing_profile_tool_prompt_regressions": {"passed": 14, "failed": 0},
+    "calculator_cli_and_regression_cases": {"passed": 67, "failed": 0},
+    "skill_quick_validation": "Passed with Python UTF-8 mode",
+    "limitation": "The integration tests execute deterministic existing tool channels, rather than a live LLM delegation or an already-running application session. Scalar ramp is covered by the calculator checks, not the real-execute parametrization in the integration test file."
+  },
+  "configuration_preservation_evidence": {
+    "provenance": "Root agent tool records from before its edits, rather than comparison to Git HEAD",
+    "original_profile_location": "miniclaw/agents/profiles/jail/researcher",
+    "original_profile_name": "researcher",
+    "original_skill_allowlist": ["*"],
+    "original_tools": ["browser_snapshot", "grep", "list", "read", "read_skill", "search_gpumd_docs", "system_info", "web_search"],
+    "root_record": "Root checked resolved Windows source and destination paths, confirmed the active destination did not exist, and moved the whole researcher directory into profiles/researcher. It changed the description, appended execute, extended the existing evidence-research prompt, and added one coordinator routing paragraph. Other existing tool implementation changes in the worktree were not part of this integration.",
+    "reviewer_independent_limit": "The final source and profile tool lists were checked; the pre-edit uncommitted filesystem state cannot be reconstructed independently from Git HEAD."
+  },
+  "permission_boundaries": {
+    "code_enforced": [
+      "AgentCatalog loads immediate profiles/*/agent.yaml entries and permits configured custom-profile overlays",
+      "PromptBuilder filters visible tool and skill names by the selected profile",
+      "ToolRegistry rejects tools outside allowed_tools; read_skill rejects skills outside allowed_skills",
+      "The read tool resolves paths against allowed workspace and Skill roots",
+      "execute requires its working directory to stay within the active workspace and applies its existing general command checks"
+    ],
+    "documented_role_limits_only": [
+      "Researcher execute use is restricted to this Skill's existing calculate_plan.py entry",
+      "Researcher does not author replacement programs, generate simulation assets, start MD, or perform trajectory/thermo postprocessing",
+      "Coordinator routes parameter design to researcher and later stages to their existing specialist roles"
+    ],
+    "important_limit": "Granting the general execute tool does not create a code-enforced fixed-helper allowlist or an operating-system sandbox. The working-directory check does not confine every path that an arbitrary subprocess could access. This audit makes no such claim.",
+    "skill_overlay_limit": "Skill roots and custom profiles have existing overlay precedence. read_skill's returned File identifies the selected Skill; the role configuration does not cryptographically pin it to the bundled copy."
+  },
+  "not_verified": [
+    "Live-process reload of the updated profile or Skill",
+    "New blind LLM research/delegation behavior under the Skill packaging",
+    "Materials-science correctness, potential prediction accuracy, convergence or phase transitions",
+    "Any MD execution or postprocessing capability beyond the existing role declarations"
+  ],
+  "review_actions": "Read-only source and documentation review, plus stdlib local link/hash checks; only this audit file was added by this reviewer. No .env contents, network sources, or actual MD data were inspected."
+}

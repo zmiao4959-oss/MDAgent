@@ -31,7 +31,6 @@ def _ensure_memory_file() -> Path:
 
 @tool_registry.register(
     name="remember",
-    description="Save a fact or piece of information to long-term memory (MEMORY.md).",
     schema={
         "type": "function",
         "function": {

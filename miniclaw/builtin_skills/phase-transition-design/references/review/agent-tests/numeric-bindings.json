@@ -1,0 +1,295 @@
+{
+  "scope": "Explicit JSON paths bind the frozen case specification to raw response fields; no answer text matching",
+  "bindings": [
+    {
+      "case_id": "N01",
+      "expected_path": "dt_fs",
+      "actual_path": "dt_fs"
+    },
+    {
+      "case_id": "N01",
+      "expected_path": "tau_T_ratio",
+      "actual_path": "T_coup"
+    },
+    {
+      "case_id": "N01",
+      "expected_path": "tau_P_ratio",
+      "actual_path": "P_coup"
+    },
+    {
+      "case_id": "N01",
+      "expected_path": "relax_ps",
+      "actual_path": "relax_ps"
+    },
+    {
+      "case_id": "N01",
+      "expected_path": "production_ps",
+      "actual_path": "production_ps"
+    },
+    {
+      "case_id": "N01",
+      "expected_path": "total_steps",
+      "actual_path": "total_steps"
+    },
+    {
+      "case_id": "N01",
+      "expected_path": "N",
+      "actual_path": "N"
+    },
+    {
+      "case_id": "N01",
+      "expected_path": "atom_counts",
+      "actual_path": "composition/atomic_counts"
+    },
+    {
+      "case_id": "N01",
+      "expected_path": "thermo_interval_steps",
+      "actual_path": "thermo_interval_steps"
+    },
+    {
+      "case_id": "N01",
+      "expected_path": "trajectory_interval_steps",
+      "actual_path": "trajectory_interval_steps"
+    },
+    {
+      "case_id": "N02",
+      "expected_path": "dt_fs",
+      "actual_path": "dt_fs"
+    },
+    {
+      "case_id": "N02",
+      "expected_path": "initial_total_steps",
+      "actual_path": "total_steps"
+    },
+    {
+      "case_id": "N02",
+      "expected_path": "maximum_total_steps",
+      "actual_path": "budget/maximum_main_steps"
+    },
+    {
+      "case_id": "N02",
+      "expected_path": "platform_K",
+      "actual_path": "temperature_K/sampling_plateaux"
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "N",
+      "actual_path": "N"
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "atom_counts",
+      "actual_path": "composition/atomic_counts"
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "dt_fs",
+      "actual_path": "dt_fs"
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "fast_cooling_steps",
+      "actual_path": "tiers/fast/cooling_steps"
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "fast_total_steps",
+      "actual_path": "tiers/fast/total_steps"
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "paper_rate_cooling_steps",
+      "actual_path": "tiers/literature_rate/cooling_steps"
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "paper_rate_total_steps",
+      "actual_path": "tiers/literature_rate/total_steps"
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "fast_thermo_interval_steps",
+      "actual_path": "thermo_interval_steps/cooling_fast"
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "fast_trajectory_interval_steps",
+      "actual_path": "trajectory_interval_steps/cooling_fast"
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "slow_thermo_interval_steps",
+      "actual_path": "thermo_interval_steps/cooling_literature_rate"
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "slow_trajectory_interval_steps",
+      "actual_path": "trajectory_interval_steps/cooling_literature_rate"
+    },
+    {
+      "case_id": "T01",
+      "expected_path": "dt_fs",
+      "actual_path": "dt_fs"
+    },
+    {
+      "case_id": "T01",
+      "expected_path": "rate_s_inv",
+      "actual_path": "rate_s_inv"
+    },
+    {
+      "case_id": "T01",
+      "expected_path": "strain_end",
+      "actual_path": "strain_end"
+    },
+    {
+      "case_id": "T01",
+      "expected_path": "load_ps",
+      "actual_path": "load_duration_ps"
+    },
+    {
+      "case_id": "T01",
+      "expected_path": "load_steps",
+      "actual_path": "load_steps"
+    },
+    {
+      "case_id": "T01",
+      "expected_path": "thermo_interval_steps",
+      "actual_path": "thermo_interval_steps"
+    },
+    {
+      "case_id": "T01",
+      "expected_path": "trajectory_interval_steps",
+      "actual_path": "trajectory_interval_steps"
+    },
+    {
+      "case_id": "T01",
+      "expected_path": "N",
+      "actual_path": "N"
+    },
+    {
+      "case_id": "T01",
+      "expected_path": "total_steps_with_relax",
+      "actual_path": "total_steps"
+    },
+    {
+      "case_id": "T02",
+      "expected_path": "dt_fs",
+      "actual_path": "dt_fs"
+    },
+    {
+      "case_id": "T02",
+      "expected_path": "rate_s_inv",
+      "actual_path": "rate_s_inv"
+    },
+    {
+      "case_id": "T02",
+      "expected_path": "strain_end",
+      "actual_path": "strain_end"
+    },
+    {
+      "case_id": "T02",
+      "expected_path": "load_ps",
+      "actual_path": "load_duration_ps"
+    },
+    {
+      "case_id": "T02",
+      "expected_path": "load_steps",
+      "actual_path": "load_steps"
+    },
+    {
+      "case_id": "T03",
+      "expected_path": "dt_fs",
+      "actual_path": "dt_fs"
+    },
+    {
+      "case_id": "T03",
+      "expected_path": "rate_s_inv",
+      "actual_path": "rate_s_inv"
+    },
+    {
+      "case_id": "T03",
+      "expected_path": "strain_end",
+      "actual_path": "strain_end"
+    },
+    {
+      "case_id": "T03",
+      "expected_path": "load_ps",
+      "actual_path": "load_duration_ps"
+    },
+    {
+      "case_id": "T03",
+      "expected_path": "load_steps",
+      "actual_path": "load_steps"
+    },
+    {
+      "case_id": "T03",
+      "expected_path": "thermo_interval_steps",
+      "actual_path": "thermo_interval_steps"
+    },
+    {
+      "case_id": "T03",
+      "expected_path": "trajectory_interval_steps",
+      "actual_path": "trajectory_interval_steps"
+    },
+    {
+      "case_id": "X01",
+      "expected_path": "duration_ps",
+      "actual_path": "load_duration_ps"
+    },
+    {
+      "case_id": "X01",
+      "expected_path": "rate_s_inv",
+      "actual_path": "rate_s_inv"
+    },
+    {
+      "case_id": "X01",
+      "expected_path": "steps",
+      "actual_path": "load_steps"
+    },
+    {
+      "case_id": "X01",
+      "expected_path": "dL_A_per_step/x",
+      "actual_path": "increment_A_per_step/x"
+    },
+    {
+      "case_id": "X01",
+      "expected_path": "dL_A_per_step/y",
+      "actual_path": "increment_A_per_step/y"
+    },
+    {
+      "case_id": "X02",
+      "expected_path": "dt_fs",
+      "actual_path": "dt_fs"
+    },
+    {
+      "case_id": "X02",
+      "expected_path": "tau_T_ratio",
+      "actual_path": "T_coup"
+    },
+    {
+      "case_id": "X02",
+      "expected_path": "tau_P_ratio",
+      "actual_path": "P_coup"
+    },
+    {
+      "case_id": "X02",
+      "expected_path": "load_steps",
+      "actual_path": "load_steps"
+    },
+    {
+      "case_id": "X02",
+      "expected_path": "duration_ps",
+      "actual_path": "load_duration_ps"
+    },
+    {
+      "case_id": "X02",
+      "expected_path": "dLz_A_per_step",
+      "actual_path": "increment_A_per_step/z"
+    },
+    {
+      "case_id": "X02",
+      "expected_path": "seed",
+      "actual_path": "seed"
+    }
+  ]
+}

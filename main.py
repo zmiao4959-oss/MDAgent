@@ -127,6 +127,8 @@ async def main():
 
     def shutdown(signum, frame):
         logger.info("Received signal %s, shutting down...", signum)
+        # 立即打断主、子 Agent 的等待，禁止退出期间再开始新的 runtime。
+        Agent.request_shutdown()
         stop_event.set()
 
     signal.signal(signal.SIGINT, shutdown)
@@ -140,6 +142,9 @@ async def main():
 
     await stop_event.wait()
     logger.info("Shutting down MiniClaw...")
+
+    # 子 Agent 是独立任务，不能只取消主对话或等待 Web 请求自然结束。
+    await asyncio.gather(*Agent.request_shutdown(), return_exceptions=True)
 
     # 1. 先停调度类后台任务，避免退出过程中再触发 Agent
     await _cancel_task(heartbeat_task, name="heartbeat")

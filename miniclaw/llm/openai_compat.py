@@ -1,6 +1,7 @@
 import json
 from typing import List, Dict, Optional, AsyncIterator
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, APIStatusError, DefaultAsyncHttpxClient
+from .diagnostics import HTTPDiagnostics, diagnose_request, log_response
 
 from .base import (
     BaseLLMProvider,
@@ -16,7 +17,13 @@ from .base import (
 class OpenAICompatProvider(BaseLLMProvider):
     def __init__(self, api_key: str, base_url: str, model: str):
         self.model = model
-        self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+        diagnostics = HTTPDiagnostics()
+        self.client = AsyncOpenAI(
+            api_key=api_key, base_url=base_url,
+            http_client=DefaultAsyncHttpxClient(event_hooks={
+                "request": [diagnostics.on_request], "response": [diagnostics.on_response],
+            }),
+        )
     
     def _to_openai_messages(self, messages: List[LLMMessage]) -> List[Dict]:
         """将内部的 LLMMessage 转为 OpenAI API 格式（包含 reasoning_content 回传）"""
@@ -35,6 +42,7 @@ class OpenAICompatProvider(BaseLLMProvider):
             result.append(msg)
         return result
     
+    @diagnose_request("chat")
     async def chat(
         self,
         messages: List[LLMMessage],
@@ -53,6 +61,18 @@ class OpenAICompatProvider(BaseLLMProvider):
             kwargs_req["tools"] = tools
         
         resp = await self.client.chat.completions.create(**kwargs_req)
+        log_response(
+            "chat", response_id=resp.id, choices=len(resp.choices),
+            request_id=getattr(resp, "_request_id", None),
+            message_fields=[sorted(choice.message.model_dump(exclude_none=True)) for choice in resp.choices],
+            finish_reasons=[choice.finish_reason for choice in resp.choices],
+            content_lengths=[len(choice.message.content or "") for choice in resp.choices],
+            reasoning_lengths=[len(getattr(choice.message, "reasoning_content", None) or "") for choice in resp.choices],
+            tool_counts=[len(choice.message.tool_calls or []) for choice in resp.choices],
+            usage=resp.usage.model_dump() if resp.usage else None,
+        )
+        if not resp.choices:
+            raise RuntimeError("LLM API returned no choices; see LLM response diagnostics")
         choice = resp.choices[0]
 
         # 捕获 DeepSeek thinking mode 的 reasoning_content
@@ -77,6 +97,7 @@ class OpenAICompatProvider(BaseLLMProvider):
             reasoning_content=reasoning,
         )
     
+    @diagnose_request("stream")
     async def chat_stream(
         self,
         messages: List[LLMMessage],
@@ -98,27 +119,53 @@ class OpenAICompatProvider(BaseLLMProvider):
         
         try:
             stream = await self.client.chat.completions.create(**kwargs_req)
-        except Exception:
-            # 部分 OpenAI 兼容端点不支持 stream_options
+        except APIStatusError as exc:
+            # 只在明确不支持该字段时重发，不能把限流/连接失败当作兼容性问题。
+            if exc.status_code not in {400, 422} or "stream_options" not in str(exc.body).lower():
+                raise
+            log_response("stream_options_rejected", status=exc.status_code)
             kwargs_req.pop("stream_options", None)
             stream = await self.client.chat.completions.create(**kwargs_req)
         
         # 流式 tool_calls + reasoning_content 需要累积 delta
         accumulated_tool_calls = {}
         accumulated_reasoning = ""
+        chunk_count = content_length = reasoning_length = tool_fragments = 0
+        finish_reasons = []
+        last_usage = None
+        delta_fields = set()
 
         async for chunk in stream:
-            delta = chunk.choices[0].delta if chunk.choices else None
+            chunk_count += 1
+            usage = {}
+            if getattr(chunk, "usage", None):
+                last_usage = chunk.usage.model_dump() if hasattr(chunk.usage, "model_dump") else vars(chunk.usage)
+                usage = {
+                    "prompt_tokens": chunk.usage.prompt_tokens or 0,
+                    "completion_tokens": chunk.usage.completion_tokens or 0,
+                }
+            choice = chunk.choices[0] if chunk.choices else None
+            finish_reason = getattr(choice, "finish_reason", None)
+            if finish_reason:
+                finish_reasons.append(finish_reason)
+            delta = choice.delta if choice else None
             if not delta:
+                if usage or finish_reason:
+                    yield LLMStreamChunk(usage=usage, finish_reason=finish_reason)
                 continue
+            fields = delta.model_dump(exclude_none=True) if hasattr(delta, "model_dump") else vars(delta)
+            delta_fields.update(fields)
+            content_length += len(delta.content or "")
 
             # 捕获 reasoning_content (DeepSeek thinking mode 流式)
             reasoning_delta = getattr(delta, "reasoning_content", None) or ""
             if reasoning_delta:
+                reasoning_length += len(reasoning_delta)
                 accumulated_reasoning += reasoning_delta
 
             tool_calls_delta = []
             if delta.tool_calls:
+                tool_fragments += len(delta.tool_calls)
                 for tc_delta in delta.tool_calls:
                     idx = tc_delta.index
                     if idx not in accumulated_tool_calls:
@@ -141,25 +188,27 @@ class OpenAICompatProvider(BaseLLMProvider):
                                 tc_delta.function.arguments,
                             )
 
-            usage = {}
-            if getattr(chunk, "usage", None):
-                usage = {
-                    "prompt_tokens": chunk.usage.prompt_tokens or 0,
-                    "completion_tokens": chunk.usage.completion_tokens or 0,
-                }
             yield LLMStreamChunk(
                 delta_content=delta.content or "",
                 finish_reason=chunk.choices[0].finish_reason,
                 usage=usage,
                 reasoning_content=accumulated_reasoning if accumulated_reasoning else None,
             )
+        log_response(
+            "stream", chunks=chunk_count, finish_reasons=finish_reasons,
+            content_length=content_length, reasoning_length=reasoning_length,
+            tool_fragments=tool_fragments, tool_calls=len(accumulated_tool_calls), usage=last_usage,
+            delta_fields=sorted(delta_fields),
+        )
+        if not finish_reasons:
+            raise RuntimeError("LLM stream ended without finish_reason; see LLM response diagnostics")
         # 流式结束后，若有工具调用，一次性抛出
         if accumulated_tool_calls:
             final_tool_calls = list(accumulated_tool_calls.values())
             yield LLMStreamChunk(
                 delta_content="",
                 delta_tool_calls=final_tool_calls,
-                finish_reason="tool_calls",
+                finish_reason=finish_reasons[-1],
                 reasoning_content=accumulated_reasoning if accumulated_reasoning else None,
             )
     

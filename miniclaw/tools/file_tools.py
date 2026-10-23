@@ -4,8 +4,11 @@ tools/file_tools.py — 工作区内文件读写、目录列表与内容搜索
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
+import tempfile
+import threading
 from pathlib import Path
 
 from .registry import tool_registry
@@ -25,6 +28,21 @@ from .paths import (
 )
 
 
+_EDIT_LOCKS: dict[str, threading.Lock] = {}
+_EDIT_LOCKS_GUARD = threading.Lock()
+
+
+def _edit_lock_for(path: Path) -> threading.Lock:
+    # resolve_workspace_path has already resolved symlinks; normcase folds Windows aliases.
+    key = os.path.normcase(str(path))
+    with _EDIT_LOCKS_GUARD:
+        lock = _EDIT_LOCKS.get(key)
+        if lock is None:
+            lock = threading.Lock()
+            _EDIT_LOCKS[key] = lock
+        return lock
+
+
 def _format_read_lines(
     lines: list[str],
     *,
@@ -42,7 +60,6 @@ def _format_read_lines(
 
 @tool_registry.register(
     name="read",
-    description="Read a text file or preview an image inside the workspace.",
     schema={
         "type": "function",
         "function": {
@@ -141,7 +158,6 @@ def read_tool(path: str, offset: int = 1, limit: int = DEFAULT_READ_LIMIT, **kwa
 
 @tool_registry.register(
     name="write",
-    description="Write or overwrite a text file inside the workspace.",
     schema={
         "type": "function",
         "function": {
@@ -190,8 +206,125 @@ def write_tool(path: str, content: str, **kwargs):
 
 
 @tool_registry.register(
+    name="edit",
+    schema={
+        "type": "function",
+        "function": {
+            "name": "edit",
+            "description": (
+                "Replace one exact, unique line or consecutive lines in an existing UTF-8 workspace file. "
+                "Use read to copy complete old line(s), then supply new_text; this preserves the rest "
+                "of the file. If the block is missing or occurs more than once, no edit is made."
+            ),
+            "parameters": {
+                "type": "object",
+                "required": ["path", "old_text", "new_text"],
+                "additionalProperties": False,
+                "properties": {
+                    "path": {"type": "string", "description": "Existing file path under workspace"},
+                    "old_text": {"type": "string", "description": "Complete existing line(s) to replace; must occur once"},
+                    "new_text": {"type": "string", "description": "Replacement text; empty string deletes the matched block"},
+                },
+            },
+        },
+    },
+    require_approval=True,
+    risk_level="medium",
+    tags=["filesystem"],
+)
+def edit_tool(path: str, old_text: str, new_text: str, **kwargs):
+    if not isinstance(old_text, str) or not old_text:
+        return "Error: old_text must be a non-empty string"
+    if not isinstance(new_text, str):
+        return "Error: new_text must be a string"
+    if not isinstance(path, str):
+        return "Error: path must be a string"
+
+    resolved, err = resolve_workspace_path(path, must_exist=True)
+    if err:
+        return err
+    with _edit_lock_for(resolved):
+        return _edit_locked(resolved, path, old_text, new_text)
+
+
+def _edit_locked(resolved: Path, path: str, old_text: str, new_text: str) -> str:
+    if not resolved.is_file():
+        return f"Error: '{path}' is not a file"
+
+    try:
+        if resolved.stat().st_size > MAX_WRITE_BYTES:
+            return f"Error: file too large to edit (max {MAX_WRITE_BYTES} bytes): {path}"
+        original = resolved.read_bytes()
+        if len(original) > MAX_WRITE_BYTES:
+            return f"Error: file too large to edit (max {MAX_WRITE_BYTES} bytes): {path}"
+        bom = b"\xef\xbb\xbf" if original.startswith(b"\xef\xbb\xbf") else b""
+        content = original[len(bom):].decode("utf-8")
+    except UnicodeDecodeError:
+        return f"Error: cannot decode '{path}' as UTF-8"
+    except OSError as exc:
+        return f"Error reading {path}: {exc}"
+    if "\0" in content:
+        return f"Error: '{path}' appears to be a binary file"
+
+    crlf_count = content.count("\r\n")
+    newline = "\r\n" if crlf_count > content.count("\n") - crlf_count else "\n"
+    if not content.count("\n") and "\r" in content:
+        newline = "\r"
+
+    def file_newlines(value: str) -> str:
+        return value.replace("\r\n", "\n").replace("\r", "\n").replace("\n", newline)
+
+    before = file_newlines(old_text)
+    after = file_newlines(new_text)
+    positions = []
+    cursor = 0
+    while (candidate := content.find(before, cursor)) >= 0:
+        end = candidate + len(before)
+        starts_line = candidate == 0 or content[candidate - 1] in "\r\n"
+        ends_line = end == len(content) or before.endswith(("\r", "\n")) or content[end] in "\r\n"
+        if starts_line and ends_line:
+            positions.append(candidate)
+            if len(positions) > 1:
+                break
+        cursor = candidate + 1
+    if not positions:
+        return "Error: old_text was not found; read the file again before editing"
+    if len(positions) > 1:
+        return "Error: old_text occurs more than once; include more surrounding lines"
+    if before == after:
+        return f"No change needed in {safe_relpath(resolved)}"
+
+    position = positions[0]
+    updated = content[:position] + after + content[position + len(before):]
+    encoded = bom + updated.encode("utf-8")
+    if len(encoded) > MAX_WRITE_BYTES:
+        return f"Error: edited file too large ({len(encoded)} bytes, max {MAX_WRITE_BYTES})"
+
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=resolved.parent, prefix=resolved.name + ".", suffix=".tmp", delete=False) as handle:
+            temporary = Path(handle.name)
+            handle.write(encoded)
+            handle.flush()
+            os.fsync(handle.fileno())
+        shutil.copymode(resolved, temporary)
+        if resolved.read_bytes() != original:
+            return "Error: file changed since it was read; read the file again before editing"
+        os.replace(temporary, resolved)
+    except OSError as exc:
+        return f"Error editing {path}: {exc}"
+    finally:
+        if temporary is not None:
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+    return f"Successfully edited {safe_relpath(resolved)} (1 replacement)"
+
+
+@tool_registry.register(
     name="write_json",
-    description="Serialize structured data to a JSON file inside the workspace.",
     schema={
         "type": "function",
         "function": {
@@ -323,7 +456,6 @@ def _set_json_path(root, dotted_path: str, value):
 
 @tool_registry.register(
     name="update_json",
-    description="Update selected fields in an existing JSON file inside the workspace.",
     schema={
         "type": "function",
         "function": {
@@ -418,7 +550,6 @@ def update_json_tool(path: str, updates: dict, indent: int = 2, **kwargs):
 
 @tool_registry.register(
     name="make_dir",
-    description="Create a directory inside the workspace without using shell commands.",
     schema={
         "type": "function",
         "function": {
@@ -465,7 +596,6 @@ def make_dir_tool(path: str, parents: bool = True, **kwargs):
 
 @tool_registry.register(
     name="copy_file",
-    description="Copy a file inside the workspace without using shell commands.",
     schema={
         "type": "function",
         "function": {
@@ -535,7 +665,6 @@ def copy_file_tool(source_path: str, destination_path: str, **kwargs):
 
 @tool_registry.register(
     name="list",
-    description="List files and directories inside the workspace.",
     schema={
         "type": "function",
         "function": {
@@ -626,7 +755,6 @@ _SKIP_GREP_DIRS = frozenset({".git", "__pycache__", "node_modules", ".venv", "ve
 
 @tool_registry.register(
     name="grep",
-    description="Search for a regex pattern in workspace text files.",
     schema={
         "type": "function",
         "function": {

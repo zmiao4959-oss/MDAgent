@@ -1,0 +1,338 @@
+{
+  "calculator": "scripts/calculate_plan.py",
+  "total": 67,
+  "passed": 67,
+  "failed": 0,
+  "results": [
+    {
+      "name": "z formal reference",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "xy distinct formal references",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "missing formal reference stays runtime",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "partial formal references stay runtime",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "steps without rate",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "duration without rate",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "consistent simultaneous constraints",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "Decimal precision crosses a timestep",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "strain dump resolution",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "time-only tension dump constraint",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "tighter simultaneous tension dump constraint",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "unattainable strain resolution is explicit",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "unattainable time resolution is explicit",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "cooling ramp with output resolution",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "heating ramp",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "time-only ramp dump constraint",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "unattainable temperature resolution is explicit",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "fixed state with supplied damping times",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "fixed state steps only",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "fixed state ceiling",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "fixed state explicit upward rounding",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "fixed state precision crosses a timestep",
+      "passed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "missing tension strain",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "missing timestep",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "missing span",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "true strain rejected",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "short conflicting steps",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "long conflicting steps",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "conflicting duration",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "fractional steps rejected",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "duplicate loaded axes",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "duplicate length rejected",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "malformed length rejected",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "unknown length axis rejected",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "NaN rate rejected",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "infinite timestep rejected",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "infinite length rejected",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "unused malformed length rejected",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "invalid numeric text rejected",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "zero strain rejected",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "negative value rejected",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "zero dump resolution rejected",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "negative time dump constraint rejected",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "equal ramp endpoints rejected",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "missing ramp rate",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "nonfinite ramp endpoint rejected",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "fixed state missing span",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "fixed state conflicting short steps",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "fixed state conflicting long steps",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "fixed state rejects a whole extra timestep",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "fixed state fractional steps",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "fixed state zero duration",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "fixed state zero thermostat tau",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "fixed state negative barostat tau",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "fixed state nonfinite tau",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "fixed state malformed tau",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "fixed state missing timestep",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "unknown argument remains JSON",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "missing command remains JSON",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "missing input file remains JSON",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "mixed input modes rejected",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "derived nonfinite output remains JSON",
+      "passed": true,
+      "exit_code": 2
+    },
+    {
+      "name": "legacy --input matches scalar CLI",
+      "passed": true
+    },
+    {
+      "name": "root help is discoverable",
+      "passed": true
+    },
+    {
+      "name": "tension help is discoverable",
+      "passed": true
+    },
+    {
+      "name": "ramp help is discoverable",
+      "passed": true
+    },
+    {
+      "name": "state help is discoverable",
+      "passed": true
+    }
+  ]
+}

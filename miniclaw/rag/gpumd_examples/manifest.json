@@ -1,0 +1,337 @@
+{
+  "schema_version": 1,
+  "gpumd_documentation": "5.5",
+  "description": "任务模板与说明；参数为具体示例，需按实际模型和势调整。命令正文由同一知识库的 commands 提供。",
+  "shared_files": [
+    "prepare_tension.py",
+    "tension_workflow.py"
+  ],
+  "examples": [
+    {
+      "id": "npt-relaxation",
+      "title": "NPT 弛豫：300 K、零外压",
+      "match_terms": [
+        "NPT",
+        "弛豫",
+        "平衡",
+        "零应变态",
+        "温压平衡",
+        "equilibration",
+        "relaxation"
+      ],
+      "files": [
+        "npt-relaxation/example.md",
+        "npt-relaxation/run.in"
+      ],
+      "command_dependencies": [
+        "potential",
+        "velocity",
+        "time_step",
+        "ensemble",
+        "ensemble_standard",
+        "dump_thermo",
+        "dump_exyz",
+        "dump_restart",
+        "run"
+      ],
+      "path": "npt-relaxation/example.md",
+      "description": "三向周期正交模型在300 K、0 GPa下独立控制三个盒长，输出可续跑的最终restart。",
+      "tasks": [
+        "NPT",
+        "弛豫",
+        "平衡",
+        "零应变态",
+        "温压平衡",
+        "equilibration",
+        "relaxation"
+      ],
+      "commands": [
+        "potential",
+        "velocity",
+        "time_step",
+        "ensemble",
+        "ensemble_standard",
+        "dump_thermo",
+        "dump_exyz",
+        "dump_restart",
+        "run"
+      ]
+    },
+    {
+      "id": "uniaxial-tension",
+      "title": "NPT 后 x 单轴拉伸：自包含两阶段项目",
+      "match_terms": [
+        "单轴拉伸",
+        "单向拉伸",
+        "x拉伸",
+        "工程应变",
+        "30%",
+        "uniaxial",
+        "tensile",
+        "tension"
+      ],
+      "files": [
+        "uniaxial-tension/example.md",
+        "uniaxial-tension/relax.run.in",
+        "uniaxial-tension/load.run.in.template",
+        "prepare_tension.py",
+        "tension_workflow.py"
+      ],
+      "command_dependencies": [
+        "potential",
+        "velocity",
+        "time_step",
+        "ensemble",
+        "ensemble_standard",
+        "deform",
+        "dump_thermo",
+        "dump_exyz",
+        "dump_restart",
+        "run"
+      ],
+      "path": "uniaxial-tension/example.md",
+      "description": "一次生成自包含的NPT后x单轴张拉项目；无需先执行正式弛豫，运行时从真实restart计算应变增量。",
+      "tasks": [
+        "单轴拉伸",
+        "单向拉伸",
+        "x拉伸",
+        "工程应变",
+        "30%",
+        "uniaxial",
+        "tensile",
+        "tension"
+      ],
+      "commands": [
+        "potential",
+        "velocity",
+        "time_step",
+        "ensemble",
+        "ensemble_standard",
+        "deform",
+        "dump_thermo",
+        "dump_exyz",
+        "dump_restart",
+        "run"
+      ]
+    },
+    {
+      "id": "biaxial-tension",
+      "title": "NPT 后 xy 双轴拉伸：自包含两阶段项目",
+      "match_terms": [
+        "双轴拉伸",
+        "双向拉伸",
+        "xy",
+        "CuNi",
+        "铜镍",
+        "4000原子",
+        "工程应变",
+        "30%",
+        "100000步",
+        "biaxial"
+      ],
+      "files": [
+        "biaxial-tension/example.md",
+        "biaxial-tension/relax.run.in",
+        "biaxial-tension/load.run.in.template",
+        "prepare_tension.py",
+        "tension_workflow.py"
+      ],
+      "command_dependencies": [
+        "potential",
+        "velocity",
+        "time_step",
+        "ensemble",
+        "ensemble_standard",
+        "deform",
+        "dump_thermo",
+        "dump_exyz",
+        "dump_restart",
+        "run"
+      ],
+      "path": "biaxial-tension/example.md",
+      "description": "一次生成自包含的NPT后xy双轴张拉项目；无需先执行正式弛豫，运行时从真实restart计算应变增量。",
+      "tasks": [
+        "双轴拉伸",
+        "双向拉伸",
+        "xy",
+        "CuNi",
+        "铜镍",
+        "4000原子",
+        "工程应变",
+        "30%",
+        "100000步",
+        "biaxial"
+      ],
+      "commands": [
+        "potential",
+        "velocity",
+        "time_step",
+        "ensemble",
+        "ensemble_standard",
+        "deform",
+        "dump_thermo",
+        "dump_exyz",
+        "dump_restart",
+        "run"
+      ]
+    },
+    {
+      "id": "annealing",
+      "title": "升温—保温—降温退火",
+      "match_terms": [
+        "退火",
+        "升温",
+        "保温",
+        "降温",
+        "冷却",
+        "温度程序",
+        "anneal",
+        "heating",
+        "cooling"
+      ],
+      "files": [
+        "annealing/example.md",
+        "annealing/run.in"
+      ],
+      "command_dependencies": [
+        "potential",
+        "velocity",
+        "time_step",
+        "ensemble",
+        "ensemble_standard",
+        "dump_thermo",
+        "dump_exyz",
+        "dump_restart",
+        "run"
+      ],
+      "path": "annealing/example.md",
+      "description": "零外压下300→1200 K升温、保温、降温，三段各100000步的完整示例。",
+      "tasks": [
+        "退火",
+        "升温",
+        "保温",
+        "降温",
+        "冷却",
+        "温度程序",
+        "anneal",
+        "heating",
+        "cooling"
+      ],
+      "commands": [
+        "potential",
+        "velocity",
+        "time_step",
+        "ensemble",
+        "ensemble_standard",
+        "dump_thermo",
+        "dump_exyz",
+        "dump_restart",
+        "run"
+      ]
+    },
+    {
+      "id": "msd-rdf",
+      "title": "NVT 平衡后 NVE 采集 MSD 与 RDF",
+      "match_terms": [
+        "MSD",
+        "RDF",
+        "均方位移",
+        "扩散",
+        "自扩散",
+        "径向分布",
+        "结构分布",
+        "diffusion"
+      ],
+      "files": [
+        "msd-rdf/example.md",
+        "msd-rdf/run.in"
+      ],
+      "command_dependencies": [
+        "potential",
+        "velocity",
+        "time_step",
+        "ensemble",
+        "ensemble_standard",
+        "compute_msd",
+        "compute_rdf",
+        "dump_thermo",
+        "dump_restart",
+        "run"
+      ],
+      "path": "msd-rdf/example.md",
+      "description": "固定体积NVT平衡后，在NVE生产段计算整体MSD和各元素对RDF。",
+      "tasks": [
+        "MSD",
+        "RDF",
+        "均方位移",
+        "扩散",
+        "自扩散",
+        "径向分布",
+        "结构分布",
+        "diffusion"
+      ],
+      "commands": [
+        "potential",
+        "velocity",
+        "time_step",
+        "ensemble",
+        "ensemble_standard",
+        "compute_msd",
+        "compute_rdf",
+        "dump_thermo",
+        "dump_restart",
+        "run"
+      ]
+    },
+    {
+      "id": "hnemd",
+      "title": "HNEMD：沿 x 驱动的晶格热导率",
+      "match_terms": [
+        "HNEMD",
+        "热导率",
+        "热输运",
+        "晶格热导",
+        "均匀非平衡",
+        "thermal conductivity",
+        "heat transport"
+      ],
+      "files": [
+        "hnemd/example.md",
+        "hnemd/run.in"
+      ],
+      "command_dependencies": [
+        "potential",
+        "velocity",
+        "time_step",
+        "ensemble",
+        "ensemble_standard",
+        "compute_hnemd",
+        "dump_thermo",
+        "dump_restart",
+        "run"
+      ],
+      "path": "hnemd/example.md",
+      "description": "NVT平衡后以Nose-Hoover链控温、沿x施加单一驱动力，采集晶格热导率。",
+      "tasks": [
+        "HNEMD",
+        "热导率",
+        "热输运",
+        "晶格热导",
+        "均匀非平衡",
+        "thermal conductivity",
+        "heat transport"
+      ],
+      "commands": [
+        "potential",
+        "velocity",
+        "time_step",
+        "ensemble",
+        "ensemble_standard",
+        "compute_hnemd",
+        "dump_thermo",
+        "dump_restart",
+        "run"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "kb_version": "0.1",
+  "date": "2026-10-20",
+  "protocol": "Subagents read the existing entry and followed links; no external information or simulations used",
+  "agents": [
+    {
+      "task": "/root/test_npt",
+      "cases": [
+        "N01",
+        "N02",
+        "G01"
+      ],
+      "aggregate_read_files": 20,
+      "aggregate_read_bytes": 46745,
+      "per_case_read_bytes": {
+        "N01": 37616,
+        "N02": 37616,
+        "G01": 38033
+      },
+      "per_case_read_files": {
+        "N01": 16,
+        "N02": 16,
+        "G01": 16
+      },
+      "handoff_complete": {
+        "N01": false,
+        "N02": false,
+        "G01": false
+      }
+    },
+    {
+      "task": "/root/test_tension",
+      "cases": [
+        "T01",
+        "T02",
+        "T03"
+      ],
+      "aggregate_read_files": 14,
+      "aggregate_read_bytes": 36779,
+      "handoff_complete": {
+        "T01": false,
+        "T02": false,
+        "T03": false
+      }
+    },
+    {
+      "task": "/root/audit_design",
+      "role": "Independent design audit",
+      "finding": "Missing operational decision layer, tension branch and behavior-based evaluation"
+    }
+  ],
+  "findings": [
+    "No complete candidate parameter pack for six design cases",
+    "Missing tension route, strain kinematics and transverse constraints",
+    "UNEP candidates leave duration, size, controller moduli and output unresolved",
+    "Pd thermal references do not form a complete proposed path",
+    "Navigation reads many general cautions without closing parameter dependencies"
+  ],
+  "metric_scope": "Knowledge use and design handoff, not scientific validation"
+}

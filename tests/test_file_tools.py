@@ -3,10 +3,48 @@ import json
 from miniclaw.config import workspace_scope
 from miniclaw.tools.file_tools import (
     copy_file_tool,
+    edit_tool,
     make_dir_tool,
     update_json_tool,
     write_json_tool,
 )
+
+
+def test_edit_replaces_one_line_without_rewriting_others(tmp_path):
+    target = tmp_path / "run.in"
+    target.write_text("potential nep.txt\nensemble nvt_nhc 300 300 100\nrun 1000\n", encoding="utf-8")
+    with workspace_scope(tmp_path):
+        result = edit_tool("run.in", "run 1000", "run 2000")
+    assert "Successfully edited" in result
+    assert target.read_text(encoding="utf-8") == "potential nep.txt\nensemble nvt_nhc 300 300 100\nrun 2000\n"
+
+
+def test_edit_rejects_ambiguous_or_partial_line_without_changes(tmp_path):
+    target = tmp_path / "run.in"
+    original = b"run 1000\nrun 1000\nrun 10000\n"
+    target.write_bytes(original)
+    with workspace_scope(tmp_path):
+        assert "more than once" in edit_tool("run.in", "run 1000", "run 2000")
+        assert "not found" in edit_tool("run.in", "run 100", "run 200")
+    assert target.read_bytes() == original
+
+
+def test_edit_multiline_preserves_crlf_and_bom(tmp_path):
+    target = tmp_path / "run.in"
+    target.write_bytes(b"\xef\xbb\xbfpotential nep.txt\r\nensemble nve\r\nrun 1000\r\n")
+    with workspace_scope(tmp_path):
+        result = edit_tool("run.in", "ensemble nve\nrun 1000", "ensemble nvt_nhc 300 300 100\nrun 2000")
+    assert "Successfully edited" in result
+    assert target.read_bytes() == b"\xef\xbb\xbfpotential nep.txt\r\nensemble nvt_nhc 300 300 100\r\nrun 2000\r\n"
+
+
+def test_edit_rejects_path_outside_workspace_and_binary_file(tmp_path):
+    target = tmp_path / "run.in"
+    target.write_bytes(b"a\x00b\n")
+    with workspace_scope(tmp_path):
+        assert "binary" in edit_tool("run.in", "a", "b")
+        assert "must stay inside" in edit_tool("../outside.in", "a", "b")
+    assert target.read_bytes() == b"a\x00b\n"
 
 
 def test_copy_file_copies_between_workspace_locations(tmp_path):

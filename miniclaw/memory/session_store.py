@@ -100,7 +100,7 @@ class SessionStore:
             return
 
         imported = 0
-        for path in legacy_dir.glob("*.json"):
+        for path in legacy_dir.rglob("*.json"):
             try:
                 data = json.loads(path.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, OSError):

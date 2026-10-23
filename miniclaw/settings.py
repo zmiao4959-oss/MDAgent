@@ -213,6 +213,21 @@ class ExecutionConfig:
     """子进程执行配置（execute 工具）"""
     default_timeout_sec: int = 60       # execute 工具默认超时
     max_timeout_sec: int = 900          # execute 工具最大超时
+    shell: str = "auto"               # auto: Windows cmd，其他平台 sh
+
+
+@dataclass
+class GPUMDExecutionConfig:
+    wsl_distribution: str = "Ubuntu-24.04"
+    executable: str = "/home/zm/bin/gpumd"
+
+
+@dataclass
+class SimulationConfig:
+    """Simulation submission with one bounded startup check."""
+    enabled: bool = False
+    submission_check_delay_sec: int = 10
+    targets: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
 
 @dataclass
@@ -347,6 +362,25 @@ class Config:
         self.execution = ExecutionConfig(
             default_timeout_sec=execution_raw.get("default_timeout_sec", 60),
             max_timeout_sec=execution_raw.get("max_timeout_sec", 900),
+            shell=execution_raw.get("shell", "auto"),
+        )
+        gpumd_raw = raw.get("gpumd", {})
+        self.gpumd = GPUMDExecutionConfig(
+            wsl_distribution=str(gpumd_raw.get("wsl_distribution", "Ubuntu-24.04")),
+            executable=str(gpumd_raw.get("executable", "/home/zm/bin/gpumd")),
+        )
+        simulation_raw = raw.get("simulation", {}) or {}
+        simulation_targets = {
+            name: dict(target) for name, target in (simulation_raw.get("targets", {}) or {}).items()
+        }
+        for target in simulation_targets.values():
+            if target.get("scheduler") == "local" and target.get("engine") == "gpumd":
+                target.setdefault("executable", self.gpumd.executable)
+                target.setdefault("wsl_distribution", self.gpumd.wsl_distribution)
+        self.simulation = SimulationConfig(
+            enabled=bool(simulation_raw.get("enabled", False)),
+            submission_check_delay_sec=max(0, min(60, int(simulation_raw.get("submission_check_delay_sec", 10)))),
+            targets=simulation_targets,
         )
         webchat_raw = raw.get("webchat", {})
         self.webchat = WebChatConfig(

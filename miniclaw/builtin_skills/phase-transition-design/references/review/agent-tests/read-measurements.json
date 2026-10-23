@@ -1,0 +1,317 @@
+{
+  "metric": "Declared unique knowledge-file bytes, not API tokens, latency or output length",
+  "baseline": {
+    "kb_version": "0.1",
+    "date": "2026-10-20",
+    "protocol": "Subagents read the existing entry and followed links; no external information or simulations used",
+    "agents": [
+      {
+        "task": "/root/test_npt",
+        "cases": [
+          "N01",
+          "N02",
+          "G01"
+        ],
+        "aggregate_read_files": 20,
+        "aggregate_read_bytes": 46745,
+        "per_case_read_bytes": {
+          "N01": 37616,
+          "N02": 37616,
+          "G01": 38033
+        },
+        "per_case_read_files": {
+          "N01": 16,
+          "N02": 16,
+          "G01": 16
+        },
+        "handoff_complete": {
+          "N01": false,
+          "N02": false,
+          "G01": false
+        }
+      },
+      {
+        "task": "/root/test_tension",
+        "cases": [
+          "T01",
+          "T02",
+          "T03"
+        ],
+        "aggregate_read_files": 14,
+        "aggregate_read_bytes": 36779,
+        "handoff_complete": {
+          "T01": false,
+          "T02": false,
+          "T03": false
+        }
+      },
+      {
+        "task": "/root/audit_design",
+        "role": "Independent design audit",
+        "finding": "Missing operational decision layer, tension branch and behavior-based evaluation"
+      }
+    ],
+    "findings": [
+      "No complete candidate parameter pack for six design cases",
+      "Missing tension route, strain kinematics and transverse constraints",
+      "UNEP candidates leave duration, size, controller moduli and output unresolved",
+      "Pd thermal references do not form a complete proposed path",
+      "Navigation reads many general cautions without closing parameter dependencies"
+    ],
+    "metric_scope": "Knowledge use and design handoff, not scientific validation"
+  },
+  "reports": {
+    "post-npt.json": {
+      "aggregate": {
+        "files": 17,
+        "bytes": 57064,
+        "paths": [
+          "agent-entry.md",
+          "assets/local-inventory.json",
+          "common/capabilities.md",
+          "common/npt-parameters.md",
+          "decisions/calculation.md",
+          "decisions/npt.md",
+          "decisions/parameter-table.md",
+          "decisions/pdcunip.md",
+          "decisions/unep-v1.md",
+          "evidence/C-01-gpumd55.md",
+          "evidence/M-02-barostat.md",
+          "evidence/P-01-local-model.md",
+          "evidence/P-02-paper-protocols.md",
+          "evidence/U-01-local-model.md",
+          "evidence/U-02-paper-scope.md",
+          "potentials/pdcunip/README.md",
+          "potentials/unep-v1/README.md"
+        ]
+      },
+      "per_case": {
+        "N01": {
+          "files": 13,
+          "bytes": 47539,
+          "paths": [
+            "agent-entry.md",
+            "assets/local-inventory.json",
+            "common/capabilities.md",
+            "common/npt-parameters.md",
+            "decisions/calculation.md",
+            "decisions/npt.md",
+            "decisions/parameter-table.md",
+            "decisions/unep-v1.md",
+            "evidence/C-01-gpumd55.md",
+            "evidence/M-02-barostat.md",
+            "evidence/U-01-local-model.md",
+            "evidence/U-02-paper-scope.md",
+            "potentials/unep-v1/README.md"
+          ]
+        },
+        "N02": {
+          "files": 13,
+          "bytes": 47539,
+          "paths": [
+            "agent-entry.md",
+            "assets/local-inventory.json",
+            "common/capabilities.md",
+            "common/npt-parameters.md",
+            "decisions/calculation.md",
+            "decisions/npt.md",
+            "decisions/parameter-table.md",
+            "decisions/unep-v1.md",
+            "evidence/C-01-gpumd55.md",
+            "evidence/M-02-barostat.md",
+            "evidence/U-01-local-model.md",
+            "evidence/U-02-paper-scope.md",
+            "potentials/unep-v1/README.md"
+          ]
+        },
+        "G01": {
+          "files": 13,
+          "bytes": 48300,
+          "paths": [
+            "agent-entry.md",
+            "assets/local-inventory.json",
+            "common/capabilities.md",
+            "common/npt-parameters.md",
+            "decisions/calculation.md",
+            "decisions/npt.md",
+            "decisions/parameter-table.md",
+            "decisions/pdcunip.md",
+            "evidence/C-01-gpumd55.md",
+            "evidence/M-02-barostat.md",
+            "evidence/P-01-local-model.md",
+            "evidence/P-02-paper-protocols.md",
+            "potentials/pdcunip/README.md"
+          ]
+        }
+      }
+    },
+    "post-tension.json": {
+      "aggregate": {
+        "files": 7,
+        "bytes": 24139,
+        "paths": [
+          "agent-entry.md",
+          "decisions/calculation.md",
+          "decisions/parameter-table.md",
+          "decisions/pdcunip.md",
+          "decisions/tension.md",
+          "decisions/unep-v1.md",
+          "evidence/C-02-deformation.md"
+        ]
+      },
+      "per_case": {
+        "T01": {
+          "files": 6,
+          "bytes": 19935,
+          "paths": [
+            "agent-entry.md",
+            "decisions/calculation.md",
+            "decisions/parameter-table.md",
+            "decisions/tension.md",
+            "decisions/unep-v1.md",
+            "evidence/C-02-deformation.md"
+          ]
+        },
+        "T02": {
+          "files": 6,
+          "bytes": 19935,
+          "paths": [
+            "agent-entry.md",
+            "decisions/calculation.md",
+            "decisions/parameter-table.md",
+            "decisions/tension.md",
+            "decisions/unep-v1.md",
+            "evidence/C-02-deformation.md"
+          ]
+        },
+        "T03": {
+          "files": 6,
+          "bytes": 20445,
+          "paths": [
+            "agent-entry.md",
+            "decisions/calculation.md",
+            "decisions/parameter-table.md",
+            "decisions/pdcunip.md",
+            "decisions/tension.md",
+            "evidence/C-02-deformation.md"
+          ]
+        }
+      }
+    },
+    "post-holdouts.json": {
+      "aggregate": {
+        "files": 7,
+        "bytes": 23384,
+        "paths": [
+          "agent-entry.md",
+          "decisions/calculation.md",
+          "decisions/npt.md",
+          "decisions/parameter-table.md",
+          "decisions/tension.md",
+          "decisions/unep-v1.md",
+          "evidence/C-02-deformation.md"
+        ]
+      },
+      "per_case": {
+        "X01": {
+          "files": 6,
+          "bytes": 19935,
+          "paths": [
+            "agent-entry.md",
+            "decisions/calculation.md",
+            "decisions/parameter-table.md",
+            "decisions/tension.md",
+            "decisions/unep-v1.md",
+            "evidence/C-02-deformation.md"
+          ]
+        },
+        "X02": {
+          "files": 6,
+          "bytes": 19935,
+          "paths": [
+            "agent-entry.md",
+            "decisions/calculation.md",
+            "decisions/parameter-table.md",
+            "decisions/tension.md",
+            "decisions/unep-v1.md",
+            "evidence/C-02-deformation.md"
+          ]
+        },
+        "X03": {
+          "files": 4,
+          "bytes": 15146,
+          "paths": [
+            "agent-entry.md",
+            "decisions/npt.md",
+            "decisions/parameter-table.md",
+            "decisions/unep-v1.md"
+          ]
+        },
+        "X04": {
+          "files": 6,
+          "bytes": 19935,
+          "paths": [
+            "agent-entry.md",
+            "decisions/calculation.md",
+            "decisions/parameter-table.md",
+            "decisions/tension.md",
+            "decisions/unep-v1.md",
+            "evidence/C-02-deformation.md"
+          ]
+        }
+      }
+    },
+    "post-fast-route.json": {
+      "aggregate": {
+        "files": 5,
+        "bytes": 20112,
+        "paths": [
+          "agent-entry.md",
+          "decisions/npt.md",
+          "decisions/parameter-table.md",
+          "decisions/pdcunip.md",
+          "decisions/unep-v1.md"
+        ]
+      },
+      "per_case": {
+        "N01": {
+          "files": 4,
+          "bytes": 15908,
+          "paths": [
+            "agent-entry.md",
+            "decisions/npt.md",
+            "decisions/parameter-table.md",
+            "decisions/unep-v1.md"
+          ]
+        },
+        "N02": {
+          "files": 4,
+          "bytes": 15908,
+          "paths": [
+            "agent-entry.md",
+            "decisions/npt.md",
+            "decisions/parameter-table.md",
+            "decisions/unep-v1.md"
+          ]
+        },
+        "G01": {
+          "files": 5,
+          "bytes": 20112,
+          "paths": [
+            "agent-entry.md",
+            "decisions/npt.md",
+            "decisions/parameter-table.md",
+            "decisions/pdcunip.md",
+            "decisions/unep-v1.md"
+          ]
+        }
+      }
+    }
+  },
+  "limitations": [
+    "Self-reported file inventory, not a token profiler",
+    "Small human-designed cases; no repeated randomized A/B test",
+    "Initial and final route manifests distinguish entry revisions",
+    "An agent may share reads across its cases; aggregate and per-case metrics are not interchangeable"
+  ]
+}

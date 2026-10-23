@@ -3,7 +3,9 @@ memory/session.py — 会话管理（消息持久化 + 上下文压缩）
 """
 import json
 import time
+from itertools import chain
 from pathlib import Path
+from urllib.parse import quote
 from typing import List, Dict, Optional, AsyncIterator
 from dataclasses import dataclass, field
 from ..llm.base import LLMMessage
@@ -89,7 +91,29 @@ class SessionManager:
         self.save_dir.mkdir(parents=True, exist_ok=True)
         self._sessions: Dict[str, Session] = {}  # session_id → Session
         self._chat_to_session: Dict[str, str] = {}  # chat_id → session_id
+        self._session_paths: Dict[str, Path] = {}
         self._store = None  # SessionStore 懒加载
+
+    @staticmethod
+    def _component(value: str) -> str:
+        """Escape IDs as single Windows-safe path components without collisions."""
+        name = quote(str(value), safe="").replace(".", "%2E")
+        reserved = {"CON", "PRN", "AUX", "NUL"} | {f"{prefix}{i}" for prefix in ("COM", "LPT") for i in range(1, 10)}
+        if name.upper() in reserved:
+            name = "%" + format(ord(name[0]), "02X") + name[1:]
+        return name or "_global"
+
+    def _json_path(self, session: Session) -> Path:
+        meta = session.metadata
+        root_id = meta.get("root_session_id") or meta.get("parent_session_id") or session.session_id
+        folder = self.save_dir / self._component(meta.get("project_id") or "_global") / self._component(root_id)
+        if meta.get("parent_session_id"):
+            return folder / "subsessions" / (self._component(meta.get("task_id") or session.session_id) + ".json")
+        return folder / "main.json"
+
+    def _legacy_path(self, session_id: str) -> Optional[Path]:
+        path = self.save_dir / f"{session_id.replace(':', '_')}.json"
+        return path if path.resolve().is_relative_to(self.save_dir.resolve()) else None
 
     def _get_store(self):
         """懒加载 SQLite SessionStore。"""
@@ -122,11 +146,16 @@ class SessionManager:
     
     async def save(self, session: Session):
         # ── 始终写 JSON：人类可读，方便溯源 agent 行为 ──
-        path = self.save_dir / f"{session.session_id.replace(':', '_')}.json"
+        path = self._json_path(session)
+        old_path = self._session_paths.get(session.session_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
             json.dumps(session.to_save_dict(), ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
+        self._session_paths[session.session_id] = path
+        if old_path and old_path != path:
+            old_path.unlink(missing_ok=True)
         logger.debug("Session saved → %s (%s messages)", path.name, len(session.messages))
         # ── 同步写 SQLite：加速查询/列表/搜索 ──
         try:
@@ -146,13 +175,16 @@ class SessionManager:
     
     async def load(self, session_id: str) -> Optional[Session]:
         """按 session_id 从 JSON 或 SQLite 加载会话, 并加入内存缓存。"""
-        path = self.save_dir / f"{session_id.replace(':', '_')}.json"
-        if path.exists():
-            data = json.loads(path.read_text(encoding="utf-8"))
-            session = Session.from_save_dict(data)
-            self._sessions[session_id] = session
-            self._chat_to_session[session.chat_id] = session_id
-            return session
+        known = self._session_paths.get(session_id) or self._legacy_path(session_id)
+        paths = chain([known] if known and known.is_file() else [], self.save_dir.rglob("*.json"))
+        for path in paths:
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if data.get("session_id") == session_id:
+                self._session_paths[session_id] = path
+                return self._session_from_dict(data)
         return None
 
     def get_session_by_chat_id(self, chat_id: str) -> Optional[Session]:
@@ -167,7 +199,7 @@ class SessionManager:
         # 1. 先扫描 JSON 目录（主数据源，人类可读）
         best_la = -1.0
         best_sid: Optional[str] = None
-        for path in self.save_dir.glob("*.json"):
+        for path in self.save_dir.rglob("*.json"):
             try:
                 data = json.loads(path.read_text(encoding="utf-8"))
             except Exception:
@@ -181,6 +213,7 @@ class SessionManager:
             if la > best_la:
                 best_la = la
                 best_sid = sid
+                self._session_paths[sid] = path
         if best_sid:
             return await self.load(best_sid)
 
@@ -230,8 +263,8 @@ class SessionManager:
         sid = self._chat_to_session.pop(chat_id, None)
         if sid:
             self._sessions.pop(sid, None)
-            path = self.save_dir / f"{sid.replace(':', '_')}.json"
-            if path.exists():
+            path = self._session_paths.pop(sid, None) or self._legacy_path(sid)
+            if path and path.exists():
                 try:
                     path.unlink()
                 except OSError:
@@ -242,7 +275,7 @@ class SessionManager:
         except Exception:
             pass
         # 清理遗留 JSON 文件
-        for p in self.save_dir.glob("*.json"):
+        for p in self.save_dir.rglob("*.json"):
             try:
                 data = json.loads(p.read_text(encoding="utf-8"))
             except Exception:
@@ -271,7 +304,7 @@ class SessionManager:
                     return ((md.get("content") or "")[:80]).replace("\n", " ")
             return "(空对话)"
 
-        for path in self.save_dir.glob("*.json"):
+        for path in self.save_dir.rglob("*.json"):
             try:
                 data = json.loads(path.read_text(encoding="utf-8"))
             except Exception:

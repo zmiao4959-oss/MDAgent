@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional
 
@@ -10,6 +11,16 @@ from ...viz.constants import SKIP_DIR_NAMES
 
 if TYPE_CHECKING:
     from ...memory.session import SessionManager
+
+
+_FORBIDDEN_FILENAME_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+
+
+def _safe_folder_name(title: str) -> str:
+    """Derive a filesystem-safe folder name from a user-supplied project title."""
+    name = _FORBIDDEN_FILENAME_CHARS.sub("_", title).strip()
+    name = name.rstrip(" .")[:80].rstrip(" .")
+    return name
 
 
 class ProjectWorkspaceService:
@@ -29,11 +40,15 @@ class ProjectWorkspaceService:
         return Path(project.workspace_dir or self.workspace_root).resolve()
 
     def create(self, project: Project) -> Path:
-        workspace = (
-            self.workspace_root
-            / "projects"
-            / project.project_id.replace(":", "_")
-        ).resolve()
+        base = _safe_folder_name(project.title) or project.project_id.replace(":", "_")
+        projects_dir = (self.workspace_root / "projects").resolve()
+        projects_dir.mkdir(parents=True, exist_ok=True)
+        candidate = projects_dir / base
+        index = 2
+        while candidate.exists():
+            candidate = projects_dir / f"{base}-{index}"
+            index += 1
+        workspace = candidate
         workspace.mkdir(parents=True, exist_ok=True)
         self.projects.update(project.project_id, workspace_dir=str(workspace))
         return workspace

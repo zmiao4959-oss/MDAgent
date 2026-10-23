@@ -26,6 +26,19 @@ def register_project_routes(app: Any, adapter: Any) -> None:
         objective = (body.get("objective") or "").strip()
         if not title:
             return {"ok": False, "error": "title is required"}
+        duplicate = next(
+            (
+                project
+                for project in adapter.projects.list()
+                if (project.title or "").strip().lower() == title.lower()
+            ),
+            None,
+        )
+        if duplicate is not None:
+            return {
+                "ok": False,
+                "error": f"已存在同名项目「{duplicate.title}」，请换一个名称。",
+            }
         chat_id = f"webchat:{uuid.uuid4().hex[:10]}"
         session = adapter.session_manager.get_or_create(
             chat_id, "webchat", "local"

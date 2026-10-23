@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-21",
+  "scope": "Least-privilege profile for local phase-transition parameter design; no new registered tools",
+  "profile": "miniclaw/agents/profiles/researcher/agent.yaml",
+  "skills": [
+    "phase-transition-design"
+  ],
+  "tools": [
+    "execute",
+    "read",
+    "read_skill"
+  ],
+  "visible_skills": [
+    "phase-transition-design"
+  ],
+  "removed_tools": [
+    "browser_snapshot",
+    "grep",
+    "list",
+    "search_gpumd_docs",
+    "system_info",
+    "web_search"
+  ],
+  "responsibilities": {
+    "researcher": "Read the bundled Skill and explicit input files, compute scalar parameters using the bundled helper, return a traceable design",
+    "coordinator": "Locate inputs and pass actual paths; arrange necessary specialist checks",
+    "gpumd-generator": "Confirm GPUMD command syntax and prepare inputs"
+  },
+  "tests": {
+    "passed": 29,
+    "total": 29,
+    "narrowed_skill_integration": 15,
+    "existing_profile_tools_prompt_regression": 14,
+    "checks": [
+      "Only one Skill visible",
+      "Unrelated Skill loading rejected",
+      "Six removed tool calls rejected before invocation",
+      "Read and helper execution work in a separate project workspace",
+      "Project writes still rejected"
+    ]
+  },
+  "execution_boundary": "Tool/Skill name allowlists are enforced by existing runtime. Helper-only execute usage is a role/Skill instruction, not a command-level sandbox."
+}

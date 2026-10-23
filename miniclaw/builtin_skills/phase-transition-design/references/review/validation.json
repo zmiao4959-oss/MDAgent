@@ -1,0 +1,35 @@
+{
+  "checked_on": "2026-10-21",
+  "knowledge_version": "0.3",
+  "checks": {
+    "markdown_pages": 34,
+    "catalog_matches": true,
+    "local_markdown_links_checked": 243,
+    "source_records": 18,
+    "locatable_reference_ids": 52,
+    "external_source_urls_listed": 15,
+    "local_reference_hashes_checked": 13,
+    "local_assets_hashes_checked": 14,
+    "inventory_model_files": 11,
+    "inventory_unique_models": 9,
+    "dataset_frames": {
+      "train.xyz": 9615,
+      "test.xyz": 910
+    },
+    "historical_decision_fingerprints_checked": 7,
+    "migration_files_checked": 73,
+    "historical_evaluation_files_preserved": 24
+  },
+  "errors": [],
+  "scope": "Skill navigation, catalog, registered reference IDs, local evidence and migration integrity. Historical evaluations retain their original scope and do not validate the new skill packaging.",
+  "not_evaluated": [
+    "Independent materials-science peer review",
+    "NEP prediction accuracy",
+    "MD convergence or phase transitions",
+    "Runtime execution",
+    "Live-process skill reload",
+    "New blind agent behavior under skill packaging",
+    "Live HTTP availability of every source URL"
+  ],
+  "status": "passed"
+}

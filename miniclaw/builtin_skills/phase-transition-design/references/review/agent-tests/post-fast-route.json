@@ -1,0 +1,826 @@
+{
+  "schema_version": "post-fast-route-1",
+  "task_context": "首次知识库使用者；N01/N02/G01有限探索参数交接",
+  "read_files": [
+    "knowledge/phase-transition/agent-entry.md",
+    "knowledge/phase-transition/decisions/parameter-table.md",
+    "knowledge/phase-transition/decisions/npt.md",
+    "knowledge/phase-transition/decisions/unep-v1.md",
+    "knowledge/phase-transition/decisions/pdcunip.md"
+  ],
+  "extra_read_reasons": [
+    {
+      "file": "knowledge/phase-transition/decisions/pdcunip.md",
+      "trigger": "同一任务另外要求Pd40Cu30Ni10P20玻璃制备/Tg；首轮选择的UNEP包不含P，缺少可用势身份、制备端点、冷速与总预算。最小补读另一体系决策包；未展开证据页、旧专题或资产清单。",
+      "reading_budget": "入口建议4页；本次实际5页。"
+    }
+  ],
+  "common_controls": {
+    "algorithm": {
+      "value": "npt_scr",
+      "status": "CAND",
+      "source_ids": [
+        "D-01",
+        "N-01"
+      ]
+    },
+    "geometry": {
+      "value": "正交 bulk；x/y/z 三向 PBC；三轴独立压控；无剪切自由度",
+      "status": "CAND"
+    },
+    "dt_fs": {
+      "value": 1,
+      "status": "CAND",
+      "source_ids": [
+        "D-01"
+      ]
+    },
+    "coupling": {
+      "tau_T_fs": 100,
+      "tau_P_fs": 1000,
+      "input_tau_T_over_dt": 100,
+      "input_tau_P_over_dt": 1000,
+      "status": "CAND",
+      "source_ids": [
+        "D-01"
+      ],
+      "half_dt_policy": "若 dt 改为0.5 fs，保持物理tau，输入改为200/2000，所有steps与输出步间隔重新闭合。"
+    },
+    "control_moduli_GPa": {
+      "value": [
+        100,
+        100,
+        100
+      ],
+      "status": "CAND",
+      "source_ids": [
+        "D-01"
+      ],
+      "meaning": "压控器粗略控制尺度，不是测得的材料弹性常数。"
+    },
+    "seed": {
+      "velocity": 20261020,
+      "model_randomness": 20261020,
+      "repeat_control": 20261021,
+      "status": "CAND",
+      "source_ids": [
+        "D-02"
+      ],
+      "policy": "仅新模型初次初始化速度；连续阶段传递正式restart及速度，不逐温度重置。不同随机用途记录独立流。"
+    },
+    "plateau_output": {
+      "thermo_steps": 100,
+      "trajectory_steps": 1000,
+      "thermo_interval_ps": 0.1,
+      "trajectory_interval_ps": 1,
+      "restart": "每段末保存；每段重新声明输出",
+      "status": "CAND",
+      "source_ids": [
+        "D-03"
+      ]
+    },
+    "output_provenance": "每段保存stage_id、dt、起始物理时刻、实际首输出步/时刻、输出间隔及restart来源；不能默认首帧为t=0。thermo保存实际T、U、压力张量、V/盒长。",
+    "health_screen": {
+      "status": "CHECK_PENDING",
+      "source_ids": [
+        "D-04"
+      ],
+      "definition": "固定平台末两个相邻20 ps窗；T均值误差≤max(5 K,2%T)，P均值误差≤max(0.1 GPa,2%|P|)，两窗V均值相对差≤0.5%，每原子U均值差≤0.005 eV。它是工程筛查，不是遍历性或平衡证明。",
+      "limitation": "尚未确认thermo温压窗统计和置信区间专用工具；不由LLM扫表补算。已有U/V摘要仅在对应工具确实提供时使用。"
+    },
+    "execution_state": "仅依据知识页给出设计；未生成模型、核验势文件哈希、生成输入、运行MD或执行统计/分析。"
+  },
+  "results": [
+    {
+      "id": "N01",
+      "answer_markdown": "保留用户指定的UNEP-v1、Cu50Ni50、300 K、0 GPa，提出FCC随机替换单晶4000原子（Cu/Ni各2000）、三向周期正交盒作为明确基线。以1 fs的npt_scr运行100 ps预平衡＋100 ps生产，最多追加一次100 ps预平衡。输出PTM（cutoff 0.1）、U/V及总RDF，报告生产区间结构表现；不能据未发生事件证明普遍稳定性，也不能用晶格标签判断化学有序。建模时的晶格常数和正式盒长等待model-worker/runner给出，参数设计可交接。",
+      "parameters": {
+        "controls_ref": "common_controls",
+        "potential": {
+          "id": "UNEP-v1",
+          "path": "16元/UNEP-v1-main.txt",
+          "sha256": "8f97c30cc366c30e687a8672bd8d76e624a16caf4337b1277a44aa166c5bceb4",
+          "identity_status": "FILE（知识页登记；本次未重新计算文件hash）",
+          "selection_status": "USER",
+          "element_coverage": "Cu/Ni均在该势元素表中",
+          "source_ids": [
+            "U-01"
+          ]
+        },
+        "composition": {
+          "atomic_percent": {
+            "Cu": 50,
+            "Ni": 50
+          },
+          "counts": {
+            "Cu": 2000,
+            "Ni": 2000
+          },
+          "composition_status": "USER",
+          "counts_status": "CALC"
+        },
+        "initial_state": {
+          "structure": "FCC随机替换单晶",
+          "orientation": "[100]//x，[010]//y，[001]//z",
+          "replication": [
+            10,
+            10,
+            10
+          ],
+          "atoms_per_cell": 4,
+          "N": 4000,
+          "status": "CAND",
+          "cell_lengths_A": "Lx=Ly=Lz=10a；a由model-worker给出并记录（RUNTIME）",
+          "source_ids": [
+            "U-D01"
+          ]
+        },
+        "boundary": "x/y/z PBC，正交盒；独立调节三轴盒长",
+        "thermodynamic_targets": {
+          "T_K": 300,
+          "P_GPa": [
+            0,
+            0,
+            0
+          ],
+          "status": "USER"
+        },
+        "stages": [
+          {
+            "id": "N01-eq",
+            "T_start_K": 300,
+            "T_end_K": 300,
+            "P_GPa": [
+              0,
+              0,
+              0
+            ],
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "velocity": "模型新建后按common_controls种子初始化一次"
+          },
+          {
+            "id": "N01-prod",
+            "T_start_K": 300,
+            "T_end_K": 300,
+            "P_GPa": [
+              0,
+              0,
+              0
+            ],
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "velocity": "继承N01-eq正式restart"
+          },
+          {
+            "id": "N01-eq-extra",
+            "conditional": "仅末窗健康筛查不满足时，在生产前最多追加一次；仍不满足则停并报告",
+            "T_start_K": 300,
+            "T_end_K": 300,
+            "P_GPa": [
+              0,
+              0,
+              0
+            ],
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "velocity": "继承正式restart"
+          }
+        ],
+        "budget": {
+          "initial_ps": 200,
+          "initial_steps": 200000,
+          "max_ps": 300,
+          "max_steps": 300000,
+          "status": "CAND/CALC",
+          "source_ids": [
+            "D-02",
+            "N-01",
+            "U-D01"
+          ]
+        },
+        "analysis": {
+          "PTM_cutoff": 0.1,
+          "PTM_status": "CAND",
+          "quantities": [
+            "PTM各标签比例（固定模板）",
+            "生产段100 ps内U/V与可用区间摘要",
+            "总RDF逐帧"
+          ],
+          "criterion": "比较结构比例、U/V与时间演变；健康筛查只判断候选运行状态。化学有序需要额外化学有序指标。",
+          "source_ids": [
+            "D-03",
+            "D-04",
+            "N-01",
+            "U-D01"
+          ]
+        }
+      },
+      "parameter_status": {
+        "USER": [
+          "势选择",
+          "成分",
+          "T/P"
+        ],
+        "FILE": [
+          "知识页登记势路径、hash、元素覆盖"
+        ],
+        "CAND": [
+          "FCC制备假设",
+          "取向/复制数/N",
+          "公共数值控制",
+          "种子/输出/时长",
+          "PTM阈值"
+        ],
+        "CALC": [
+          "2000/2000计数",
+          "时间与步数、输出物理间隔",
+          "L=10a表达式"
+        ],
+        "RUNTIME": [
+          "a/真实模型/正式平衡盒长"
+        ],
+        "CHECK_PENDING": [
+          "健康筛查、结构分析"
+        ],
+        "BLOCK": []
+      },
+      "source_ids": [
+        "U-01",
+        "U-D01",
+        "N-01",
+        "D-01",
+        "D-02",
+        "D-03",
+        "D-04",
+        "D-08"
+      ],
+      "questions": [],
+      "runtime_dependencies": [
+        {
+          "owner": "model-worker",
+          "required": "构建上述FCC随机合金，回报a的选择依据、真实计数/N/PBC/取向、模型路径与随机化记录。"
+        },
+        {
+          "owner": "generator",
+          "required": "读取实际模型与势并核对hash/元素；按阶段生成输入，独立约200步流程试跑不得作为平衡；报告具体后端可接受的npt_scr与三轴控制语法。"
+        },
+        {
+          "owner": "runner",
+          "required": "依赖正式restart串联阶段，绑定实际盒长和阶段时间映射；完成后才判断是否调用有限追加。"
+        },
+        {
+          "owner": "postprocessor",
+          "required": "执行已支持PTM/U/V/RDF；统计能力不足项保持CHECK_PENDING。"
+        }
+      ],
+      "handoff_status": {
+        "parameter_design": "DESIGN_READY",
+        "model_and_execution": "RUNTIME_PENDING",
+        "health_analysis": "CHECK_PENDING",
+        "scientific_conclusion": "待执行数据与分析"
+      },
+      "capability_gaps": [
+        "未确认thermo温压窗口统计/置信区间工具，不能声称平衡筛查通过。",
+        "同晶格的化学有序不能由PTM判定；4000原子单晶和200–300 ps不证明尺寸/时长收敛或普遍稳定相。"
+      ],
+      "used_files": [
+        "knowledge/phase-transition/agent-entry.md",
+        "knowledge/phase-transition/decisions/parameter-table.md",
+        "knowledge/phase-transition/decisions/npt.md",
+        "knowledge/phase-transition/decisions/unep-v1.md"
+      ]
+    },
+    {
+      "id": "N02",
+      "answer_markdown": "保留UNEP-v1与纯Ti。以HCP正交周期bulk、0 GPa作探索假设：300 K 100 ps，300→800 K 100 ps，再依次800至1500 K每100 K一平台，各100 ps适应＋100 ps采样。实验热化学先验1166 K只用于选区，不是该势预测。初始1.8 ns/180万步；仅在一个出现候选事件的100 K邻区插入三个25 K节点，连同全程最多100 ps适应延长，封顶2.5 ns/250万步。观察HCP/BCC与U/V；当前设计不是平衡α/β相界测量。",
+      "parameters": {
+        "controls_ref": "common_controls",
+        "potential": {
+          "id": "UNEP-v1",
+          "path": "16元/UNEP-v1-main.txt",
+          "sha256": "8f97c30cc366c30e687a8672bd8d76e624a16caf4337b1277a44aa166c5bceb4",
+          "selection_status": "USER",
+          "identity_status": "FILE（知识页登记；未重算hash）",
+          "source_ids": [
+            "U-01"
+          ]
+        },
+        "composition": {
+          "atomic_percent": {
+            "Ti": 100
+          },
+          "counts": {
+            "Ti": 10080
+          },
+          "composition_status": "USER",
+          "counts_status": "CALC"
+        },
+        "initial_state": {
+          "structure": "HCP单晶；4原子正交胞14×15×12",
+          "N": 10080,
+          "orientation": "c轴[0001]//z；基面晶格矢量a沿x，正交的基面方向沿y",
+          "cell_lengths_A": "Lx=14a，Ly=15√3a，Lz=12c；a/c由model-worker选择并报告（RUNTIME）",
+          "status": "CAND",
+          "source_ids": [
+            "U-D02"
+          ],
+          "note": "将约10000原子落实为兼容正交HCP超胞的具体建模提案；模型工人需核实构造与实际计数。"
+        },
+        "boundary": "三向PBC，正交盒，三轴独立0 GPa；无剪切自由度",
+        "thermodynamic_targets": {
+          "P_GPa": [
+            0,
+            0,
+            0
+          ],
+          "status": "CAND",
+          "prior": {
+            "alpha_beta_K": 1166,
+            "prior_pressure_MPa": 0.1,
+            "status": "LIT",
+            "source_ids": [
+              "U-D02"
+            ],
+            "interpretation": "NIST-JANAF先验由决策包转述，未额外读取原表；0 GPa是近常压探索候选，不能把压力差抹去。"
+          }
+        },
+        "stages": [
+          {
+            "id": "Ti-300",
+            "T_start_K": 300,
+            "T_end_K": 300,
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "velocity": "新建HCP模型仅在本段初始化速度"
+          },
+          {
+            "id": "Ti-ramp-800",
+            "T_start_K": 300,
+            "T_end_K": 800,
+            "duration_ps": 100,
+            "run_steps": 100000,
+            "nominal_heating_K_s": 5000000000000,
+            "velocity": "继承Ti-300正式restart"
+          },
+          {
+            "id_pattern": "Ti-{T}-adapt",
+            "T_K": [
+              800,
+              900,
+              1000,
+              1100,
+              1200,
+              1300,
+              1400,
+              1500
+            ],
+            "per_node_ps": 100,
+            "per_node_steps": 100000,
+            "count": 8,
+            "velocity": "沿升温路径传递前一正式restart"
+          },
+          {
+            "id_pattern": "Ti-{T}-sample",
+            "T_K": [
+              800,
+              900,
+              1000,
+              1100,
+              1200,
+              1300,
+              1400,
+              1500
+            ],
+            "per_node_ps": 100,
+            "per_node_steps": 100000,
+            "count": 8,
+            "velocity": "继承同温适应段正式restart"
+          },
+          {
+            "id": "Ti-refinement",
+            "conditional": "只选择一个相邻100 K候选事件区间；从下端正式restart另建分支，按升温顺序插入内部节点",
+            "T_K_formula": [
+              "Tlow+25",
+              "Tlow+50",
+              "Tlow+75"
+            ],
+            "per_node_adapt_ps": 100,
+            "per_node_sample_ps": 100,
+            "per_node_steps": 200000,
+            "added_ps": 600,
+            "added_steps": 600000,
+            "max_occurrences": 1
+          },
+          {
+            "id": "Ti-adapt-extra",
+            "conditional": "全流程适应延长总量最多100 ps；仍不满足则报告，不继续加时",
+            "duration_ps": 100,
+            "run_steps": 100000
+          }
+        ],
+        "stages_common": {
+          "P_GPa": [
+            0,
+            0,
+            0
+          ],
+          "controls_ref": "common_controls",
+          "output": "thermo100步/轨迹1000步，各段末restart；每个温度独立目录；记录实际T及正式阶段映射",
+          "status": "CAND"
+        },
+        "budget": {
+          "initial_ps": 1800,
+          "initial_steps": 1800000,
+          "max_ps": 2500,
+          "max_steps": 2500000,
+          "status": "CAND/CALC",
+          "source_ids": [
+            "U-D02",
+            "N-02"
+          ]
+        },
+        "analysis": {
+          "PTM_cutoff": 0.1,
+          "quantities": [
+            "HCP/BCC比例",
+            "U/V及可用区间摘要"
+          ],
+          "candidate_event": "相邻采样平台主要标签比例变化≥0.10，或U/V出现需核查的路径变化；门槛是定位政策，不是相变证明。",
+          "no_signal": "报告800–1500 K本路径与有限时长内未见候选信号；不自动拓温区。",
+          "source_ids": [
+            "N-02",
+            "U-D02",
+            "D-03",
+            "D-04"
+          ]
+        }
+      },
+      "parameter_status": {
+        "USER": [
+          "势选择",
+          "纯Ti"
+        ],
+        "FILE": [
+          "登记势身份及Ti覆盖"
+        ],
+        "LIT": [
+          "1166 K、0.1 MPa实验热化学先验，仅据U-D02转述"
+        ],
+        "CAND": [
+          "HCP初态/取向/10080原子建模假设",
+          "0 GPa与完整温度路径",
+          "公共控制/种子/输出",
+          "平台时长、局部加密与100 ps延长上限",
+          "候选事件门槛"
+        ],
+        "CALC": [
+          "4×14×15×12=10080",
+          "阶段步数与1.8/2.5 ns总预算",
+          "升温段5×10^12 K/s"
+        ],
+        "RUNTIME": [
+          "a/c、实际模型、真实初态与正式restart"
+        ],
+        "CHECK_PENDING": [
+          "平台健康筛查、结构/热力学候选事件"
+        ],
+        "BLOCK": []
+      },
+      "source_ids": [
+        "U-01",
+        "U-D02",
+        "N-02",
+        "N-03",
+        "D-01",
+        "D-02",
+        "D-03",
+        "D-04",
+        "D-08"
+      ],
+      "questions": [],
+      "runtime_dependencies": [
+        {
+          "owner": "model-worker",
+          "required": "按4原子正交HCP胞14×15×12构造纯Ti10080原子，验证N、无重叠、取向、a/c与PBC，回报真实模型；若构造不支持，不静默换成其他初态。"
+        },
+        {
+          "owner": "generator/runner",
+          "required": "按每温度独立目录执行restart路径并记录实际温度；短流程试跑与正式采样隔离。仅在已有分析支持候选事件定位后选定唯一加密邻区。"
+        },
+        {
+          "owner": "postprocessor",
+          "required": "计算HCP/BCC与U/V；温压窗统计无可用工具时标CHECK_PENDING；不能将1166 K当模拟结果。"
+        }
+      ],
+      "handoff_status": {
+        "parameter_design": "DESIGN_READY",
+        "model_and_execution": "RUNTIME_PENDING",
+        "health_analysis": "CHECK_PENDING",
+        "equilibrium_phase_boundary": "UNSUPPORTED（此方案/工具范围不足）"
+      },
+      "capability_gaps": [
+        "当前正交盒/固定PTM初筛不足以覆盖剪切转变路径、ω相或精确相界。",
+        "未做回程、不同初态/尺寸与统计收敛；不能宣称平衡α/β相界。",
+        "温压窗口统计与置信区间工具尚未确认。"
+      ],
+      "used_files": [
+        "knowledge/phase-transition/agent-entry.md",
+        "knowledge/phase-transition/decisions/parameter-table.md",
+        "knowledge/phase-transition/decisions/npt.md",
+        "knowledge/phase-transition/decisions/unep-v1.md"
+      ]
+    },
+    {
+      "id": "G01",
+      "answer_markdown": "为Pd40Cu30Ni10P20选择包含P的PdCuNiP/nep4.txt，提出13500原子正交三向周期bulk。先在2500 K、0 GPa准备/观察1 ns，再以2×10^12 K/s冷却至300 K（1.1 ns），末态观察100 ps；快速首轮共2.2 ns/220万步，最多追加一次高温1 ns。并完整提供2×10^10 K/s参照：冷却110 ns，总111.1 ns/1.111亿步。2500 K是否为合格液体必须实际检查；快速路径和慢速候选均不是完整论文复现。数据可交接生成，但精确Tg及不确定度、充分玻璃判定存在分析缺口，不能目测补值。",
+      "parameters": {
+        "controls_ref": "common_controls",
+        "potential": {
+          "id": "Pd–Cu–Ni–P NEP4",
+          "path": "PdCuNiP/nep4.txt",
+          "sha256": "aec2bc972783f58e523c90574a96ebaad6b37a29bc3853e16099d4d43af96ad8",
+          "selection_status": "CAND",
+          "identity_status": "FILE（知识页登记；未重算hash）",
+          "element_coverage": [
+            "Pd",
+            "Cu",
+            "Ni",
+            "P"
+          ],
+          "source_ids": [
+            "P-01"
+          ],
+          "excluded_alternative": "UNEP-v1不含P，不能用于此成分。"
+        },
+        "composition": {
+          "atomic_percent": {
+            "Pd": 40,
+            "Cu": 30,
+            "Ni": 10,
+            "P": 20
+          },
+          "counts": {
+            "Pd": 5400,
+            "Cu": 4050,
+            "Ni": 1350,
+            "P": 2700
+          },
+          "composition_status": "USER",
+          "counts_status": "CALC"
+        },
+        "initial_state": {
+          "N": 13500,
+          "N_status": "CAND",
+          "structure": "由model-worker构建含确切计数的初始混合体系，并执行候选高温准备；初始非晶/液态性质不能预设",
+          "orientation": "无指定晶向；bulk高温液态目标不定义单晶取向",
+          "box": "正交三向PBC；尺寸/初始密度、构建方法与最小间距由专业建模角色给出并记录",
+          "status": "RUNTIME",
+          "source_ids": [
+            "P-D01"
+          ]
+        },
+        "thermodynamic_targets": {
+          "P_GPa": [
+            0,
+            0,
+            0
+          ],
+          "T_high_K": 2500,
+          "T_low_K": 300,
+          "status": "CAND",
+          "provenance": "2500 K来自独立结构验证分支；完整三阶段路径是新候选。",
+          "source_ids": [
+            "P-D02",
+            "P-02"
+          ]
+        },
+        "fast": {
+          "selected": true,
+          "cooling_rate_K_s": 2000000000000,
+          "rate_status": "CAND",
+          "stages": [
+            {
+              "id": "Pd-hot",
+              "T_start_K": 2500,
+              "T_end_K": 2500,
+              "duration_ps": 1000,
+              "run_steps": 1000000,
+              "thermo_steps": 100,
+              "trajectory_steps": 1000,
+              "velocity": "新模型首次初始化；之后继承restart"
+            },
+            {
+              "id": "Pd-fast-cool",
+              "T_start_K": 2500,
+              "T_end_K": 300,
+              "duration_ps": 1100,
+              "run_steps": 1100000,
+              "thermo_steps": 500,
+              "trajectory_steps": 2500,
+              "thermo_delta_target_T_K": 1,
+              "trajectory_delta_target_T_K": 5,
+              "velocity": "继承合格高温正式restart"
+            },
+            {
+              "id": "Pd-end",
+              "T_start_K": 300,
+              "T_end_K": 300,
+              "duration_ps": 100,
+              "run_steps": 100000,
+              "thermo_steps": 100,
+              "trajectory_steps": 1000,
+              "velocity": "继承冷却末态restart"
+            }
+          ],
+          "budget": {
+            "initial_ps": 2200,
+            "initial_steps": 2200000,
+            "max_ps": 3200,
+            "max_steps": 3200000
+          },
+          "interpretation": "快速路径检查制备与数据流程；Tg与结构不得直接等同文献冷速结果。"
+        },
+        "slow_reference": {
+          "selected": false,
+          "cooling_rate_K_s": 20000000000,
+          "rate_status": "LIT（匹配论文报告冷速）；将其用于本候选端点是CAND",
+          "stages": [
+            {
+              "id": "Pd-hot-slow",
+              "T_start_K": 2500,
+              "T_end_K": 2500,
+              "duration_ps": 1000,
+              "run_steps": 1000000,
+              "thermo_steps": 100,
+              "trajectory_steps": 1000
+            },
+            {
+              "id": "Pd-slow-cool",
+              "T_start_K": 2500,
+              "T_end_K": 300,
+              "duration_ps": 110000,
+              "run_steps": 110000000,
+              "thermo_steps": 1000,
+              "trajectory_steps": 250000,
+              "thermo_delta_target_T_K": 0.02,
+              "trajectory_delta_target_T_K": 5
+            },
+            {
+              "id": "Pd-end-slow",
+              "T_start_K": 300,
+              "T_end_K": 300,
+              "duration_ps": 100,
+              "run_steps": 100000,
+              "thermo_steps": 100,
+              "trajectory_steps": 1000
+            }
+          ],
+          "budget": {
+            "initial_ps": 111100,
+            "initial_steps": 111100000,
+            "max_ps": 112100,
+            "max_steps": 112100000
+          },
+          "interpretation": "同端点参照冷速的完整成本；端点制备、控制细节与Tg拟合未匹配，不能称完整论文复现。"
+        },
+        "bounded_extension": {
+          "id": "Pd-hot-extra",
+          "condition": "高温实际状态或健康检查不满足时，最多追加一次2500 K、0 GPa的1 ns/1000000步；仍不合格停止，不能盲目冷却并称制备成功。",
+          "thermo_steps": 100,
+          "trajectory_steps": 1000,
+          "status": "CAND",
+          "source_ids": [
+            "P-D02"
+          ]
+        },
+        "numerical_validation_budget": {
+          "required_by_this_design": false,
+          "conditional_candidate": "若高温数值表现需核查，可另做一次1/0.5 fs、各10 ps对照；tau保持100/1000 fs，输入比值分别100/1000与200/2000。",
+          "steps_1fs": 10000,
+          "steps_0_5fs": 20000,
+          "max_extra_steps": 30000,
+          "fast_max_with_check_steps": 3230000,
+          "slow_max_with_check_steps": 112130000,
+          "source_ids": [
+            "D-05"
+          ],
+          "status": "CAND；未执行",
+          "failure_policy": "若需改生产dt，先重新闭合全部阶段步数及输出频率；不沿用原总步数。"
+        },
+        "analysis": {
+          "quantities": [
+            "实际T、U、P、V/盒长",
+            "U/V随实际温度数据",
+            "固定口径的PTM/总RDF温度切片"
+          ],
+          "Tg_definition": "未来具备工具后，以冷却时实际T对齐的U(T)/V(T)高低温支路分段拟合交点或变点定位，明确拟合窗、算法与置信区间；U和V结果交叉核查；当前不输出Tg数值。",
+          "glass_requirement": "缺少充分玻璃判定能力，Other≈100%不足以证明玻璃；必须核查液态准备和末态结构，必要的动力学另设计。",
+          "trajectory_limit": "冷却结构轨迹约440帧；此稀疏输出不可直接用于可靠PBC展开MSD/扩散，运动学需另留高频连续窗口并预算。",
+          "source_ids": [
+            "P-D03",
+            "P-D02",
+            "N-04",
+            "D-03",
+            "D-04"
+          ]
+        }
+      },
+      "parameter_status": {
+        "USER": [
+          "Pd40Cu30Ni10P20成分"
+        ],
+        "FILE": [
+          "Pd势路径/hash/元素覆盖（知识页登记）"
+        ],
+        "LIT": [
+          "2×10^10 K/s文献参照冷速；2500 K的独立结构验证来源"
+        ],
+        "CAND": [
+          "势选择",
+          "N13500",
+          "三向周期bulk",
+          "2500/300 K及0 GPa",
+          "公共控制/种子/各阶段时长",
+          "快速冷速及两种完整候选路径",
+          "输出与可选步长对照"
+        ],
+        "CALC": [
+          "元素整数计数",
+          "冷却时间1.1/110 ns及阶段总步数",
+          "输出对应1/0.02 K thermo与5 K结构温度间隔",
+          "最大预算"
+        ],
+        "RUNTIME": [
+          "初始构型/密度/盒长/构建可行性",
+          "实际高温液态与restart",
+          "真实温度对应的分析数据"
+        ],
+        "CHECK_PENDING": [
+          "健康筛查、热态/末态结构核查"
+        ],
+        "BLOCK": [
+          "精确Tg/不确定度及完整玻璃判定缺对应分析能力"
+        ]
+      },
+      "source_ids": [
+        "P-01",
+        "P-02",
+        "P-D01",
+        "P-D02",
+        "P-D03",
+        "N-03",
+        "N-04",
+        "D-01",
+        "D-02",
+        "D-03",
+        "D-04",
+        "D-05",
+        "D-08",
+        "U-01"
+      ],
+      "questions": [],
+      "runtime_dependencies": [
+        {
+          "owner": "model-worker",
+          "required": "按精确元素计数生成可用正交PBC混合模型，报告构建方法/密度/最小间距/真实结构及种子；现有核心页未提供可直接引用的具体初始化几何数值，不能捏造。"
+        },
+        {
+          "owner": "generator/runner",
+          "required": "核对实际势hash/元素与模型，执行2500 K准备和有限追加规则；合格高温restart才接所选冷却方案，随后300 K观察；每段记录输出/时间映射。"
+        },
+        {
+          "owner": "postprocessor",
+          "required": "生成已支持U/V、结构曲线及摘要；保存原始实际T/热力学信息供后续联合转换及Tg拟合。"
+        },
+        {
+          "owner": "分析能力补充角色",
+          "required": "提供thermo–轨迹温度联合转换、Tg拟合/置信区间和充分玻璃判定，完成后才可给正式Tg。"
+        }
+      ],
+      "handoff_status": {
+        "parameter_design": "DESIGN_READY（数据生成候选）",
+        "model_and_execution": "RUNTIME_PENDING",
+        "Tg_fit": "UNSUPPORTED（当前工具缺口）",
+        "glass_confirmation": "CHECK_PENDING/部分UNSUPPORTED",
+        "health_analysis": "CHECK_PENDING"
+      },
+      "capability_gaps": [
+        "缺Tg自动拟合、实际T联合对齐与不确定度工具，不能目测/手算生成精确Tg。",
+        "完整玻璃判定未提供；PTM Other标签不等于玻璃。",
+        "尚未确认高温液态充分性/温压窗口统计专用能力；2500 K、1 ns只是候选，不保证已熔化或平衡。",
+        "初始模型具体构建方法和几何由上游能力落实；13500原子不证明尺寸收敛。",
+        "稀疏结构切片不支持可靠扩散/MSD结论。"
+      ],
+      "used_files": [
+        "knowledge/phase-transition/agent-entry.md",
+        "knowledge/phase-transition/decisions/parameter-table.md",
+        "knowledge/phase-transition/decisions/npt.md",
+        "knowledge/phase-transition/decisions/pdcunip.md",
+        "knowledge/phase-transition/decisions/unep-v1.md"
+      ]
+    }
+  ],
+  "questions_policy": "没有把dt、tau、输出或候选时长交给用户代选；全部研究初态/边界假设已显式标CAND。当前无必须回答才可准备输入的问题；若用户改变研究对象，再重拟对应假设。",
+  "evidence_limits": "所有hash与文献信息仅据上述实际读取决策页登记/转述；未额外读取证据原页、原论文或外部网页；未假报运行验证。"
+}

@@ -1,0 +1,561 @@
+{
+  "kb_version": "v0.2（agent-entry.md）",
+  "test_role": "独立研究设计 agent；新请求回归测试，未读取 review/答案、夹具、baseline 或其他 agent 报告；未联网、未启动 MD、未修改知识内容。",
+  "cases": [
+    {
+      "case_id": "X01",
+      "answer_markdown": "可以直接闭合加载参数。保留 UNEP-v1、Cu50Ni50、300 K、三向周期正交 bulk、xy 两轴相同工程应变 0.30、dt=1 fs、加载 100000 步、z 横压 0 GPa。正式预平衡参考已经测得 Lx0=35 Å、Ly0=36 Å，直接使用这两个参考，不再询问参考盒长，也不重做正式预平衡。已有模型的原子数、初相、晶向和速度沿用原状态，不为符合默认建模候选而重建。\n\n加载持续 100000×1 fs=100 ps；每轴恒工程应变率均为 0.30/(100 ps)=3×10^9 s^-1。每步 ΔLx=0.30×35/100000=0.000105 Å，ΔLy=0.30×36/100000=0.000108 Å。两轴增量不同，才能使工程应变相同；终点 Lx=45.5 Å、Ly=46.8 Å。六参数 deform 可表达为 `deform 0.000105 0.000108 0 1 1 0`。x/y 由长度路径驱动，不能称为 x/y 同时零应力；z 独立控压目标 0 GPa，允许 Lz 响应。\n\n数值候选采用 npt_scr，tauT=100 fs、tauP=1000 fs，因此本次 T_coup=100、P_coup=1000；控制模量先用 100/100/100 GPa，作为控制尺度而非材料弹性常数。保留已有速度；若生成器另需随机数种子，采用候选 20261020，不因此重新初始化速度。\n\n按 thermo Δε≤10^-5、轨迹 Δε≤10^-4 的候选分辨率，单步 Δε=3×10^-6，因此 thermo 每 3 步、轨迹每 33 步。实际分别为 0.003 ps/9×10^-6 和 0.033 ps/9.9×10^-5；100/1000 步的普通默认在本任务下不满足应变分辨率。保留压力张量、U/K、盒矢量、轨迹、正式参考和阶段末 restart。若输出从加载开始重新计数，首个实际输出应核查为第 3/33 步；不能假设有 t=0 帧。由于 100000 不能被 3 或 33 整除，末次周期输出分别是第 99999 和 99990 步；用末态 restart 保存精确终点，必要时另保存末态快照。\n\n参数设计为 DESIGN_READY，当前 x/xy helper 的轴范围与本题相容。正式运行仍由 generator 绑定对应的同一份正式 restart、保留速度并核实模型和边界，runner 再执行。初始预算只有这段 100 ps 加载，追加预平衡为 0；流程短试跑应独立目录且保持正式速率。可预先提出一次相同物理时间 10 ps 的 1/0.5 fs 数值对照（最多额外 20 ps，保持 tau 和物理速率），不擅自更改本次用户锁定的正式步数；流程失败或数值发散即停止排查。健康筛查需要实际统计工具，未执行不声称通过。原始压力可按拉伸为正写 σii=-Pii，这是当前截面口径；完整工程应力转换和转变应变判据仍缺专用能力。",
+      "parameters": {
+        "potential": "UNEP-v1",
+        "composition": "Cu50Ni50",
+        "temperature_K": 300,
+        "boundary": "USER：bulk PBC、三向周期；正交盒为本分支适用假设，generator 核实实际盒型",
+        "model_policy": "沿用正式预平衡模型、初相、晶向、原子数和已有速度",
+        "dt_fs": 1,
+        "strain_definition": "engineering",
+        "axes": [
+          "x",
+          "y"
+        ],
+        "strain_end": 0.3,
+        "rate_s_inv": 3000000000,
+        "load_duration_ps": 100,
+        "load_steps": 100000,
+        "tau_T_fs": 100,
+        "tau_P_fs": 1000,
+        "T_coup": 100,
+        "P_coup": 1000,
+        "algorithm": "npt_scr",
+        "control_moduli_GPa": {
+          "x": 100,
+          "y": 100,
+          "z": 100
+        },
+        "reference_status": "KNOWN_USER：正式预平衡参考已测，不再询问；使用同一盒子的正式 restart",
+        "reference_lengths_A": {
+          "x": 35,
+          "y": 36
+        },
+        "increment_A_per_step": {
+          "x": 0.000105,
+          "y": 0.000108,
+          "z": 0
+        },
+        "final_lengths_A": {
+          "x": 45.5,
+          "y": 46.8
+        },
+        "deform_input": "deform 0.000105 0.000108 0 1 1 0",
+        "axis_constraints": {
+          "x": "规定工程长度路径，压力为响应",
+          "y": "规定工程长度路径，压力为响应",
+          "z": "目标 Pz=0 GPa；盒长自由响应"
+        },
+        "helper_compatible": true,
+        "seed": 20261020,
+        "velocity_policy": "保留已有速度；seed 为需要另设随机数控制时的候选，不触发重新分配速度",
+        "relax_ps": 0,
+        "thermo_interval_steps": 3,
+        "trajectory_interval_steps": 33,
+        "thermo_interval_ps": 0.003,
+        "trajectory_interval_ps": 0.033,
+        "thermo_strain_resolution": 0.000009,
+        "trajectory_strain_resolution": 0.000099,
+        "restart": "加载末态及正式参考；保存阶段时间与输出映射",
+        "initial_budget_ps": 100,
+        "max_added_validation_ps": 20,
+        "validation_plan": "仅独立短试跑与必要的 1/0.5 fs 各 10 ps 数值初筛；不改变正式用户加载条件；失败即停"
+      },
+      "parameter_status": {
+        "potential": "USER",
+        "composition": "USER",
+        "temperature_K": "USER",
+        "boundary": "USER",
+        "model_policy": "USER",
+        "dt_fs": "USER",
+        "strain_definition": "USER",
+        "axes": "USER",
+        "strain_end": "USER",
+        "rate_s_inv": "CALC",
+        "load_duration_ps": "CALC",
+        "load_steps": "USER",
+        "tau_T_fs": "CAND",
+        "tau_P_fs": "CAND",
+        "T_coup": "CALC",
+        "P_coup": "CALC",
+        "algorithm": "CAND",
+        "control_moduli_GPa": "CAND",
+        "reference_status": "USER",
+        "reference_lengths_A": "USER",
+        "increment_A_per_step": "CALC",
+        "final_lengths_A": "CALC",
+        "deform_input": "CALC",
+        "axis_constraints": {
+          "x": "USER",
+          "y": "USER",
+          "z": "USER"
+        },
+        "helper_compatible": "FILE",
+        "seed": "CAND",
+        "velocity_policy": "CAND",
+        "relax_ps": "CALC",
+        "thermo_interval_steps": "CALC",
+        "trajectory_interval_steps": "CALC",
+        "thermo_interval_ps": "CALC",
+        "trajectory_interval_ps": "CALC",
+        "thermo_strain_resolution": "CALC",
+        "trajectory_strain_resolution": "CALC",
+        "restart": "CAND",
+        "initial_budget_ps": "CALC",
+        "max_added_validation_ps": "CAND",
+        "validation_plan": "CAND"
+      },
+      "source_ids": [
+        "D-01",
+        "D-02",
+        "D-03",
+        "D-04",
+        "D-05",
+        "D-07",
+        "D-08",
+        "T-01",
+        "T-02",
+        "T-03",
+        "T-04",
+        "T-05",
+        "U-D01",
+        "C-02"
+      ],
+      "questions": [],
+      "runtime_dependencies": [
+        "generator 取得与已知 Lx0=35 Å、Ly0=36 Å 对应的正式 restart 及模型/速度；这是文件接线和一致性核查，不是未知参考，也不需要重新测量或向用户追问 L0。",
+        "核实实际输出起始步、阶段偏移和终点保存；runner 执行及有工具支持的数值健康检查尚未发生。"
+      ],
+      "handoff_status": {
+        "design": "DESIGN_READY",
+        "execution": "待 generator/runner 执行",
+        "reference": "已知并可绑定；不是 RUNTIME_PENDING",
+        "validation": "CHECK_PENDING"
+      },
+      "capability_gaps": [
+        "温度/压力窗口健康筛查尚无确认的专用统计工具，不声称已通过。",
+        "没有确认的完整应力–应变联合转换、转变应变定位、剪切带或局部塑性专用工具；本方案交付原始数据。"
+      ],
+      "used_files": [
+        "agent-entry.md",
+        "decisions/parameter-table.md",
+        "decisions/tension.md",
+        "decisions/unep-v1.md",
+        "decisions/calculation.md",
+        "evidence/C-02-deformation.md"
+      ]
+    },
+    {
+      "case_id": "X02",
+      "answer_markdown": "直接从用户提供的合格正式预平衡态加载：UNEP-v1、Cu50Ni50、N=4000、三向 PBC 正交盒、Lz0=100 Å、300 K，保留其初相、晶向及已有速度。新增预平衡为 0 ps，不套用默认 100 ps，也不因指定种子 42 而重新分配已有速度；42 用于需配置的随机数控制并写入记录。\n\nz 工程应变终点 0.10、恒工程应变率 10^8 s^-1，物理加载时间 t=0.10/10^8=10^-9 s=1000 ps。dt=0.5 fs，精确步数为 2000000。Lz0 已给，不是运行时未知；每步 ΔLz=0.10×100/2000000=0.000005 Å，终点 Lz=110 Å。六参数输入可由 generator 写为 `deform 0 0 0.000005 0 0 1`。z 是驱动轴，其应力是输出；未指定横向条件时提出 x/y 目标零横压的候选，允许横向收缩，不声称用户已指定。\n\n严格保持用户锁定的物理耦合时间 tauT=100 fs、tauP=1000 fs；除以本次 dt 后 T_coup=200、P_coup=2000，不能沿用 1 fs 时的 100/1000。候选算法 npt_scr，三轴独立控制形式及 100/100/100 GPa 控制模量按当前 5.5 deform 语义设置，加载轴仍由 deform 驱动。\n\n每步工程应变为 5×10^-8。纯应变分辨率上限允许 thermo 每 200 步、轨迹每 2000 步；再采用 T-04 的 100/1000 步时间上限，最终选 thermo 每 100 步、轨迹每 1000 步。实际为 0.05 ps/5×10^-6 和 0.5 ps/5×10^-5，均满足建议分辨率。每段重新声明输出，保存压力张量、U/K、盒矢量、轨迹及末态 restart；记录阶段偏移和首个实际输出步，不能伪造 t=0 帧。\n\n物理参数设计为 DESIGN_READY；现有 tension_workflow helper 仅支持 x、xy，因此 z 的 helper 路径为 UNSUPPORTED，不能调用 `--axes z` 或擅自改成 x。GPUMD 本身支持 z，可将上面的已知参考、精确步数和六参数 deform 交给 generator 编写并独立短试跑；现成 helper 的缺口不意味着 Lz0 需要再测，也不意味着要重做预平衡。\n\n初始新增正式预算 1000 ps/2000000 步。合格预平衡状态直接认可；有限运行核查包括流程独立短试跑、确认实际速率/终点/耦合和数值是否发散，失败即停。若结论需要一次速率对照，可另列 2×10^8 s^-1、500 ps/1000000 步、ΔLz=10^-5 Å/步候选，对照新增预算最多 500 ps，不自动执行或推广为准静态结论。最终结构转变判据和完整应力转换仍有专用工具缺口。",
+      "parameters": {
+        "potential": "UNEP-v1",
+        "composition": "Cu50Ni50",
+        "atom_count": 4000,
+        "temperature_K": 300,
+        "boundary": "三向 PBC，正交盒",
+        "model_policy": "沿用现成合格正式预平衡模型、初相、晶向及速度",
+        "dt_fs": 0.5,
+        "strain_definition": "engineering",
+        "axes": [
+          "z"
+        ],
+        "strain_end": 0.1,
+        "rate_s_inv": 100000000,
+        "load_duration_ps": 1000,
+        "load_steps": 2000000,
+        "tau_T_fs": 100,
+        "tau_P_fs": 1000,
+        "T_coup": 200,
+        "P_coup": 2000,
+        "algorithm": "npt_scr",
+        "control_moduli_GPa": {
+          "x": 100,
+          "y": 100,
+          "z": 100
+        },
+        "reference_status": "KNOWN_USER：合格正式预平衡参考 Lz0 已提供，直接使用",
+        "reference_lengths_A": {
+          "z": 100
+        },
+        "increment_A_per_step": {
+          "x": 0,
+          "y": 0,
+          "z": 0.000005
+        },
+        "final_lengths_A": {
+          "z": 110
+        },
+        "deform_input": "deform 0 0 0.000005 0 0 1",
+        "axis_constraints": {
+          "x": "CAND：目标 Px=0 GPa，允许盒长响应",
+          "y": "CAND：目标 Py=0 GPa，允许盒长响应",
+          "z": "规定工程长度路径；Pz 为响应，无定压硬条件"
+        },
+        "helper_compatible": false,
+        "seed": 42,
+        "velocity_policy": "保留已有速度；只记录或配置用户指定的随机数种子，不重新初始化速度",
+        "relax_ps": 0,
+        "thermo_interval_steps": 100,
+        "trajectory_interval_steps": 1000,
+        "thermo_interval_ps": 0.05,
+        "trajectory_interval_ps": 0.5,
+        "thermo_strain_resolution": 0.000005,
+        "trajectory_strain_resolution": 0.00005,
+        "restart": "沿用正式预平衡 restart；加载末态另存 restart",
+        "initial_budget_ps": 1000,
+        "max_added_validation_ps": 500,
+        "validation_plan": "先独立短试跑核查；只有结论需要时另提一次 2 倍速率、500 ps 对照，最多新增 1000000 步"
+      },
+      "parameter_status": {
+        "potential": "USER",
+        "composition": "USER",
+        "atom_count": "USER",
+        "temperature_K": "USER",
+        "boundary": "USER",
+        "model_policy": "USER",
+        "dt_fs": "USER",
+        "strain_definition": "USER",
+        "axes": "USER",
+        "strain_end": "USER",
+        "rate_s_inv": "USER",
+        "load_duration_ps": "CALC",
+        "load_steps": "CALC",
+        "tau_T_fs": "USER",
+        "tau_P_fs": "USER",
+        "T_coup": "CALC",
+        "P_coup": "CALC",
+        "algorithm": "CAND",
+        "control_moduli_GPa": "CAND",
+        "reference_status": "USER",
+        "reference_lengths_A": "USER",
+        "increment_A_per_step": "CALC",
+        "final_lengths_A": "CALC",
+        "deform_input": "CALC",
+        "axis_constraints": {
+          "x": "CAND",
+          "y": "CAND",
+          "z": "USER"
+        },
+        "helper_compatible": "BLOCK",
+        "seed": "USER",
+        "velocity_policy": "USER",
+        "relax_ps": "CALC",
+        "thermo_interval_steps": "CALC",
+        "trajectory_interval_steps": "CALC",
+        "thermo_interval_ps": "CALC",
+        "trajectory_interval_ps": "CALC",
+        "thermo_strain_resolution": "CALC",
+        "trajectory_strain_resolution": "CALC",
+        "restart": "CAND",
+        "initial_budget_ps": "CALC",
+        "max_added_validation_ps": "CAND",
+        "validation_plan": "CAND"
+      },
+      "source_ids": [
+        "D-01",
+        "D-02",
+        "D-03",
+        "D-06",
+        "D-07",
+        "D-08",
+        "T-01",
+        "T-02",
+        "T-03",
+        "T-04",
+        "T-05",
+        "U-D01",
+        "C-02"
+      ],
+      "questions": [],
+      "runtime_dependencies": [
+        "generator 读取既有合格正式 restart 并绑定已知 Lz0=100 Å，保留模型及速度；无需新的参考测量或预平衡。",
+        "z 输入由 generator 另写和验证；现有 x/xy helper 不接受 z，不能假报 helper 已覆盖。"
+      ],
+      "handoff_status": {
+        "design": "DESIGN_READY",
+        "helper": "UNSUPPORTED：当前 tension_workflow 不支持 z",
+        "generator": "可直接交接六参数 z 输入方案和已知参考；待实现/短试跑",
+        "reference": "已知并可绑定；不是 RUNTIME_PENDING",
+        "validation": "数值流程 CHECK_PENDING，已完成合格预平衡不重做"
+      },
+      "capability_gaps": [
+        "当前 tension_workflow helper 的 z 路径缺失，需 generator 对应实现或扩展。",
+        "完整应力–应变联合转换和转变定位无确认专用工具；保存原始数据，不宣称得到最终科学判据。"
+      ],
+      "used_files": [
+        "agent-entry.md",
+        "decisions/parameter-table.md",
+        "decisions/tension.md",
+        "decisions/unep-v1.md",
+        "decisions/calculation.md",
+        "evidence/C-02-deformation.md"
+      ]
+    },
+    {
+      "case_id": "X03",
+      "answer_markdown": "不能直接给出可运行的 UNEP-v1 Fe50Ni50 方案。UNEP-v1 决策包列出的 16 种元素为 Ag、Al、Au、Cr、Cu、Mg、Mo、Ni、Pb、Pd、Pt、Ta、Ti、V、W、Zr，其中没有 Fe。Fe50Ni50 的一半原子不在该势的元素覆盖范围内，因此这不是把步长调小或做一次短试跑就能弥补的验证问题。\n\n保留用户目标 Fe50Ni50、300 K、0 GPa；不把 Fe 替换成 Cu、不删除 Fe、不把 Ni 单质结果冒充 FeNi，也不声称该势已经支持此体系。当前势与成分兼容性为 BLOCK，UNEP-v1 运行路径为 UNSUPPORTED，需要先决定或提供覆盖 Fe/Ni 且对本研究问题适用的势文件和版本。\n\n更换并核实势之前，不生成声称有效的可运行 FeNi 输入，不承诺 FCC/BCC 稳定相或从 300 K/0 GPa 推断唯一初态。若之后提供已有模型，应保留其制备历史、原子数、边界和初相/晶向；若没有，则在有效势和结构问题确定后，由 model-worker 提出明确的建模假设，并重新评估步长、耦合、预算和判据。通用 CuNi 的 N=4000/FCC 默认不能不加论证地迁移成 FeNi 的既定物理事实。\n\n交接状态是 NEEDS_DECISION（选择/提供兼容的 FeNi 势）与 UNSUPPORTED（当前 UNEP-v1 方案）；不是只等运行时参考的 RUNTIME_PENDING。当前不会启动模拟。有限验证应先核实元素映射和新势适用范围，通过后才准备最小输入和数值试跑；试跑不证明该势对结构稳定性或相变的材料精度。",
+      "parameters": {
+        "potential": "UNEP-v1",
+        "composition": "Fe50Ni50",
+        "temperature_K": 300,
+        "pressure_GPa": 0,
+        "potential_element_coverage": "UNEP-v1 包含 Ni，不包含 Fe",
+        "potential_compatible": false,
+        "initial_structure": null,
+        "atom_count": null,
+        "boundary": null,
+        "dt_fs": null,
+        "tau_T_fs": null,
+        "tau_P_fs": null,
+        "T_coup": null,
+        "P_coup": null,
+        "algorithm": null,
+        "strain_definition": null,
+        "axes": null,
+        "strain_end": null,
+        "rate_s_inv": null,
+        "load_duration_ps": null,
+        "load_steps": null,
+        "reference_status": "不适用：势覆盖先行阻断，不是未测 L0",
+        "increment_A_per_step": null,
+        "axis_constraints": null,
+        "helper_compatible": false,
+        "seed": null,
+        "relax_ps": null,
+        "thermo_interval_steps": null,
+        "trajectory_interval_steps": null,
+        "initial_budget_ps": 0,
+        "validation_plan": "先核实覆盖 Fe/Ni 的势与适用性；当前不运行，后续参数须针对新势重评"
+      },
+      "parameter_status": {
+        "potential": "USER",
+        "composition": "USER",
+        "temperature_K": "USER",
+        "pressure_GPa": "USER",
+        "potential_element_coverage": "FILE",
+        "potential_compatible": "BLOCK",
+        "initial_structure": "BLOCK",
+        "atom_count": "BLOCK",
+        "boundary": "BLOCK",
+        "dt_fs": "BLOCK",
+        "tau_T_fs": "BLOCK",
+        "tau_P_fs": "BLOCK",
+        "T_coup": "BLOCK",
+        "P_coup": "BLOCK",
+        "algorithm": "BLOCK",
+        "strain_definition": "BLOCK",
+        "axes": "BLOCK",
+        "strain_end": "BLOCK",
+        "rate_s_inv": "BLOCK",
+        "load_duration_ps": "BLOCK",
+        "load_steps": "BLOCK",
+        "reference_status": "BLOCK",
+        "increment_A_per_step": "BLOCK",
+        "axis_constraints": "BLOCK",
+        "helper_compatible": "BLOCK",
+        "seed": "BLOCK",
+        "relax_ps": "BLOCK",
+        "thermo_interval_steps": "BLOCK",
+        "trajectory_interval_steps": "BLOCK",
+        "initial_budget_ps": "CALC",
+        "validation_plan": "CAND"
+      },
+      "source_ids": [
+        "D-01",
+        "D-08",
+        "N-01",
+        "UNEP-v1 元素覆盖",
+        "U-D01"
+      ],
+      "questions": [
+        "请提供希望使用的、覆盖 Fe/Ni 且适用于该结构问题的势文件与版本，或决定改用何种兼容势；不能继续使用当前 UNEP-v1 作为 FeNi 势。"
+      ],
+      "runtime_dependencies": [
+        "先解决势选择和元素覆盖，再由 model-worker 核实或生成 FeNi 模型；当前没有可进入 runner 的参数方案。"
+      ],
+      "handoff_status": {
+        "overall": "NEEDS_DECISION",
+        "current_potential": "UNSUPPORTED",
+        "execution": "BLOCK：禁止将当前势用于 FeNi",
+        "reference": "不是 RUNTIME_PENDING"
+      },
+      "capability_gaps": [
+        "UNEP-v1 缺少 Fe 元素，当前知识库未提供可替代的 FeNi 势决策包及其材料验证。",
+        "尚未明确 FeNi 结构观察的初态/模型；有效势确定后才能论证有限结构采样的科学边界。"
+      ],
+      "used_files": [
+        "agent-entry.md",
+        "decisions/parameter-table.md",
+        "decisions/npt.md",
+        "decisions/unep-v1.md"
+      ]
+    },
+    {
+      "case_id": "X04",
+      "answer_markdown": "本请求同时存在物理硬约束冲突和当前 helper 的能力缺口，不能直接标为可运行，也不能只标为等待 Lz0。\n\n用户规定 z 恒真应变率 10^8 s^-1 至真应变 0.1，意味着 Lz(t)=Lz0 exp(10^8 t)，t=0.1/10^8=1 ns=1000 ps，终点 Lz/Lz0=e^0.1≈1.105170918。它对应工程应变约 0.105170918，而不是工程 10%。z 长度路径已作为独立驱动硬条件时，Pz 是材料响应；同时要求 z 始终保持 0 GPa，不能再作为独立硬条件同时满足。输入中某个零压力数字也不会把驱动 z 的应力强制为零。\n\n必须由用户在两个研究定义中选择：保留规定真应变路径并取消 z 零压硬条件（可候选 x/y 零横压）；或者保留 z 零压并放弃规定 z 恒真应变路径/终点。不能静默将 z 零压解释成横向零压，也不能暗改成工程应变。\n\n当前 tension_workflow helper 只支持 x、xy，且采用恒定每步长度增量；它既不支持 z 入口，也不能实现恒真应变率指数路径。不能传 `--axes z`、擅自改轴或用单一常数 ΔLz 冒充恒真应变率。GPUMD 能做 z 方向 deform，但现有 helper 没有覆盖所需指数路径，需 generator 建立并验证相应步进/分段更新或其他正确控制实现。\n\n若用户选择保留真应变驱动，可先交付条件性的数学需求：提出 dt=1 fs 候选，对应加载 1000000 步；在第 k 步开始 Lz(k)=Lz0 exp(k×10^-7)，单步增量 ΔLz(k)=Lz0 exp(k×10^-7)[exp(10^-7)-1]。增量随 k 改变，不能填写一个固定 Å/步值。候选 tauT=100 fs、tauP=1000 fs，因此条件性 T_coup=100、P_coup=1000；每步真应变 10^-7，thermo 每 100 步/0.1 ps 得 Δεtrue=10^-5、轨迹每 1000 步/1 ps 得 Δεtrue=10^-4。上述输出是未来正确真应变实现的需求，不能声称现有 helper 已可执行。\n\nCuNi 的具体配比和是否已有模型尚未给出，应先读可用模型/元数据，仍无信息才与上述研究选择合并询问；不能自动当成 Cu50Ni50。若需新建模型，初态与晶向必须作为明确假设而非结果，正式预平衡完成后才绑定 Lz0，不询问用户未来盒长或用 trial/初始长度替代。只有在没有合格预平衡态的条件下，才提出 100 ps 正式预平衡候选；允许一次 100 ps 延长，总预平衡最多 200 ps，健康筛查不通过则停止并报告。若已有合格状态就直接沿用。候选种子 20261020 仅用于确需新初始化时，已有速度保留。\n\n总体交接为 NEEDS_DECISION；当前 helper 路径同时为 UNSUPPORTED。真应变公式需求可以交给 generator 评估，但不能把整题标成 DESIGN_READY。物理约束决定后，若选择真应变驱动，还需 helper/输入实现、模型及正式参考；这时参考才属于相应阶段的 RUNTIME_PENDING。初始预算条件性为 1000 ps 加载，加上必要的新预平衡 100 ps（若已有合格态则为 0）；最多再延长一次 100 ps。最终转变应变/应力–应变分析工具缺口须单独列出，不能用运行完成冒充科学结论。",
+      "parameters": {
+        "potential": "UNEP-v1",
+        "composition": "Cu–Ni；具体比例未给，不能默认为 Cu50Ni50",
+        "temperature_K": 300,
+        "boundary": "条件性候选：三向 PBC 正交 bulk，需匹配实际模型",
+        "dt_fs": 1,
+        "strain_definition": "true",
+        "axes": [
+          "z"
+        ],
+        "strain_end": 0.1,
+        "rate_s_inv": 100000000,
+        "load_duration_ps": 1000,
+        "load_steps": 1000000,
+        "tau_T_fs": 100,
+        "tau_P_fs": 1000,
+        "T_coup": 100,
+        "P_coup": 1000,
+        "algorithm": "条件性候选 npt_scr；正确指数路径实现尚未提供",
+        "control_moduli_GPa": {
+          "x": 100,
+          "y": 100,
+          "z": 100
+        },
+        "reference_status": "RUNTIME：仅在物理约束解决且需要新预平衡时，从正式末态 restart 绑定；若已有合格正式态则直接沿用其参考",
+        "reference_lengths_A": {
+          "z": null
+        },
+        "length_path": "Lz(t)=Lz0 exp(rate_s_inv × t_s)",
+        "final_length_ratio": 1.1051709180756477,
+        "equivalent_engineering_strain": 0.10517091807564763,
+        "increment_A_per_step": {
+          "z": "ΔLz(k)=Lz0 exp(k×10^-7)[exp(10^-7)-1]；随步数变化，无单一常数"
+        },
+        "axis_constraints": {
+          "x": "条件性 CAND：目标 Px=0 GPa",
+          "y": "条件性 CAND：目标 Py=0 GPa",
+          "z": "BLOCK：USER 规定长度指数路径与 USER 要求 Pz=0 GPa 不能同时作独立硬约束"
+        },
+        "helper_compatible": false,
+        "seed": 20261020,
+        "velocity_policy": "已有速度保留，候选 seed 只用于新初始化",
+        "relax_ps": "条件性：无合格预平衡态时 CAND 100 ps；已有合格态则 0",
+        "max_relax_ps": "条件性最多 200 ps；只追加一次 100 ps",
+        "thermo_interval_steps": 100,
+        "trajectory_interval_steps": 1000,
+        "thermo_interval_ps": 0.1,
+        "trajectory_interval_ps": 1,
+        "thermo_strain_resolution": 0.00001,
+        "trajectory_strain_resolution": 0.0001,
+        "initial_budget_ps": "条件性：已有合格态时 1000 ps；需新预平衡时 1100 ps",
+        "maximum_budget_ps": "条件性：需要新预平衡且延长一次时最多 1200 ps",
+        "validation_plan": "先解决硬约束；再验证逐步/分段指数路径、终点与实际真应变率；实现未通过或健康筛查不通过则停止"
+      },
+      "parameter_status": {
+        "potential": "USER",
+        "composition": "BLOCK",
+        "temperature_K": "USER",
+        "boundary": "CAND",
+        "dt_fs": "CAND",
+        "strain_definition": "USER",
+        "axes": "USER",
+        "strain_end": "USER",
+        "rate_s_inv": "USER",
+        "load_duration_ps": "CALC",
+        "load_steps": "CALC",
+        "tau_T_fs": "CAND",
+        "tau_P_fs": "CAND",
+        "T_coup": "CALC",
+        "P_coup": "CALC",
+        "algorithm": "CAND",
+        "control_moduli_GPa": "CAND",
+        "reference_status": "RUNTIME",
+        "reference_lengths_A": "RUNTIME",
+        "length_path": "CALC",
+        "final_length_ratio": "CALC",
+        "equivalent_engineering_strain": "CALC",
+        "increment_A_per_step": "RUNTIME",
+        "axis_constraints": {
+          "x": "CAND",
+          "y": "CAND",
+          "z": "BLOCK"
+        },
+        "helper_compatible": "BLOCK",
+        "seed": "CAND",
+        "velocity_policy": "CAND",
+        "relax_ps": "CAND",
+        "max_relax_ps": "CAND",
+        "thermo_interval_steps": "CALC",
+        "trajectory_interval_steps": "CALC",
+        "thermo_interval_ps": "CALC",
+        "trajectory_interval_ps": "CALC",
+        "thermo_strain_resolution": "CALC",
+        "trajectory_strain_resolution": "CALC",
+        "initial_budget_ps": "CALC",
+        "maximum_budget_ps": "CALC",
+        "validation_plan": "CAND"
+      },
+      "source_ids": [
+        "D-01",
+        "D-02",
+        "D-03",
+        "D-04",
+        "D-07",
+        "D-08",
+        "T-01",
+        "T-02",
+        "T-03",
+        "T-04",
+        "T-05",
+        "U-D01",
+        "C-02"
+      ],
+      "questions": [
+        "请在“保留 z 恒真应变路径，取消 z 定压硬条件”和“保留 z=0 GPa，放弃规定 z 长度路径”之间选择；若没有可读取的现成模型，请同时确认 Cu/Ni 比例与是否已有合格预平衡态。"
+      ],
+      "runtime_dependencies": [
+        "先由用户解决 z 长度路径与同轴零压的冲突；这个决策不能由运行时 Lz0 消除。",
+        "若选择真应变驱动，由 generator 建立并验证 z 指数路径实现；现有 tension_workflow 不覆盖。",
+        "读取实际模型配比、边界、初态/晶向；无模型时另建并完成必要正式预平衡，再从正式 restart 绑定 Lz0；不能使用 trial 或未平衡初长。"
+      ],
+      "handoff_status": {
+        "overall": "NEEDS_DECISION",
+        "helper": "UNSUPPORTED：z 与恒真应变率均超出当前 helper",
+        "mathematical_specification": "条件性需求已明确，不能等同于可运行实现",
+        "future_reference": "条件满足后才有相应 RUNTIME_PENDING",
+        "execution": "BLOCK"
+      },
+      "capability_gaps": [
+        "当前 helper 不支持 z，也未实现恒真应变率的指数盒长路径。",
+        "规定同轴长度路径与定压之间存在研究定义冲突，需要明确取舍。",
+        "CuNi 具体比例/模型未给，不能静默改成 Cu50Ni50。",
+        "温压窗口统计、应力–应变联合转换及最终转变定位无确认专用能力。"
+      ],
+      "used_files": [
+        "agent-entry.md",
+        "decisions/parameter-table.md",
+        "decisions/tension.md",
+        "decisions/unep-v1.md",
+        "decisions/calculation.md",
+        "evidence/C-02-deformation.md"
+      ]
+    }
+  ],
+  "read_files": [
+    "agent-entry.md",
+    "decisions/parameter-table.md",
+    "decisions/tension.md",
+    "decisions/unep-v1.md",
+    "decisions/npt.md",
+    "decisions/calculation.md",
+    "evidence/C-02-deformation.md"
+  ],
+  "remaining_knowledge_gaps": [
+    "现有 tension_workflow 缺少 z 入口与恒真应变率指数路径；需要明确的生成器实现及验证。",
+    "当前库未提供兼容 Fe 的 UNEP-v1 能力，也没有可替代 FeNi 势的决策包，不能自行补造。",
+    "健康筛查的温压窗口统计、完整应力–应变转换、转变应变定位等最终判据能力仍未确认。"
+  ],
+  "arithmetic_verification": "使用只读 Python Decimal 算术核对 X01/X02 的时间、步数、速率、增量及 X04 的指数长度关系；未调用或读取 calculate_plan.py 源码，未创建临时请求文件。"
+}

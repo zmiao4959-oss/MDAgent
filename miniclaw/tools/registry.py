@@ -23,7 +23,6 @@ class ToolDefinition:
     name: str
     func: Callable
     schema: Dict[str, Any]
-    description: str = ""
     require_approval: bool = False
     risk_level: str = "low"  # low | medium | high
     tags: List[str] = field(default_factory=list)
@@ -41,7 +40,6 @@ class ToolRegistry:
         self,
         name: str,
         schema: Dict[str, Any],
-        description: str = "",
         require_approval: bool = False,
         risk_level: str = "low",
         tags: Optional[List[str]] = None,
@@ -52,7 +50,6 @@ class ToolRegistry:
                 name=name,
                 func=func,
                 schema=schema,
-                description=description,
                 require_approval=require_approval,
                 risk_level=risk_level,
                 tags=tags or [],
@@ -102,23 +99,6 @@ class ToolRegistry:
             tools = [t for t in tools if not exclude_set.intersection(set(t.tags))]
         return [t.schema for t in tools]
 
-    def get_descriptions(self, exclude_tags: Optional[List[str]] = None) -> str:
-        lines = []
-        exclude_set = set(exclude_tags) if exclude_tags else set()
-        for td in self._tools.values():
-            if exclude_set and exclude_set.intersection(set(td.tags)):
-                continue
-            extra = ""
-            if td.risk_level != "low":
-                extra = f" [{td.risk_level} risk]"
-            if td.require_approval:
-                extra += " [requires approval]"
-            lines.append("  <tool>")
-            lines.append(f"    <name>{td.name}</name>")
-            lines.append(f"    <description>{td.description}{extra}</description>")
-            lines.append("  </tool>")
-        return "\n".join(lines)
-
     def _schema_parameters(self, tool: ToolDefinition) -> Dict[str, Any]:
         fn = tool.schema.get("function") or {}
         return fn.get("parameters") or {}
@@ -133,6 +113,13 @@ class ToolRegistry:
         missing = [k for k in required if k not in arguments]
         if missing:
             return f"Error: Missing required argument(s) for '{tool.name}': {', '.join(missing)}"
+        if params.get("additionalProperties") is False:
+            unknown = sorted(
+                k for k in arguments
+                if k not in self._allowed_arg_names(tool) and not k.startswith("_")
+            )
+            if unknown:
+                return f"Error: Unexpected argument(s) for '{tool.name}': {', '.join(unknown)}"
         return None
 
     def _filter_arguments(self, tool: ToolDefinition, arguments: Dict[str, Any]) -> Dict[str, Any]:

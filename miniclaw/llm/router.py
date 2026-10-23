@@ -1,4 +1,5 @@
 import asyncio
+import httpx
 from typing import List, Dict, Optional, AsyncIterator
 from .base import BaseLLMProvider, LLMMessage, LLMResponse, LLMStreamChunk
 from .openai_compat import OpenAICompatProvider
@@ -15,6 +16,8 @@ RETRYABLE_STATUSES = {429, 500, 502, 503, 504}
 
 def _is_retryable(error: Exception) -> bool:
     """判断异常是否可重试（速率限制 / 服务端临时错误）。"""
+    if isinstance(error, httpx.TransportError):
+        return True
     msg = str(error).lower()
     retryable_keywords = [
         "rate limit", "too many requests", "429",
@@ -107,5 +110,8 @@ class LLMRouter:
             response = await self.chat(messages, tools, temperature, max_tokens)
             yield LLMStreamChunk(
                 delta_content=response.content,
+                delta_tool_calls=response.tool_calls,
                 finish_reason=response.finish_reason,
+                usage=response.usage,
+                reasoning_content=response.reasoning_content,
             )

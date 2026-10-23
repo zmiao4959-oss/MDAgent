@@ -1,0 +1,228 @@
+{
+  "version": "0.2",
+  "scope": "Conformance to documented design policies and arithmetic; not proof of optimal physical parameters",
+  "numeric_tolerance_relative": 1e-09,
+  "required_common_slots": [
+    "potential identity",
+    "composition",
+    "initial state and orientation",
+    "size or file-read dependency",
+    "boundary",
+    "temperature",
+    "axis pressure or drive",
+    "dt",
+    "ensemble",
+    "physical tau and input ratios",
+    "controller scale",
+    "stage times and steps",
+    "seed or velocity preservation",
+    "output intervals and resolution",
+    "bounded verification",
+    "parameter status and source",
+    "handoff and capability gaps"
+  ],
+  "cases": [
+    {
+      "id": "N01",
+      "prompt_summary": "UNEP-v1 Cu50Ni50, 300 K, 0 GPa, NPT structure; no model or numerical settings supplied",
+      "kind": "design",
+      "expected": {
+        "dt_fs": 1,
+        "tau_T_ratio": 100,
+        "tau_P_ratio": 1000,
+        "relax_ps": 100,
+        "production_ps": 100,
+        "total_steps": 200000,
+        "N": 4000,
+        "atom_counts": {
+          "Cu": 2000,
+          "Ni": 2000
+        },
+        "thermo_interval_steps": 100,
+        "trajectory_interval_steps": 1000
+      },
+      "semantic": [
+        "FCC/random substitution and size are CAND, not measured initial state",
+        "actual lattice/box bound from model-worker",
+        "finite extra relaxation budget; no claimed executed equilibrium statistics"
+      ]
+    },
+    {
+      "id": "N02",
+      "prompt_summary": "UNEP-v1 Ti thermal phase-transition exploration; transition temperature unknown",
+      "kind": "design",
+      "expected": {
+        "dt_fs": 1,
+        "initial_total_steps": 1800000,
+        "maximum_total_steps": 2500000,
+        "platform_K": [
+          800,
+          900,
+          1000,
+          1100,
+          1200,
+          1300,
+          1400,
+          1500
+        ]
+      },
+      "semantic": [
+        "HCP/size and scan are explicit hypotheses",
+        "1166 K is an external standard-state prior, not UNEP prediction",
+        "100 ps baseline, 100 ps ramp, eight 200 ps platforms; at most one interval refinement",
+        "PTM alone does not certify full phase identity/omega or equilibrium boundary"
+      ]
+    },
+    {
+      "id": "G01",
+      "prompt_summary": "Pd40Cu30Ni10P20 glass preparation and Tg design; no starting model",
+      "kind": "design",
+      "expected": {
+        "N": 13500,
+        "atom_counts": {
+          "Pd": 5400,
+          "Cu": 4050,
+          "Ni": 1350,
+          "P": 2700
+        },
+        "dt_fs": 1,
+        "fast_cooling_steps": 1100000,
+        "fast_total_steps": 2200000,
+        "paper_rate_cooling_steps": 110000000,
+        "paper_rate_total_steps": 111100000,
+        "fast_thermo_interval_steps": 500,
+        "fast_trajectory_interval_steps": 2500,
+        "slow_thermo_interval_steps": 1000,
+        "slow_trajectory_interval_steps": 250000
+      },
+      "semantic": [
+        "2500->300 K full recipe is CAND, not a complete paper reproduction",
+        "2e12 K/s is fast candidate; 2e10 K/s is paper rate used in proposed recipe",
+        "Tg fitting and temperature-trajectory join are execution gaps",
+        "sparse structural frames are not justified for diffusion unwrapping"
+      ]
+    },
+    {
+      "id": "T01",
+      "prompt_summary": "UNEP-v1 Cu50Ni50, 300 K, periodic bulk, z engineering tension to 0.1, x/y zero pressure; rate/model/L0 unknown",
+      "kind": "design",
+      "expected": {
+        "dt_fs": 1,
+        "N": 4000,
+        "rate_s_inv": 100000000,
+        "strain_end": 0.1,
+        "load_ps": 1000,
+        "load_steps": 1000000,
+        "total_steps_with_relax": 1100000,
+        "thermo_interval_steps": 100,
+        "trajectory_interval_steps": 1000
+      },
+      "semantic": [
+        "formal Lz0 is runtime dependency, not a question to user",
+        "dLz=1e-7*Lz0 A/step",
+        "driven z is not held at zero actual pressure",
+        "current x/xy helper does not support z; preserve requested axis"
+      ]
+    },
+    {
+      "id": "T02",
+      "prompt_summary": "UNEP-v1 Ti tension with unknown initial state, crystal orientation, temperature, rate and size",
+      "kind": "design",
+      "expected": {
+        "dt_fs": 1,
+        "rate_s_inv": 100000000,
+        "strain_end": 0.1,
+        "load_ps": 1000,
+        "load_steps": 1000000
+      },
+      "semantic": [
+        "propose explicit HCP [0001]//z, 300 K periodic bulk baseline; optional basal contrast",
+        "one grouped scientific decision is acceptable; do not ask user to choose routine numerical parameters",
+        "conditional complete candidate package and runtime reference",
+        "do not promise detection of every possible phase using standard PTM"
+      ]
+    },
+    {
+      "id": "T03",
+      "prompt_summary": "Existing heat-treated Pd40Cu30Ni10P20 glass at 300 K, z tension, other parameters missing",
+      "kind": "design",
+      "expected": {
+        "dt_fs": 1,
+        "rate_s_inv": 10000000,
+        "strain_end": 0.1,
+        "load_ps": 10000,
+        "load_steps": 10000000,
+        "thermo_interval_steps": 1000,
+        "trajectory_interval_steps": 10000
+      },
+      "semantic": [
+        "preserve existing glass/history/N/velocities; no remelt or forced 13500",
+        "1e7 rate is paper-informed CAND; engineering strain definition is proposed, not confirmed paper definition",
+        "do not repeat relaxation if upstream already supplies qualified state",
+        "formal reference and z helper gap explicit"
+      ]
+    },
+    {
+      "id": "X01",
+      "prompt_summary": "UNEP CuNi at 300 K, qualified reference Lx=35 A/Ly=36 A; xy engineering 0.30 in 100000 steps, dt=1 fs, z pressure=0",
+      "kind": "constraint",
+      "expected": {
+        "duration_ps": 100,
+        "rate_s_inv": 3000000000,
+        "steps": 100000,
+        "dL_A_per_step": {
+          "x": 0.000105,
+          "y": 0.000108
+        }
+      },
+      "semantic": [
+        "bind supplied formal lengths without asking again",
+        "same engineering strain uses unequal per-axis Angstrom increments",
+        "xy is compatible with existing helper"
+      ]
+    },
+    {
+      "id": "X02",
+      "prompt_summary": "Existing qualified CuNi N=4000, Lz0=100 A, 300 K; z engineering 0.1 at 1e8/s, dt=0.5 fs, tau=100/1000 fs, seed=42",
+      "kind": "constraint",
+      "expected": {
+        "dt_fs": 0.5,
+        "tau_T_ratio": 200,
+        "tau_P_ratio": 2000,
+        "load_steps": 2000000,
+        "duration_ps": 1000,
+        "dLz_A_per_step": 5e-06,
+        "seed": 42,
+        "relax_steps": 0
+      },
+      "semantic": [
+        "preserve user dt and physical coupling time",
+        "retain known formal reference and qualified state without repeated relaxation",
+        "preserve seed 42; no candidate seed overwrite",
+        "preserve z and report helper gap"
+      ]
+    },
+    {
+      "id": "X03",
+      "prompt_summary": "Use UNEP-v1 for Fe50Ni50, 300 K and 0 GPa structure analysis; can a run plan be given directly?",
+      "kind": "boundary",
+      "semantic": [
+        "Fe is outside the 16-element model; UNSUPPORTED/BLOCK",
+        "do not emit a falsely usable parameter pack or silently change composition/potential"
+      ],
+      "original_prompt_excerpt": "用户要求UNEP-v1计算Fe50Ni50，300K、0GPa结构；能否直接给运行方案？保留科学边界。"
+    },
+    {
+      "id": "X04",
+      "prompt_summary": "UNEP-v1 CuNi at 300 K, z constant true strain rate 1e8/s to 0.1, also z pressure zero, using current helper",
+      "kind": "boundary",
+      "semantic": [
+        "true strain uses exponential L(t), not engineering 10% constant increment",
+        "driven length and independently fixed z pressure conflict; NEEDS_DECISION",
+        "current helper lacks both z and constant-true-rate path",
+        "no silent method/axis substitution or execute-ready claim"
+      ],
+      "original_prompt_excerpt": "UNEP-v1 CuNi，300K，要求z恒真应变率1e8 s^-1到真应变0.1，同时要求z保持0GPa，并用当前tension_workflow helper；请评估冲突并给正确交接状态。"
+    }
+  ]
+}

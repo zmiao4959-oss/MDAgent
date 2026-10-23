@@ -1,0 +1,1040 @@
+{
+  "audit_kind": "targeted",
+  "target": "knowledge/phase-transition/review/agent-tests/post-fast-route.json",
+  "contract": "knowledge/phase-transition/decisions/handoff-contract.json",
+  "read_files": [
+    "knowledge/phase-transition/agent-entry.md",
+    "knowledge/phase-transition/decisions/handoff-contract.json",
+    "knowledge/phase-transition/review/agent-tests/post-fast-route.json"
+  ],
+  "scope": "只修正逐叶来源、直接规则映射及来源/执行/能力轴分离；不改原数值、不重写长回答、不修改原报告。",
+  "path_notation": "[*]/.*仅批量定位同来源的各叶；::表示将原混合文本拆成所注明的逻辑叶，未新增数值。source_ids为原报告已登记规则；本次按任务限制未读reference-index重新审计ID注册。",
+  "unchanged_homogeneous_groups": "已具有单一明确CAND叶值和直接规则的设置保持数值及来源；原容器status不得覆盖本清单中不同来源的叶。summary里的总括类别不得优先于本逐叶映射。",
+  "corrections": [
+    {
+      "paths": [
+        "common_controls.geometry.value"
+      ],
+      "old_status": "CAND；缺直接规则ID",
+      "new_status": "CAND",
+      "source_ids": [
+        "D-01"
+      ]
+    },
+    {
+      "paths": [
+        "common_controls.coupling.tau_T_fs",
+        "common_controls.coupling.tau_P_fs"
+      ],
+      "old_status": "继承coupling.status=CAND",
+      "new_status": "CAND",
+      "source_ids": [
+        "D-01"
+      ]
+    },
+    {
+      "paths": [
+        "common_controls.coupling.input_tau_T_over_dt",
+        "common_controls.coupling.input_tau_P_over_dt"
+      ],
+      "old_status": "继承coupling.status=CAND",
+      "new_status": "CALC",
+      "source_ids": [
+        "D-01"
+      ],
+      "formula": "input_tau=tau_fs/common_controls.dt_fs.value"
+    },
+    {
+      "paths": [
+        "common_controls.coupling.half_dt_policy::dt_fs"
+      ],
+      "old_status": "CAND父容器下的混合文本",
+      "new_status": "CAND",
+      "source_ids": [
+        "D-01"
+      ],
+      "note": "只标其中0.5 fs候选；保持原数值。"
+    },
+    {
+      "paths": [
+        "common_controls.coupling.half_dt_policy::input_ratios"
+      ],
+      "old_status": "CAND父容器下的混合文本",
+      "new_status": "CALC",
+      "source_ids": [
+        "D-01"
+      ],
+      "formula": "100/0.5与1000/0.5；物理tau仍为CAND。"
+    },
+    {
+      "paths": [
+        "common_controls.plateau_output.thermo_steps",
+        "common_controls.plateau_output.trajectory_steps",
+        "common_controls.plateau_output.restart"
+      ],
+      "old_status": "继承plateau_output.status=CAND",
+      "new_status": "CAND",
+      "source_ids": [
+        "D-03"
+      ]
+    },
+    {
+      "paths": [
+        "common_controls.plateau_output.thermo_interval_ps",
+        "common_controls.plateau_output.trajectory_interval_ps"
+      ],
+      "old_status": "继承plateau_output.status=CAND",
+      "new_status": "CALC",
+      "source_ids": [
+        "D-03"
+      ],
+      "formula": "output_steps*dt_fs/1000"
+    },
+    {
+      "paths": [
+        "common_controls.output_provenance::recording_policy"
+      ],
+      "old_status": "未逐叶标来源",
+      "new_status": "CAND",
+      "source_ids": [
+        "D-03"
+      ]
+    },
+    {
+      "paths": [
+        "common_controls.output_provenance::actual_stage_start_first_output_and_restart_source"
+      ],
+      "old_status": "未逐叶标来源",
+      "new_status": "RUNTIME",
+      "source_ids": [
+        "D-03"
+      ],
+      "dependency": "runner生成正式阶段与输出记录后绑定。"
+    },
+    {
+      "paths": [
+        "common_controls.health_screen.definition::window_and_threshold_policy"
+      ],
+      "old_status": "health_screen.status=CHECK_PENDING被误用为参数来源",
+      "new_status": "CAND",
+      "source_ids": [
+        "D-04"
+      ]
+    },
+    {
+      "paths": [
+        "common_controls.health_screen.status"
+      ],
+      "old_status": "CHECK_PENDING",
+      "new_status": {
+        "parameter_source": null,
+        "execution_status": "CHECK_PENDING"
+      },
+      "source_ids": [
+        "D-04",
+        "D-08"
+      ],
+      "note": "检查尚未执行；不属于来源枚举。"
+    },
+    {
+      "paths": [
+        "common_controls.algorithm.value",
+        "common_controls.dt_fs.value",
+        "common_controls.control_moduli_GPa.value[*]"
+      ],
+      "old_status": "CAND（叶值由同质容器表达）",
+      "new_status": "CAND",
+      "source_ids": [
+        "D-01"
+      ]
+    },
+    {
+      "paths": [
+        "common_controls.seed.velocity",
+        "common_controls.seed.model_randomness",
+        "common_controls.seed.repeat_control",
+        "common_controls.seed.policy"
+      ],
+      "old_status": "CAND（叶值由同质容器表达）",
+      "new_status": "CAND",
+      "source_ids": [
+        "D-02"
+      ]
+    },
+    {
+      "paths": [
+        "results[0].parameters.potential.id",
+        "results[0].parameters.potential.path",
+        "results[0].parameters.potential.sha256",
+        "results[0].parameters.potential.element_coverage"
+      ],
+      "old_status": "identity_status的带说明FILE容器",
+      "new_status": "FILE",
+      "source_ids": [
+        "U-01"
+      ],
+      "task": "N01",
+      "note": "FILE指知识页登记的既有势身份；未声称本次重算hash，说明与状态分开。"
+    },
+    {
+      "paths": [
+        "results[0].parameters.potential.selection_status"
+      ],
+      "old_status": "USER",
+      "new_status": "USER",
+      "source_ids": [
+        "U-D01",
+        "U-01"
+      ],
+      "task": "N01",
+      "note": "用户指定UNEP-v1；选择约束与文件身份分开。"
+    },
+    {
+      "paths": [
+        "results[0].parameters.composition.atomic_percent.*"
+      ],
+      "old_status": "composition_status=USER（无直接规则ID）",
+      "new_status": "USER",
+      "source_ids": [
+        "U-D01"
+      ],
+      "task": "N01",
+      "input_basis": "本题N01原始成分约束"
+    },
+    {
+      "paths": [
+        "results[0].parameters.composition.counts.*"
+      ],
+      "old_status": "counts_status=CALC（无公式/直接规则ID）",
+      "new_status": "CALC",
+      "source_ids": [
+        "U-D01"
+      ],
+      "task": "N01",
+      "formula": "N*atomic_percent[element]/100；N的采用仍为CAND，真实模型计数待上游核验。"
+    },
+    {
+      "paths": [
+        "results[0].parameter_status.CHECK_PENDING"
+      ],
+      "old_status": "CHECK_PENDING来源索引",
+      "new_status": {
+        "parameter_source": null,
+        "execution_status": "CHECK_PENDING"
+      },
+      "source_ids": [
+        "D-04",
+        "D-08"
+      ],
+      "task": "N01",
+      "note": "从parameter_status移出，保留在独立执行/检查状态。"
+    },
+    {
+      "paths": [
+        "results[1].parameters.potential.id",
+        "results[1].parameters.potential.path",
+        "results[1].parameters.potential.sha256"
+      ],
+      "old_status": "identity_status的带说明FILE容器",
+      "new_status": "FILE",
+      "source_ids": [
+        "U-01"
+      ],
+      "task": "N02",
+      "note": "FILE指知识页登记的既有势身份；未声称本次重算hash，说明与状态分开。"
+    },
+    {
+      "paths": [
+        "results[1].parameters.potential.selection_status"
+      ],
+      "old_status": "USER",
+      "new_status": "USER",
+      "source_ids": [
+        "U-D02",
+        "U-01"
+      ],
+      "task": "N02",
+      "note": "用户指定UNEP-v1；选择约束与文件身份分开。"
+    },
+    {
+      "paths": [
+        "results[1].parameters.composition.atomic_percent.*"
+      ],
+      "old_status": "composition_status=USER（无直接规则ID）",
+      "new_status": "USER",
+      "source_ids": [
+        "U-D02"
+      ],
+      "task": "N02",
+      "input_basis": "本题N02原始成分约束"
+    },
+    {
+      "paths": [
+        "results[1].parameters.composition.counts.*"
+      ],
+      "old_status": "counts_status=CALC（无公式/直接规则ID）",
+      "new_status": "CALC",
+      "source_ids": [
+        "U-D02"
+      ],
+      "task": "N02",
+      "formula": "N*atomic_percent[element]/100；N的采用仍为CAND，真实模型计数待上游核验。"
+    },
+    {
+      "paths": [
+        "results[1].parameter_status.CHECK_PENDING"
+      ],
+      "old_status": "CHECK_PENDING来源索引",
+      "new_status": {
+        "parameter_source": null,
+        "execution_status": "CHECK_PENDING"
+      },
+      "source_ids": [
+        "D-04",
+        "D-08"
+      ],
+      "task": "N02",
+      "note": "从parameter_status移出，保留在独立执行/检查状态。"
+    },
+    {
+      "paths": [
+        "results[2].parameters.potential.id",
+        "results[2].parameters.potential.path",
+        "results[2].parameters.potential.sha256",
+        "results[2].parameters.potential.element_coverage[*]"
+      ],
+      "old_status": "identity_status的带说明FILE容器",
+      "new_status": "FILE",
+      "source_ids": [
+        "P-01"
+      ],
+      "task": "G01",
+      "note": "FILE指知识页登记的既有势身份；未声称本次重算hash，说明与状态分开。"
+    },
+    {
+      "paths": [
+        "results[2].parameters.potential.selection_status"
+      ],
+      "old_status": "CAND",
+      "new_status": "CAND",
+      "source_ids": [
+        "P-D01",
+        "P-01"
+      ],
+      "task": "G01",
+      "note": "采用该既有势的设计选择，不改变势文件身份FILE。"
+    },
+    {
+      "paths": [
+        "results[2].parameters.composition.atomic_percent.*"
+      ],
+      "old_status": "composition_status=USER（无直接规则ID）",
+      "new_status": "USER",
+      "source_ids": [
+        "P-D01"
+      ],
+      "task": "G01",
+      "input_basis": "本题G01原始成分约束"
+    },
+    {
+      "paths": [
+        "results[2].parameters.composition.counts.*"
+      ],
+      "old_status": "counts_status=CALC（无公式/直接规则ID）",
+      "new_status": "CALC",
+      "source_ids": [
+        "P-D01"
+      ],
+      "task": "G01",
+      "formula": "N*atomic_percent[element]/100；N的采用仍为CAND，真实模型计数待上游核验。"
+    },
+    {
+      "paths": [
+        "results[2].parameter_status.CHECK_PENDING"
+      ],
+      "old_status": "CHECK_PENDING来源索引",
+      "new_status": {
+        "parameter_source": null,
+        "execution_status": "CHECK_PENDING"
+      },
+      "source_ids": [
+        "D-04",
+        "D-08"
+      ],
+      "task": "G01",
+      "note": "从parameter_status移出，保留在独立执行/检查状态。"
+    },
+    {
+      "paths": [
+        "results[0].parameters.initial_state.structure",
+        "results[0].parameters.initial_state.orientation",
+        "results[0].parameters.initial_state.replication[*]",
+        "results[0].parameters.initial_state.atoms_per_cell",
+        "results[0].parameters.initial_state.N",
+        "results[0].parameters.boundary"
+      ],
+      "old_status": "initial_state.status=CAND混合容器或边界无局部来源",
+      "new_status": "CAND",
+      "source_ids": [
+        "U-D01",
+        "D-01"
+      ]
+    },
+    {
+      "paths": [
+        "results[0].parameters.initial_state.cell_lengths_A::formula"
+      ],
+      "old_status": "CAND父容器；文字内另含RUNTIME",
+      "new_status": "CALC",
+      "source_ids": [
+        "U-D01"
+      ],
+      "formula": "各轴L=10a；仅公式，不表示a已知。"
+    },
+    {
+      "paths": [
+        "results[0].parameters.initial_state.cell_lengths_A::actual_a_A",
+        "results[0].parameters.initial_state.cell_lengths_A::actual_lengths_A"
+      ],
+      "old_status": "CAND父容器；文字内另含RUNTIME",
+      "new_status": "RUNTIME",
+      "source_ids": [
+        "U-D01"
+      ],
+      "dependency": "model-worker报告a与真实初始盒；正式弛豫盒长从runner正式restart取得。"
+    },
+    {
+      "paths": [
+        "results[0].parameters.thermodynamic_targets.T_K",
+        "results[0].parameters.thermodynamic_targets.P_GPa[*]",
+        "results[0].parameters.stages[*].T_start_K",
+        "results[0].parameters.stages[*].T_end_K",
+        "results[0].parameters.stages[*].P_GPa[*]"
+      ],
+      "old_status": "USER总状态或未逐叶标注",
+      "new_status": "USER",
+      "source_ids": [
+        "N-01",
+        "U-D01"
+      ],
+      "input_basis": "N01用户锁定300 K、0 GPa；三轴控制方式另属D-01候选。"
+    },
+    {
+      "paths": [
+        "results[0].parameters.stages[*].duration_ps",
+        "results[0].parameters.stages[*].velocity",
+        "results[0].parameters.stages[2].conditional"
+      ],
+      "old_status": "未逐叶标注/summary CAND",
+      "new_status": "CAND",
+      "source_ids": [
+        "D-02",
+        "D-04",
+        "N-01"
+      ]
+    },
+    {
+      "paths": [
+        "results[0].parameters.stages[*].run_steps"
+      ],
+      "old_status": "未逐叶标注/summary CALC",
+      "new_status": "CALC",
+      "source_ids": [
+        "D-02",
+        "N-01"
+      ],
+      "formula": "duration_ps*1000/dt_fs"
+    },
+    {
+      "paths": [
+        "results[0].parameters.budget.initial_ps",
+        "results[0].parameters.budget.initial_steps",
+        "results[0].parameters.budget.max_ps",
+        "results[0].parameters.budget.max_steps"
+      ],
+      "old_status": "budget.status=CAND/CALC",
+      "new_status": "CALC",
+      "source_ids": [
+        "D-02",
+        "N-01",
+        "U-D01"
+      ],
+      "formula": "initial_ps=sum(eq,prod)；max_ps=initial_ps+一次eq-extra；steps=对应ps*1000/dt_fs。各阶段时长及一次追加政策仍CAND。"
+    },
+    {
+      "paths": [
+        "results[0].parameters.analysis.PTM_cutoff",
+        "results[0].parameters.analysis.quantities[*]",
+        "results[0].parameters.analysis.criterion"
+      ],
+      "old_status": "PTM_status=CAND；其余未逐叶标注",
+      "new_status": "CAND",
+      "source_ids": [
+        "D-03",
+        "D-04",
+        "N-01"
+      ]
+    },
+    {
+      "paths": [
+        "results[0].parameter_status.CAND::公共控制_种子输出时长"
+      ],
+      "old_status": "总括CAND",
+      "new_status": null,
+      "source_ids": [
+        "D-01",
+        "D-02",
+        "D-03"
+      ],
+      "note": "移除总括来源摘要；物理tau/候选输出步间隔CAND，tau/dt和输出物理间隔及run_steps CALC。"
+    },
+    {
+      "paths": [
+        "results[1].parameters.initial_state.structure",
+        "results[1].parameters.initial_state.N",
+        "results[1].parameters.initial_state.orientation",
+        "results[1].parameters.boundary"
+      ],
+      "old_status": "initial_state.status=CAND混合容器或未局部标注",
+      "new_status": "CAND",
+      "source_ids": [
+        "U-D02",
+        "D-01"
+      ],
+      "note": "10080是本报告选定的候选N；4×14×15×12=10080的算术校验独立为CALC。4原子正交胞、复制数和取向是本报告设计提案，并非U-D02原文逐项给出。"
+    },
+    {
+      "paths": [
+        "results[1].parameters.initial_state.cell_lengths_A::formula"
+      ],
+      "old_status": "继承initial_state.status=CAND",
+      "new_status": "CALC",
+      "source_ids": [
+        "U-D02"
+      ],
+      "formula": "Lx=14a；Ly=15√3a；Lz=12c；来自本报告所选正交HCP构造。"
+    },
+    {
+      "paths": [
+        "results[1].parameters.initial_state.cell_lengths_A::actual_a_A",
+        "results[1].parameters.initial_state.cell_lengths_A::actual_c_A",
+        "results[1].parameters.initial_state.cell_lengths_A::actual_lengths_A"
+      ],
+      "old_status": "CAND父容器且文字混有RUNTIME",
+      "new_status": "RUNTIME",
+      "source_ids": [
+        "U-D02"
+      ],
+      "dependency": "model-worker实现并验证HCP模型、回报a/c与真实盒；正式盒从runner restart取得。"
+    },
+    {
+      "paths": [
+        "results[1].parameters.thermodynamic_targets.P_GPa[*]",
+        "results[1].parameters.stages_common.P_GPa[*]"
+      ],
+      "old_status": "thermodynamic_targets/stages_common总状态CAND",
+      "new_status": "CAND",
+      "source_ids": [
+        "U-D02",
+        "D-01"
+      ]
+    },
+    {
+      "paths": [
+        "results[1].parameters.thermodynamic_targets.prior.alpha_beta_K",
+        "results[1].parameters.thermodynamic_targets.prior.prior_pressure_MPa"
+      ],
+      "old_status": "prior.status=LIT被嵌于CAND父字典",
+      "new_status": "LIT",
+      "source_ids": [
+        "U-D02"
+      ],
+      "note": "只标转述的实验热化学先验叶值；本次温区选择仍CAND，未读原表。"
+    },
+    {
+      "paths": [
+        "results[1].parameters.stages[0].T_start_K",
+        "results[1].parameters.stages[0].T_end_K",
+        "results[1].parameters.stages[1].T_start_K",
+        "results[1].parameters.stages[1].T_end_K",
+        "results[1].parameters.stages[2].T_K[*]",
+        "results[1].parameters.stages[3].T_K[*]"
+      ],
+      "old_status": "未逐叶标注/完整路径总括CAND",
+      "new_status": "CAND",
+      "source_ids": [
+        "U-D02",
+        "N-02"
+      ]
+    },
+    {
+      "paths": [
+        "results[1].parameters.stages[0].duration_ps",
+        "results[1].parameters.stages[1].duration_ps",
+        "results[1].parameters.stages[2].per_node_ps",
+        "results[1].parameters.stages[3].per_node_ps",
+        "results[1].parameters.stages[4].per_node_adapt_ps",
+        "results[1].parameters.stages[4].per_node_sample_ps",
+        "results[1].parameters.stages[4].max_occurrences",
+        "results[1].parameters.stages[5].duration_ps",
+        "results[1].parameters.stages[*].velocity",
+        "results[1].parameters.stages[4].conditional",
+        "results[1].parameters.stages[5].conditional"
+      ],
+      "old_status": "未逐叶标注/summary CAND",
+      "new_status": "CAND",
+      "source_ids": [
+        "U-D02",
+        "N-02",
+        "D-02"
+      ]
+    },
+    {
+      "paths": [
+        "results[1].parameters.stages[0].run_steps",
+        "results[1].parameters.stages[1].run_steps",
+        "results[1].parameters.stages[2].per_node_steps",
+        "results[1].parameters.stages[3].per_node_steps",
+        "results[1].parameters.stages[4].per_node_steps",
+        "results[1].parameters.stages[4].added_steps",
+        "results[1].parameters.stages[5].run_steps"
+      ],
+      "old_status": "未逐叶标注/summary CALC",
+      "new_status": "CALC",
+      "source_ids": [
+        "U-D02",
+        "N-02"
+      ],
+      "formula": "阶段ps*1000/dt_fs；加密每点=(adapt_ps+sample_ps)*1000/dt_fs；added_steps=3*per_node_steps。"
+    },
+    {
+      "paths": [
+        "results[1].parameters.stages[2].count",
+        "results[1].parameters.stages[3].count",
+        "results[1].parameters.stages[4].added_ps",
+        "results[1].parameters.stages[1].nominal_heating_K_s"
+      ],
+      "old_status": "未逐叶标注/summary CALC",
+      "new_status": "CALC",
+      "source_ids": [
+        "U-D02",
+        "N-02",
+        "N-03"
+      ],
+      "formula": "count=len(T_K)；added_ps=3*(adapt_ps+sample_ps)；q=(800−300)/(100 ps*10^-12 s/ps)。"
+    },
+    {
+      "paths": [
+        "results[1].parameters.stages[4].T_K_formula[*]::offset_K"
+      ],
+      "old_status": "未逐叶标注/完整路径总括CAND",
+      "new_status": "CAND",
+      "source_ids": [
+        "U-D02",
+        "N-02"
+      ]
+    },
+    {
+      "paths": [
+        "results[1].parameters.stages[4].T_K_formula[*]::expression"
+      ],
+      "old_status": "未逐叶标注",
+      "new_status": "CALC",
+      "source_ids": [
+        "U-D02",
+        "N-02"
+      ],
+      "formula": "Tlow+候选偏移；给定Tlow后计算各节点。"
+    },
+    {
+      "paths": [
+        "results[1].parameters.stages[4].T_K_formula[*]::actual_Tlow_K"
+      ],
+      "old_status": "未逐叶区分",
+      "new_status": "RUNTIME",
+      "source_ids": [
+        "N-02"
+      ],
+      "dependency": "已执行平台分析定位唯一候选事件邻区后绑定。"
+    },
+    {
+      "paths": [
+        "results[1].parameters.budget.initial_ps",
+        "results[1].parameters.budget.initial_steps",
+        "results[1].parameters.budget.max_ps",
+        "results[1].parameters.budget.max_steps"
+      ],
+      "old_status": "budget.status=CAND/CALC",
+      "new_status": "CALC",
+      "source_ids": [
+        "U-D02",
+        "N-02"
+      ],
+      "formula": "initial_ps=100+100+8*(100+100)；max_ps=initial_ps+3*(100+100)+100；steps=ps*1000/dt_fs。"
+    },
+    {
+      "paths": [
+        "results[1].parameters.analysis.PTM_cutoff",
+        "results[1].parameters.analysis.quantities[*]",
+        "results[1].parameters.analysis.candidate_event",
+        "results[1].parameters.analysis.no_signal",
+        "results[1].parameters.stages_common.output"
+      ],
+      "old_status": "未逐叶标注/summary CAND",
+      "new_status": "CAND",
+      "source_ids": [
+        "D-03",
+        "D-04",
+        "N-02",
+        "U-D02"
+      ]
+    },
+    {
+      "paths": [
+        "results[1].parameter_status.CAND::公共控制_输出_完整路径"
+      ],
+      "old_status": "总括CAND",
+      "new_status": null,
+      "source_ids": [
+        "D-01",
+        "D-03",
+        "U-D02",
+        "N-02"
+      ],
+      "note": "候选物理时间、温度节点和N为CAND；比值/步数/总时长/升温率及算术校验CALC；先验叶值LIT；实际a/c/盒和事件邻区RUNTIME。"
+    },
+    {
+      "paths": [
+        "results[2].parameters.initial_state.N",
+        "results[2].parameters.initial_state.orientation",
+        "results[2].parameters.initial_state.box::orthogonal_bulk_and_PBC_policy",
+        "results[2].parameters.initial_state.structure::mixed_model_preparation_policy"
+      ],
+      "old_status": "initial_state.status=RUNTIME（另有N_status=CAND）",
+      "new_status": "CAND",
+      "source_ids": [
+        "P-D01",
+        "P-D02"
+      ],
+      "note": "候选N与构建/液态目标不因上游尚未提供实际模型而变成RUNTIME。"
+    },
+    {
+      "paths": [
+        "results[2].parameters.initial_state.structure::actual_structure",
+        "results[2].parameters.initial_state.box::actual_dimensions",
+        "results[2].parameters.initial_state.box::actual_density",
+        "results[2].parameters.initial_state.box::actual_construction_method_and_min_spacing"
+      ],
+      "old_status": "initial_state.status=RUNTIME混合容器",
+      "new_status": "RUNTIME",
+      "source_ids": [
+        "P-D01"
+      ],
+      "dependency": "model-worker提供实际模型和构建记录。"
+    },
+    {
+      "paths": [
+        "results[2].parameters.thermodynamic_targets.P_GPa[*]",
+        "results[2].parameters.thermodynamic_targets.T_high_K",
+        "results[2].parameters.thermodynamic_targets.T_low_K"
+      ],
+      "old_status": "thermodynamic_targets.status=CAND",
+      "new_status": "CAND",
+      "source_ids": [
+        "P-D02"
+      ],
+      "note": "2500 K在本次路径中的采用是CAND；不继承论文报告值LIT。"
+    },
+    {
+      "paths": [
+        "results[2].parameters.thermodynamic_targets.provenance::paper_reported_high_T"
+      ],
+      "old_status": "文本与parameter_status.LIT混述",
+      "new_status": "LIT",
+      "source_ids": [
+        "P-02"
+      ],
+      "note": "只指既有独立结构验证分支报告的2500 K，不是本次液态验证结果。"
+    },
+    {
+      "paths": [
+        "results[2].parameters.fast.selected",
+        "results[2].parameters.fast.cooling_rate_K_s",
+        "results[2].parameters.slow_reference.selected",
+        "results[2].parameters.slow_reference.cooling_rate_K_s::adopted_rate"
+      ],
+      "old_status": "快速rate_status=CAND；慢速rate_status混合LIT/CAND",
+      "new_status": "CAND",
+      "source_ids": [
+        "P-D02"
+      ],
+      "note": "本次选择/备选使用的速率均属设计采用；保留原速率值。"
+    },
+    {
+      "paths": [
+        "results[2].parameters.slow_reference.cooling_rate_K_s::paper_reported_rate"
+      ],
+      "old_status": "rate_status=LIT（匹配论文报告冷速）；将其用于本候选端点是CAND",
+      "new_status": "LIT",
+      "source_ids": [
+        "P-02"
+      ],
+      "note": "与本次采用叶分开，不能给整个slow_reference字典LIT。"
+    },
+    {
+      "paths": [
+        "results[2].parameters.fast.stages[*].T_start_K",
+        "results[2].parameters.fast.stages[*].T_end_K",
+        "results[2].parameters.slow_reference.stages[*].T_start_K",
+        "results[2].parameters.slow_reference.stages[*].T_end_K",
+        "results[2].parameters.fast.stages[*].velocity"
+      ],
+      "old_status": "未逐叶标注/summary CAND",
+      "new_status": "CAND",
+      "source_ids": [
+        "P-D02",
+        "D-02"
+      ]
+    },
+    {
+      "paths": [
+        "results[2].parameters.fast.stages[0].duration_ps",
+        "results[2].parameters.fast.stages[2].duration_ps",
+        "results[2].parameters.slow_reference.stages[0].duration_ps",
+        "results[2].parameters.slow_reference.stages[2].duration_ps"
+      ],
+      "old_status": "各阶段时长总括CAND",
+      "new_status": "CAND",
+      "source_ids": [
+        "P-D02"
+      ]
+    },
+    {
+      "paths": [
+        "results[2].parameters.fast.stages[1].duration_ps",
+        "results[2].parameters.slow_reference.stages[1].duration_ps"
+      ],
+      "old_status": "各阶段时长总括CAND与summary CALC并存",
+      "new_status": "CALC",
+      "source_ids": [
+        "P-D02",
+        "N-03"
+      ],
+      "formula": "|T_high−T_low|/q(K/s)*10^12 ps/s"
+    },
+    {
+      "paths": [
+        "results[2].parameters.fast.stages[*].run_steps",
+        "results[2].parameters.slow_reference.stages[*].run_steps"
+      ],
+      "old_status": "未逐叶标注/summary CALC",
+      "new_status": "CALC",
+      "source_ids": [
+        "P-D02",
+        "N-03"
+      ],
+      "formula": "duration_ps*1000/dt_fs"
+    },
+    {
+      "paths": [
+        "results[2].parameters.fast.stages[0].thermo_steps",
+        "results[2].parameters.fast.stages[0].trajectory_steps",
+        "results[2].parameters.fast.stages[2].thermo_steps",
+        "results[2].parameters.fast.stages[2].trajectory_steps",
+        "results[2].parameters.slow_reference.stages[0].thermo_steps",
+        "results[2].parameters.slow_reference.stages[0].trajectory_steps",
+        "results[2].parameters.slow_reference.stages[2].thermo_steps",
+        "results[2].parameters.slow_reference.stages[2].trajectory_steps"
+      ],
+      "old_status": "输出总括CAND",
+      "new_status": "CAND",
+      "source_ids": [
+        "D-03",
+        "P-D02"
+      ]
+    },
+    {
+      "paths": [
+        "results[2].parameters.fast.stages[1].thermo_steps",
+        "results[2].parameters.fast.stages[1].trajectory_steps",
+        "results[2].parameters.slow_reference.stages[1].thermo_steps",
+        "results[2].parameters.slow_reference.stages[1].trajectory_steps"
+      ],
+      "old_status": "输出总括CAND",
+      "new_status": "CAND",
+      "source_ids": [
+        "P-D03"
+      ],
+      "note": "这些是所选保存间隔；由速率和dt反算的温度间隔单列CALC。"
+    },
+    {
+      "paths": [
+        "results[2].parameters.fast.stages[1].thermo_delta_target_T_K",
+        "results[2].parameters.fast.stages[1].trajectory_delta_target_T_K",
+        "results[2].parameters.slow_reference.stages[1].thermo_delta_target_T_K",
+        "results[2].parameters.slow_reference.stages[1].trajectory_delta_target_T_K"
+      ],
+      "old_status": "未逐叶标注；summary CALC/CAND输出总括",
+      "new_status": "CALC",
+      "source_ids": [
+        "P-D03",
+        "N-03"
+      ],
+      "formula": "q*output_steps*dt_fs*10^-15；P-D03中的≤1/≤5 K容许分辨率政策另为CAND，原字段数值表示本次间隔对应ΔT。"
+    },
+    {
+      "paths": [
+        "results[2].parameters.fast.budget.initial_ps",
+        "results[2].parameters.fast.budget.initial_steps",
+        "results[2].parameters.fast.budget.max_ps",
+        "results[2].parameters.fast.budget.max_steps",
+        "results[2].parameters.slow_reference.budget.initial_ps",
+        "results[2].parameters.slow_reference.budget.initial_steps",
+        "results[2].parameters.slow_reference.budget.max_ps",
+        "results[2].parameters.slow_reference.budget.max_steps"
+      ],
+      "old_status": "未逐叶标注/summary 最大预算CALC",
+      "new_status": "CALC",
+      "source_ids": [
+        "P-D02",
+        "N-03"
+      ],
+      "formula": "initial_ps=sum(三阶段duration_ps)；max_ps=initial_ps+一次1000 ps高温追加；steps=对应ps*1000/dt_fs。"
+    },
+    {
+      "paths": [
+        "results[2].parameters.bounded_extension.condition::T_P_duration_and_once_policy",
+        "results[2].parameters.bounded_extension.thermo_steps",
+        "results[2].parameters.bounded_extension.trajectory_steps"
+      ],
+      "old_status": "bounded_extension.status=CAND混合容器",
+      "new_status": "CAND",
+      "source_ids": [
+        "P-D02",
+        "D-03"
+      ]
+    },
+    {
+      "paths": [
+        "results[2].parameters.bounded_extension.condition::run_steps"
+      ],
+      "old_status": "bounded_extension.status=CAND混合容器",
+      "new_status": "CALC",
+      "source_ids": [
+        "P-D02"
+      ],
+      "formula": "1000 ps*1000 fs/ps/1 fs"
+    },
+    {
+      "paths": [
+        "results[2].parameters.numerical_validation_budget.required_by_this_design",
+        "results[2].parameters.numerical_validation_budget.conditional_candidate::dt_and_duration",
+        "results[2].parameters.numerical_validation_budget.conditional_candidate::physical_tau",
+        "results[2].parameters.numerical_validation_budget.failure_policy"
+      ],
+      "old_status": "status=CAND；未执行",
+      "new_status": "CAND",
+      "source_ids": [
+        "D-05",
+        "D-01"
+      ]
+    },
+    {
+      "paths": [
+        "results[2].parameters.numerical_validation_budget.conditional_candidate::tau_input_ratios"
+      ],
+      "old_status": "status=CAND；未执行",
+      "new_status": "CALC",
+      "source_ids": [
+        "D-01",
+        "D-05"
+      ],
+      "formula": "tau_fs/dt_fs；1 fs与0.5 fs各自计算。"
+    },
+    {
+      "paths": [
+        "results[2].parameters.numerical_validation_budget.steps_1fs",
+        "results[2].parameters.numerical_validation_budget.steps_0_5fs",
+        "results[2].parameters.numerical_validation_budget.max_extra_steps",
+        "results[2].parameters.numerical_validation_budget.fast_max_with_check_steps",
+        "results[2].parameters.numerical_validation_budget.slow_max_with_check_steps"
+      ],
+      "old_status": "status=CAND；未执行",
+      "new_status": "CALC",
+      "source_ids": [
+        "D-05",
+        "P-D02"
+      ],
+      "formula": "各对照steps=10 ps*1000/dt_fs；max_extra=sum(两对照steps)；含对照最大步数=对应制备max_steps+max_extra_steps。"
+    },
+    {
+      "paths": [
+        "results[2].parameters.numerical_validation_budget.status::execution"
+      ],
+      "old_status": "CAND；未执行",
+      "new_status": {
+        "parameter_source": null,
+        "execution_status": "NOT_RUN"
+      },
+      "source_ids": [
+        "D-05",
+        "D-08"
+      ]
+    },
+    {
+      "paths": [
+        "results[2].parameters.analysis.quantities[*]",
+        "results[2].parameters.analysis.Tg_definition",
+        "results[2].parameters.analysis.glass_requirement"
+      ],
+      "old_status": "未逐叶标注，且混入执行/能力描述",
+      "new_status": "CAND",
+      "source_ids": [
+        "P-D03",
+        "N-04"
+      ],
+      "note": "只给拟分析的指标/判据定义标候选；缺工具与尚未执行仍是独立能力/执行状态。"
+    },
+    {
+      "paths": [
+        "results[2].parameters.analysis.trajectory_limit::nominal_frame_count"
+      ],
+      "old_status": "未逐叶标注",
+      "new_status": "CALC",
+      "source_ids": [
+        "P-D03"
+      ],
+      "formula": "cooling_run_steps/trajectory_steps；约数只描述保存方案，不是实际已生成帧数。"
+    },
+    {
+      "paths": [
+        "results[2].parameter_status.BLOCK"
+      ],
+      "old_status": "BLOCK来源索引（实际内容是Tg/玻璃分析能力缺口）",
+      "new_status": {
+        "parameter_source": null,
+        "capability_status": "UNSUPPORTED"
+      },
+      "source_ids": [
+        "P-D03",
+        "N-04",
+        "D-08"
+      ]
+    },
+    {
+      "paths": [
+        "results[2].parameter_status.CAND::公共控制_各阶段时长_输出"
+      ],
+      "old_status": "总括CAND",
+      "new_status": null,
+      "source_ids": [
+        "D-01",
+        "D-03",
+        "P-D02",
+        "P-D03"
+      ],
+      "note": "移除混合总括：高温/末态候选时长CAND，冷却时长CALC；速率采用CAND/报告LIT分开；步数、比值、总预算CALC。"
+    }
+  ],
+  "validation_claim": "仅完成定向来源检查；未读取其他报告/知识页，未运行MD、势hash重算、统计或科学判据验证。"
+}

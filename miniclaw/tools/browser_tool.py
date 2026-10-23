@@ -152,7 +152,6 @@ async def _guard_navigation(route, request) -> None:
 
 @tool_registry.register(
     name="browser_snapshot",
-    description="Open an http(s) URL and return readable page text (Playwright).",
     schema={
         "type": "function",
         "function": {

@@ -21,7 +21,6 @@ _START_TIME = time.time()
 
 @tool_registry.register(
     name="system_info",
-    description="Query the agent's own runtime status, token usage, and workspace info.",
     schema={
         "type": "function",
         "function": {

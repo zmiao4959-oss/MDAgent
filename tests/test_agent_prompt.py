@@ -32,12 +32,10 @@ for testing the compact prompt summary.
     monkeypatch.setattr(agent_module, "WORKSPACE_DIR", workspace)
 
     agent = Agent(_FakeLLM(), SessionManager(tmp_path / "sessions"))
-    agent._skill_loader = SkillLoader(workspace / "skills")
+    agent.prompt_builder.skill_loader = SkillLoader(workspace / "skills")
 
-    prompt = agent._build_system_prompt()
+    prompt = agent.prompt_builder.build_system_prompt()
 
-    assert "Function schemas are provided separately." in prompt
     assert "compact prompt summary" in prompt
     assert "read_skill name='demo'" in prompt
-    assert "Skill files are named SKILL.md" in prompt
     assert "<available_skills>" not in prompt

@@ -1,14 +1,14 @@
 name: researcher
-description: Read-only researcher for local files, web sources, and the GPUMD knowledge base.
+description: >-
+  基于已维护本地知识的模拟前研究设计角色，区分文件事实、文献依据、候选和计算结果。
+  对UNEP-v1及Pd–Cu–Ni–P的NPT、温度路径和拉伸参数设计，使用phase-transition-design Skill给出完整参数包、依据、预算及依赖。
+  读取明确交接的文件；资产定位和外部资料核实交回协调者安排。execute仅用于该Skill已提供的只读参数计算脚本，不现场编程、不修改模拟资产、不提交MD或承担后处理。
 prompt: SYSTEM.md
-skills: ["*"]
+skills: ["phase-transition-design"]
 tools:
   allow:
-    - browser_snapshot
-    - grep
-    - list
+    - execute
     - read
     - read_skill
-    - search_gpumd_docs
-    - system_info
-    - web_search
+runtime:
+  max_tool_rounds: 200

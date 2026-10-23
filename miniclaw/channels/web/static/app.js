@@ -2061,10 +2061,48 @@ import { createResearchCapsulePanel } from '/static/capsules.js';
   projectDialog?.addEventListener("click", (event) => {
     if (event.target === projectDialog) closeProjectDialog();
   });
+  const FORBIDDEN_FILENAME_CHARS = /[<>:"\/\\|?*\u0000-\u001f]/;
+
+  function projectTitleProblem(title) {
+    if (FORBIDDEN_FILENAME_CHARS.test(title)) {
+      return "项目名称不能包含 <>:\"/\\|?* 等特殊字符，请修改后再试。";
+    }
+    const normalized = title.toLowerCase();
+    for (const project of projectsById.values()) {
+      if (project.title && project.title.trim().toLowerCase() === normalized) {
+        return "已存在同名项目「" + project.title + "」，请换一个名称。";
+      }
+    }
+    return null;
+  }
+
+  function showProjectTitleWarning(message) {
+    const el = document.getElementById("project-title-warning");
+    if (el) {
+      el.textContent = message;
+      el.hidden = false;
+    }
+  }
+
+  function hideProjectTitleWarning() {
+    const el = document.getElementById("project-title-warning");
+    if (el) {
+      el.textContent = "";
+      el.hidden = true;
+    }
+  }
+
   projectForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const title = projectTitleInput?.value.trim() || "";
     if (!title) return;
+    const problem = projectTitleProblem(title);
+    if (problem) {
+      showProjectTitleWarning(problem);
+      projectTitleInput?.focus();
+      return;
+    }
+    hideProjectTitleWarning();
     try {
       await createProject(title, projectObjectiveInput?.value.trim() || "");
       closeProjectDialog();

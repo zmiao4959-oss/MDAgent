@@ -1,0 +1,3936 @@
+{
+  "audit_type": "targeted",
+  "target_report": "review/agent-tests/post-tension.json",
+  "contract": "decisions/handoff-contract.json",
+  "kb_version": "v0.2",
+  "scope": "只针对逐叶来源状态、混合容器及关键参数规则映射做定向补充；不改原报告、参数数值、知识文件或交接设计。",
+  "read_files": [
+    "decisions/handoff-contract.json",
+    "review/agent-tests/post-tension.json"
+  ],
+  "prior_reading_used": "沿用同一测试回合之前已读的入口、参数表、tension、两势决策包、计算契约和C-02内容；本次没有重读这些页，没有读其他报告或reference-index。",
+  "source_id_policy": "下列rule_ids与evidence_ids是先前实际阅读的规则/证据标识；contract路径是本次规范依据，不把自由描述名称充当ID。受本次只读两文件范围约束，没有新增读取reference-index进行注册表审计。",
+  "cases": [
+    {
+      "case_id": "T01",
+      "findings": 25,
+      "corrections": [
+        {
+          "original_field": "parameters.potential_file_label",
+          "original_value": "16元/UNEP-v1-main.txt",
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.potential_file_label",
+          "corrected_status": "FILE",
+          "basis_rule_ids": [],
+          "basis_evidence_ids": [
+            "U-01"
+          ],
+          "contract_basis": "classification_rules: potential_id, potential_file_label, potential_sha256",
+          "reason": "既有势文件登记的身份/名称/哈希为FILE；选择这个势与文件身份是两个命题。"
+        },
+        {
+          "original_field": "parameters.pressure_GPa.loading.z",
+          "original_value": null,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.pressure_GPa",
+          "corrected_status": "FILE",
+          "basis_rule_ids": [
+            "T-01"
+          ],
+          "basis_evidence_ids": [
+            "C-02"
+          ],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "此null表示被deform驱动轴不施加独立Pzz目标，不是一个待测压力数值。"
+        },
+        {
+          "original_field": "parameters.pressure_GPa.loading_z_meaning",
+          "original_value": "z is prescribed by deform; no independent Pzz target",
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.pressure_GPa",
+          "corrected_status": "FILE",
+          "basis_rule_ids": [
+            "T-01"
+          ],
+          "basis_evidence_ids": [
+            "C-02"
+          ],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "此null表示被deform驱动轴不施加独立Pzz目标，不是一个待测压力数值。"
+        },
+        {
+          "original_field": "parameters.axis_constraints.loading.x",
+          "original_value": "P=0 GPa, variable Lx",
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.axis_constraints",
+          "corrected_status": "USER",
+          "basis_rule_ids": [
+            "T-01"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.axis_constraints.loading.y",
+          "original_value": "P=0 GPa, variable Ly",
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.axis_constraints",
+          "corrected_status": "USER",
+          "basis_rule_ids": [
+            "T-01"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.axis_constraints.loading.z",
+          "original_value": "Lz(n)=Lz0*(1+0.10*n/load_steps); deform enabled; Pzz is an output",
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.axis_constraints",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "T-01",
+            "T-02",
+            "T-05"
+          ],
+          "basis_evidence_ids": [
+            "C-02"
+          ],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "此文本含长度公式(CALC)、驱动轴选择(USER或CAND)和未知Lz0(RUNTIME)，完整拆分见semantic_splits。"
+        },
+        {
+          "original_field": "parameters.budget.base_relax_ps",
+          "original_value": 100,
+          "original_status": "CALC",
+          "original_status_inherited_from": "parameter_status.budget",
+          "corrected_status": "CAND",
+          "basis_rule_ids": [
+            "D-02"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.budget.maximum_relax_extension_ps",
+          "original_value": 100,
+          "original_status": "CALC",
+          "original_status_inherited_from": "parameter_status.budget",
+          "corrected_status": "CAND",
+          "basis_rule_ids": [
+            "D-02"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.budget.independent_generator_trial_steps",
+          "original_value": 200,
+          "original_status": "CALC",
+          "original_status_inherited_from": "parameter_status.budget",
+          "corrected_status": "CAND",
+          "basis_rule_ids": [
+            "D-02"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.budget.trial_counted_as_physical_equilibration",
+          "original_value": false,
+          "original_status": "CALC",
+          "original_status_inherited_from": "parameter_status.budget",
+          "corrected_status": "CAND",
+          "basis_rule_ids": [
+            "D-02"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.budget.wall_clock_promise",
+          "original_value": false,
+          "original_status": "CALC",
+          "original_status_inherited_from": "parameter_status.budget",
+          "corrected_status": "CAND",
+          "basis_rule_ids": [
+            "D-02"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.timestep_control.optional_pairs.0.steps",
+          "original_value": 10000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.timestep_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "steps=duration_ps*1000/dt_fs",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.timestep_control.optional_pairs.0.T_coup",
+          "original_value": 100,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.timestep_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "T_coup=100fs/dt_fs",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.timestep_control.optional_pairs.0.P_coup",
+          "original_value": 1000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.timestep_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "P_coup=1000fs/dt_fs",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.timestep_control.optional_pairs.1.steps",
+          "original_value": 20000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.timestep_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "steps=duration_ps*1000/dt_fs",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.timestep_control.optional_pairs.1.T_coup",
+          "original_value": 200,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.timestep_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "T_coup=100fs/dt_fs",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.timestep_control.optional_pairs.1.P_coup",
+          "original_value": 2000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.timestep_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "P_coup=1000fs/dt_fs",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.timestep_control.additional_steps_if_selected",
+          "original_value": 30000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.timestep_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "additional_steps=sum(optional_pairs[*].steps)=10000+20000",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.screening.status",
+          "original_value": "CHECK_PENDING",
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.screening",
+          "corrected_status": "RUNTIME",
+          "basis_rule_ids": [
+            "D-04"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "CHECK_PENDING是待执行检查状态，不能作为候选材料值或已通过事实。"
+        },
+        {
+          "original_field": "parameters.screening.temperature_tolerance_K",
+          "original_value": 6,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.screening",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-04"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "max(5 K,0.02*temperature_K)=6 K",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.screening.pressure_tolerance_GPa",
+          "original_value": 0.1,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.screening",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-04"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "max(0.1 GPa,0.02*abs(P_target=0))=0.1 GPa",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.screening.relative_volume_mean_difference_max",
+          "original_value": 0.005,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.screening",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-04"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "0.5 percent/100=0.005; underlying 0.5 percent threshold is CAND policy",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.rate_control.variant_load_ps",
+          "original_value": 2000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.rate_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "T-03",
+            "D-06"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "variant_duration_ps=strain_end/variant_rate_s_inv*1e12",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.rate_control.variant_load_steps",
+          "original_value": 2000000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.rate_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "T-03",
+            "D-06"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "variant_load_steps=ceil(strain_end/(variant_rate_s_inv*dt_fs*1e-15)); additional_load_steps=variant_load_steps",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.rate_control.additional_load_steps",
+          "original_value": 2000000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.rate_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "T-03",
+            "D-06"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "variant_load_steps=ceil(strain_end/(variant_rate_s_inv*dt_fs*1e-15)); additional_load_steps=variant_load_steps",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        }
+      ],
+      "container_status_removals": [
+        {
+          "original_field": "parameters.composition",
+          "original_status": "USER",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.initial_state",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.pbc",
+          "original_status": "USER",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.pressure_GPa",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.control_moduli_GPa",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.seed",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.increment_A_per_step",
+          "original_status": "RUNTIME",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.axis_constraints",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.helper_axes_supported",
+          "original_status": "FILE",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.engine_axes_supported",
+          "original_status": "FILE",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.preparation_output_intervals",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.output_resolution",
+          "original_status": "CALC",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.preparation_actions",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.budget",
+          "original_status": "CALC",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.timestep_control",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.output_records",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.screening",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.rate_control",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.pressure_GPa.relax",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.composition.atom_counts",
+          "original_status": "CALC",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        }
+      ],
+      "orphan_status_entries": [],
+      "leaf_parameter_status": {
+        "potential_id": "FILE",
+        "potential_sha256": "FILE",
+        "potential_file_label": "FILE",
+        "composition.Cu": "USER",
+        "composition.Ni": "USER",
+        "composition.atom_counts.Cu": "CALC",
+        "composition.atom_counts.Ni": "CALC",
+        "initial_state.type": "CAND",
+        "initial_state.conventional_cell_repeats.0": "CAND",
+        "initial_state.conventional_cell_repeats.1": "CAND",
+        "initial_state.conventional_cell_repeats.2": "CAND",
+        "initial_state.basis_atoms": "CAND",
+        "initial_state.orientation.x": "CAND",
+        "initial_state.orientation.y": "CAND",
+        "initial_state.orientation.z": "CAND",
+        "initial_state.model_status": "CAND",
+        "initial_state.lattice_constant_A": "RUNTIME",
+        "initial_state.velocities": "CAND",
+        "N": "CAND",
+        "pbc.x": "USER",
+        "pbc.y": "USER",
+        "pbc.z": "USER",
+        "box_geometry": "CAND",
+        "temperature_K": "USER",
+        "pressure_GPa.relax.x": "CAND",
+        "pressure_GPa.relax.y": "CAND",
+        "pressure_GPa.relax.z": "CAND",
+        "pressure_GPa.loading.x": "USER",
+        "pressure_GPa.loading.y": "USER",
+        "pressure_GPa.loading.z": "FILE",
+        "pressure_GPa.loading_z_meaning": "FILE",
+        "dt_fs": "CAND",
+        "thermostat": "CAND",
+        "barostat": "CAND",
+        "tau_T_fs": "CAND",
+        "tau_P_fs": "CAND",
+        "T_coup": "CALC",
+        "P_coup": "CALC",
+        "control_moduli_GPa.x": "CAND",
+        "control_moduli_GPa.y": "CAND",
+        "control_moduli_GPa.z": "CAND",
+        "control_moduli_GPa.meaning": "CAND",
+        "relax_ps": "CAND",
+        "relax_steps": "CALC",
+        "seed.value": "CAND",
+        "seed.repeat_control_value": "CAND",
+        "seed.policy": "CAND",
+        "strain_definition": "USER",
+        "axes": "USER",
+        "strain_end": "USER",
+        "rate_s_inv": "CAND",
+        "load_duration_ps": "CALC",
+        "load_steps": "CALC",
+        "reference_status": "RUNTIME",
+        "increment_A_per_step.x": "CALC",
+        "increment_A_per_step.y": "CALC",
+        "increment_A_per_step.z": "RUNTIME",
+        "increment_formula": "CALC",
+        "axis_constraints.relax.x": "CAND",
+        "axis_constraints.relax.y": "CAND",
+        "axis_constraints.relax.z": "CAND",
+        "axis_constraints.loading.x": "USER",
+        "axis_constraints.loading.y": "USER",
+        "axis_constraints.loading.z": "CALC",
+        "helper_compatible": "FILE",
+        "helper_axes_supported.0": "FILE",
+        "helper_axes_supported.1": "FILE",
+        "engine_axes_supported.0": "FILE",
+        "engine_axes_supported.1": "FILE",
+        "engine_axes_supported.2": "FILE",
+        "thermo_interval_steps": "CAND",
+        "trajectory_interval_steps": "CAND",
+        "preparation_output_intervals.thermo_steps": "CAND",
+        "preparation_output_intervals.trajectory_steps": "CAND",
+        "preparation_output_intervals.restart": "CAND",
+        "output_resolution.thermo_ps": "CALC",
+        "output_resolution.trajectory_ps": "CALC",
+        "output_resolution.thermo_delta_engineering_strain": "CALC",
+        "output_resolution.trajectory_delta_engineering_strain": "CALC",
+        "preparation_actions.0": "CAND",
+        "preparation_actions.1": "CAND",
+        "preparation_actions.2": "CAND",
+        "preparation_actions.3": "CAND",
+        "preparation_actions.4": "CAND",
+        "total_steps": "CALC",
+        "budget.base_relax_ps": "CAND",
+        "budget.maximum_relax_extension_ps": "CAND",
+        "budget.maximum_relax_extension_steps": "CALC",
+        "budget.base_total_steps": "CALC",
+        "budget.maximum_total_steps_with_relax_extension": "CALC",
+        "budget.independent_generator_trial_steps": "CAND",
+        "budget.trial_counted_as_physical_equilibration": "CAND",
+        "budget.wall_clock_promise": "CAND",
+        "timestep_control.required_for_first_data_generation": "CAND",
+        "timestep_control.optional_pairs.0.dt_fs": "CAND",
+        "timestep_control.optional_pairs.0.duration_ps": "CAND",
+        "timestep_control.optional_pairs.0.steps": "CALC",
+        "timestep_control.optional_pairs.0.T_coup": "CALC",
+        "timestep_control.optional_pairs.0.P_coup": "CALC",
+        "timestep_control.optional_pairs.1.dt_fs": "CAND",
+        "timestep_control.optional_pairs.1.duration_ps": "CAND",
+        "timestep_control.optional_pairs.1.steps": "CALC",
+        "timestep_control.optional_pairs.1.T_coup": "CALC",
+        "timestep_control.optional_pairs.1.P_coup": "CALC",
+        "timestep_control.additional_steps_if_selected": "CALC",
+        "stress_convention": "CAND",
+        "output_records.0": "CAND",
+        "output_records.1": "CAND",
+        "output_records.2": "CAND",
+        "output_records.3": "CAND",
+        "output_records.4": "CAND",
+        "output_records.5": "CAND",
+        "output_records.6": "CAND",
+        "output_records.7": "CAND",
+        "screening.status": "RUNTIME",
+        "screening.windows_ps.0": "CAND",
+        "screening.windows_ps.1": "CAND",
+        "screening.temperature_tolerance_K": "CALC",
+        "screening.pressure_tolerance_GPa": "CALC",
+        "screening.relative_volume_mean_difference_max": "CALC",
+        "screening.potential_energy_mean_difference_eV_per_atom_max": "CAND",
+        "screening.interpretation": "CAND",
+        "target_criteria": "CAND",
+        "rate_control.selected_as_first_run": "CAND",
+        "rate_control.variant_rate_s_inv": "CAND",
+        "rate_control.variant_load_ps": "CALC",
+        "rate_control.variant_load_steps": "CALC",
+        "rate_control.additional_load_steps": "CALC",
+        "rate_control.shared_reference": "CAND"
+      },
+      "direct_parameter_rule_map": [
+        {
+          "status": "FILE",
+          "rule_ids": [],
+          "evidence_ids": [
+            "U-01"
+          ],
+          "parameters": [
+            "potential_id",
+            "potential_sha256",
+            "potential_file_label"
+          ]
+        },
+        {
+          "status": "USER",
+          "rule_ids": [
+            "U-D01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "composition.Cu",
+            "composition.Ni",
+            "temperature_K"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "U-D01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "composition.atom_counts.Cu",
+            "composition.atom_counts.Ni"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "U-D01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "initial_state.type",
+            "initial_state.conventional_cell_repeats.0",
+            "initial_state.conventional_cell_repeats.1",
+            "initial_state.conventional_cell_repeats.2",
+            "initial_state.basis_atoms",
+            "initial_state.orientation.x",
+            "initial_state.orientation.y",
+            "initial_state.orientation.z",
+            "initial_state.model_status",
+            "initial_state.velocities",
+            "N"
+          ]
+        },
+        {
+          "status": "RUNTIME",
+          "rule_ids": [
+            "U-D01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "initial_state.lattice_constant_A"
+          ]
+        },
+        {
+          "status": "USER",
+          "rule_ids": [
+            "D-01",
+            "U-D01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "pbc.x",
+            "pbc.y",
+            "pbc.z"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-01",
+            "T-01",
+            "U-D01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "box_geometry"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "T-01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "pressure_GPa.relax.x",
+            "pressure_GPa.relax.y",
+            "pressure_GPa.relax.z",
+            "axis_constraints.relax.x",
+            "axis_constraints.relax.y",
+            "axis_constraints.relax.z"
+          ]
+        },
+        {
+          "status": "USER",
+          "rule_ids": [
+            "T-01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "pressure_GPa.loading.x",
+            "pressure_GPa.loading.y",
+            "axis_constraints.loading.x",
+            "axis_constraints.loading.y"
+          ]
+        },
+        {
+          "status": "FILE",
+          "rule_ids": [
+            "T-01"
+          ],
+          "evidence_ids": [
+            "C-02"
+          ],
+          "parameters": [
+            "pressure_GPa.loading.z",
+            "pressure_GPa.loading_z_meaning"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "dt_fs",
+            "thermostat",
+            "tau_T_fs",
+            "tau_P_fs",
+            "control_moduli_GPa.x",
+            "control_moduli_GPa.y",
+            "control_moduli_GPa.z",
+            "control_moduli_GPa.meaning"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-01"
+          ],
+          "evidence_ids": [
+            "C-02"
+          ],
+          "parameters": [
+            "barostat"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "D-01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "T_coup",
+            "P_coup"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "T-03",
+            "U-D01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "relax_ps",
+            "rate_s_inv"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "T-03"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "relax_steps"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-02"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "seed.value",
+            "seed.repeat_control_value",
+            "seed.policy",
+            "budget.base_relax_ps",
+            "budget.maximum_relax_extension_ps",
+            "budget.independent_generator_trial_steps",
+            "budget.trial_counted_as_physical_equilibration",
+            "budget.wall_clock_promise"
+          ]
+        },
+        {
+          "status": "USER",
+          "rule_ids": [
+            "T-02",
+            "U-D01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "strain_definition",
+            "axes",
+            "strain_end"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "T-02"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "load_duration_ps",
+            "load_steps",
+            "increment_formula",
+            "total_steps"
+          ]
+        },
+        {
+          "status": "RUNTIME",
+          "rule_ids": [
+            "T-05"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "reference_status"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "T-02",
+            "T-05"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "increment_A_per_step.x",
+            "increment_A_per_step.y"
+          ]
+        },
+        {
+          "status": "RUNTIME",
+          "rule_ids": [
+            "T-02",
+            "T-05"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "increment_A_per_step.z"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "T-01",
+            "T-02",
+            "T-05"
+          ],
+          "evidence_ids": [
+            "C-02"
+          ],
+          "parameters": [
+            "axis_constraints.loading.z"
+          ]
+        },
+        {
+          "status": "FILE",
+          "rule_ids": [
+            "T-05"
+          ],
+          "evidence_ids": [
+            "C-02"
+          ],
+          "parameters": [
+            "helper_compatible",
+            "helper_axes_supported.0",
+            "helper_axes_supported.1",
+            "engine_axes_supported.0",
+            "engine_axes_supported.1",
+            "engine_axes_supported.2"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "T-04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "thermo_interval_steps",
+            "trajectory_interval_steps",
+            "stress_convention"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-03"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "preparation_output_intervals.thermo_steps",
+            "preparation_output_intervals.trajectory_steps",
+            "preparation_output_intervals.restart"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "T-04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "output_resolution.thermo_ps",
+            "output_resolution.trajectory_ps",
+            "output_resolution.thermo_delta_engineering_strain",
+            "output_resolution.trajectory_delta_engineering_strain"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-02",
+            "T-03",
+            "T-05",
+            "U-D01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "preparation_actions.0",
+            "preparation_actions.1",
+            "preparation_actions.2",
+            "preparation_actions.3",
+            "preparation_actions.4"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "D-02"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "budget.maximum_relax_extension_steps",
+            "budget.base_total_steps",
+            "budget.maximum_total_steps_with_relax_extension"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-05"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "timestep_control.required_for_first_data_generation",
+            "timestep_control.optional_pairs.0.dt_fs",
+            "timestep_control.optional_pairs.0.duration_ps",
+            "timestep_control.optional_pairs.1.dt_fs",
+            "timestep_control.optional_pairs.1.duration_ps"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "D-05"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "timestep_control.optional_pairs.0.steps",
+            "timestep_control.optional_pairs.0.T_coup",
+            "timestep_control.optional_pairs.0.P_coup",
+            "timestep_control.optional_pairs.1.steps",
+            "timestep_control.optional_pairs.1.T_coup",
+            "timestep_control.optional_pairs.1.P_coup",
+            "timestep_control.additional_steps_if_selected"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-03",
+            "T-04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "output_records.0",
+            "output_records.1",
+            "output_records.2",
+            "output_records.3",
+            "output_records.4",
+            "output_records.5",
+            "output_records.6",
+            "output_records.7"
+          ]
+        },
+        {
+          "status": "RUNTIME",
+          "rule_ids": [
+            "D-04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "screening.status"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "screening.windows_ps.0",
+            "screening.windows_ps.1",
+            "screening.potential_energy_mean_difference_eV_per_atom_max",
+            "screening.interpretation"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "D-04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "screening.temperature_tolerance_K",
+            "screening.pressure_tolerance_GPa",
+            "screening.relative_volume_mean_difference_max"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-08",
+            "T-04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "target_criteria"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "T-03",
+            "D-06"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "rate_control.selected_as_first_run",
+            "rate_control.variant_rate_s_inv",
+            "rate_control.shared_reference"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "T-03",
+            "D-06"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "rate_control.variant_load_ps",
+            "rate_control.variant_load_steps",
+            "rate_control.additional_load_steps"
+          ]
+        }
+      ],
+      "semantic_splits": [
+        {
+          "original_field": "parameters.axis_constraints.loading.z",
+          "original_status": "CAND",
+          "components": {
+            "driven_axis": {
+              "value": "z",
+              "status": "USER",
+              "rule_ids": [
+                "T-01",
+                "U-D01"
+              ]
+            },
+            "length_law": {
+              "value": "Lz(n)=Lz0*(1+0.10*n/load_steps); deform enabled; Pzz is an output",
+              "status": "CALC",
+              "rule_ids": [
+                "T-02"
+              ]
+            },
+            "Lz0_A": {
+              "value": null,
+              "status": "RUNTIME",
+              "rule_ids": [
+                "T-05"
+              ]
+            },
+            "no_independent_Pzz_target": {
+              "value": true,
+              "status": "FILE",
+              "rule_ids": [
+                "T-01"
+              ],
+              "evidence_ids": [
+                "C-02"
+              ]
+            }
+          }
+        },
+        {
+          "original_field": "parameters.stress_convention",
+          "original_status": "CAND",
+          "components": {
+            "chosen_tensile_positive_convention": {
+              "value": true,
+              "status": "CAND",
+              "rule_ids": [
+                "T-04"
+              ]
+            },
+            "pressure_to_current_volume_tensile_stress": {
+              "value": "sigma_zz=-Pzz",
+              "status": "CALC",
+              "rule_ids": [
+                "T-04"
+              ],
+              "formula": "sign inversion under the selected convention"
+            },
+            "engineering_stress_conversion_requirement": {
+              "value": "requires initial/current section relation",
+              "status": "FILE",
+              "rule_ids": [
+                "T-04"
+              ]
+            }
+          }
+        },
+        {
+          "original_field": "parameters.budget",
+          "original_status": "CALC",
+          "components_note": "叶级表分别标候选时长/试跑政策CAND与步数/合计CALC；不再整组CALC。"
+        },
+        {
+          "original_field": "parameters.timestep_control",
+          "original_status": "CAND",
+          "components_note": "叶级表分别标候选dt/物理时长CAND与steps/T_coup/P_coup/总额CALC；tau物理时间不变。"
+        },
+        {
+          "original_field": "parameters.screening",
+          "original_status": "CAND",
+          "components_note": "候选窗口/阈值政策CAND；代入300K/0GPa所得数值阈值和百分数换算CALC；待检状态RUNTIME。"
+        }
+      ],
+      "parameter_values_changed": false
+    },
+    {
+      "case_id": "T02",
+      "findings": 26,
+      "corrections": [
+        {
+          "original_field": "parameters.potential_file_label",
+          "original_value": "16元/UNEP-v1-main.txt",
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.potential_file_label",
+          "corrected_status": "FILE",
+          "basis_rule_ids": [],
+          "basis_evidence_ids": [
+            "U-01"
+          ],
+          "contract_basis": "classification_rules: potential_id, potential_file_label, potential_sha256",
+          "reason": "既有势文件登记的身份/名称/哈希为FILE；选择这个势与文件身份是两个命题。"
+        },
+        {
+          "original_field": "parameters.pressure_GPa.loading.z",
+          "original_value": null,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.pressure_GPa",
+          "corrected_status": "FILE",
+          "basis_rule_ids": [
+            "T-01"
+          ],
+          "basis_evidence_ids": [
+            "C-02"
+          ],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "此null表示被deform驱动轴不施加独立Pzz目标，不是一个待测压力数值。"
+        },
+        {
+          "original_field": "parameters.pressure_GPa.loading_z_meaning",
+          "original_value": "z is prescribed by deform; no independent Pzz target",
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.pressure_GPa",
+          "corrected_status": "FILE",
+          "basis_rule_ids": [
+            "T-01"
+          ],
+          "basis_evidence_ids": [
+            "C-02"
+          ],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "此null表示被deform驱动轴不施加独立Pzz目标，不是一个待测压力数值。"
+        },
+        {
+          "original_field": "parameters.increment_A_per_step.x",
+          "original_value": 0,
+          "original_status": "RUNTIME",
+          "original_status_inherited_from": "parameter_status.increment_A_per_step",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "T-02",
+            "T-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "unloaded axis deform increment=0",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.increment_A_per_step.y",
+          "original_value": 0,
+          "original_status": "RUNTIME",
+          "original_status_inherited_from": "parameter_status.increment_A_per_step",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "T-02",
+            "T-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "unloaded axis deform increment=0",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.axis_constraints.loading.z",
+          "original_value": "Lz(n)=Lz0*(1+0.10*n/load_steps); deform enabled; Pzz is an output",
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.axis_constraints",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "T-01",
+            "T-02",
+            "T-05"
+          ],
+          "basis_evidence_ids": [
+            "C-02"
+          ],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "此文本含长度公式(CALC)、驱动轴选择(USER或CAND)和未知Lz0(RUNTIME)，完整拆分见semantic_splits。"
+        },
+        {
+          "original_field": "parameters.budget.base_relax_ps",
+          "original_value": 100,
+          "original_status": "CALC",
+          "original_status_inherited_from": "parameter_status.budget",
+          "corrected_status": "CAND",
+          "basis_rule_ids": [
+            "D-02"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.budget.maximum_relax_extension_ps",
+          "original_value": 100,
+          "original_status": "CALC",
+          "original_status_inherited_from": "parameter_status.budget",
+          "corrected_status": "CAND",
+          "basis_rule_ids": [
+            "D-02"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.budget.independent_generator_trial_steps",
+          "original_value": 200,
+          "original_status": "CALC",
+          "original_status_inherited_from": "parameter_status.budget",
+          "corrected_status": "CAND",
+          "basis_rule_ids": [
+            "D-02"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.budget.trial_counted_as_physical_equilibration",
+          "original_value": false,
+          "original_status": "CALC",
+          "original_status_inherited_from": "parameter_status.budget",
+          "corrected_status": "CAND",
+          "basis_rule_ids": [
+            "D-02"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.budget.wall_clock_promise",
+          "original_value": false,
+          "original_status": "CALC",
+          "original_status_inherited_from": "parameter_status.budget",
+          "corrected_status": "CAND",
+          "basis_rule_ids": [
+            "D-02"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.timestep_control.optional_pairs.0.steps",
+          "original_value": 10000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.timestep_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "steps=duration_ps*1000/dt_fs",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.timestep_control.optional_pairs.0.T_coup",
+          "original_value": 100,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.timestep_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "T_coup=100fs/dt_fs",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.timestep_control.optional_pairs.0.P_coup",
+          "original_value": 1000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.timestep_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "P_coup=1000fs/dt_fs",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.timestep_control.optional_pairs.1.steps",
+          "original_value": 20000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.timestep_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "steps=duration_ps*1000/dt_fs",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.timestep_control.optional_pairs.1.T_coup",
+          "original_value": 200,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.timestep_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "T_coup=100fs/dt_fs",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.timestep_control.optional_pairs.1.P_coup",
+          "original_value": 2000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.timestep_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "P_coup=1000fs/dt_fs",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.timestep_control.additional_steps_if_selected",
+          "original_value": 30000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.timestep_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "additional_steps=sum(optional_pairs[*].steps)=10000+20000",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.screening.status",
+          "original_value": "CHECK_PENDING",
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.screening",
+          "corrected_status": "RUNTIME",
+          "basis_rule_ids": [
+            "D-04"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "CHECK_PENDING是待执行检查状态，不能作为候选材料值或已通过事实。"
+        },
+        {
+          "original_field": "parameters.screening.temperature_tolerance_K",
+          "original_value": 6,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.screening",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-04"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "max(5 K,0.02*temperature_K)=6 K",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.screening.pressure_tolerance_GPa",
+          "original_value": 0.1,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.screening",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-04"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "max(0.1 GPa,0.02*abs(P_target=0))=0.1 GPa",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.screening.relative_volume_mean_difference_max",
+          "original_value": 0.005,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.screening",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-04"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "0.5 percent/100=0.005; underlying 0.5 percent threshold is CAND policy",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.orientation_control.additional_relax_steps",
+          "original_value": 100000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.orientation_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "U-D03",
+            "D-06"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "control_relax_steps=100ps*1000/1fs",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.orientation_control.additional_load_steps",
+          "original_value": 1000000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.orientation_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "U-D03",
+            "D-06"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "control_load_steps=0.1/(1e8*1e-15)",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.orientation_control.additional_total_steps",
+          "original_value": 1100000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.orientation_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "U-D03",
+            "D-06"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "control_additional_steps=100000+1000000",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.orientation_control.combined_base_plus_control_steps",
+          "original_value": 2200000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.orientation_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "U-D03",
+            "D-06"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "combined_steps=base_total_steps+control_additional_steps",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        }
+      ],
+      "container_status_removals": [
+        {
+          "original_field": "parameters.composition",
+          "original_status": "USER",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.initial_state",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.pbc",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.pressure_GPa",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.control_moduli_GPa",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.seed",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.increment_A_per_step",
+          "original_status": "RUNTIME",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.axis_constraints",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.helper_axes_supported",
+          "original_status": "FILE",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.engine_axes_supported",
+          "original_status": "FILE",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.preparation_output_intervals",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.output_resolution",
+          "original_status": "CALC",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.preparation_actions",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.budget",
+          "original_status": "CALC",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.timestep_control",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.output_records",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.screening",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.orientation_control",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.composition.atom_counts",
+          "original_status": "CALC",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        }
+      ],
+      "orphan_status_entries": [
+        {
+          "original_status_field": "parameter_status.initial_state.actual_model_metadata",
+          "original_status": "RUNTIME",
+          "action": "remove as a parameter status; retain actual-asset requirement under runtime_dependencies",
+          "reason": "原parameters内不存在该路径，不能当作已存在参数的逐叶标记。"
+        }
+      ],
+      "leaf_parameter_status": {
+        "potential_id": "FILE",
+        "potential_sha256": "FILE",
+        "potential_file_label": "FILE",
+        "composition.Ti": "USER",
+        "composition.atom_counts.Ti": "CALC",
+        "initial_state.type": "CAND",
+        "initial_state.orientation.z": "CAND",
+        "initial_state.orientation.basal_axes": "CAND",
+        "initial_state.orthorhombic_cell_basis_atoms": "CAND",
+        "initial_state.cell_repeats.0": "CAND",
+        "initial_state.cell_repeats.1": "CAND",
+        "initial_state.cell_repeats.2": "CAND",
+        "initial_state.model_status": "CAND",
+        "initial_state.lattice_a_A": "RUNTIME",
+        "initial_state.lattice_c_A": "RUNTIME",
+        "initial_state.velocities": "CAND",
+        "N": "CAND",
+        "pbc.x": "CAND",
+        "pbc.y": "CAND",
+        "pbc.z": "CAND",
+        "box_geometry": "CAND",
+        "temperature_K": "CAND",
+        "pressure_GPa.relax.x": "CAND",
+        "pressure_GPa.relax.y": "CAND",
+        "pressure_GPa.relax.z": "CAND",
+        "pressure_GPa.loading.x": "CAND",
+        "pressure_GPa.loading.y": "CAND",
+        "pressure_GPa.loading.z": "FILE",
+        "pressure_GPa.loading_z_meaning": "FILE",
+        "dt_fs": "CAND",
+        "thermostat": "CAND",
+        "barostat": "CAND",
+        "tau_T_fs": "CAND",
+        "tau_P_fs": "CAND",
+        "T_coup": "CALC",
+        "P_coup": "CALC",
+        "control_moduli_GPa.x": "CAND",
+        "control_moduli_GPa.y": "CAND",
+        "control_moduli_GPa.z": "CAND",
+        "control_moduli_GPa.meaning": "CAND",
+        "relax_ps": "CAND",
+        "relax_steps": "CALC",
+        "seed.value": "CAND",
+        "seed.repeat_control_value": "CAND",
+        "seed.policy": "CAND",
+        "strain_definition": "CAND",
+        "axes": "CAND",
+        "strain_end": "CAND",
+        "rate_s_inv": "CAND",
+        "load_duration_ps": "CALC",
+        "load_steps": "CALC",
+        "reference_status": "RUNTIME",
+        "increment_A_per_step.x": "CALC",
+        "increment_A_per_step.y": "CALC",
+        "increment_A_per_step.z": "RUNTIME",
+        "increment_formula": "CALC",
+        "axis_constraints.relax.x": "CAND",
+        "axis_constraints.relax.y": "CAND",
+        "axis_constraints.relax.z": "CAND",
+        "axis_constraints.loading.x": "CAND",
+        "axis_constraints.loading.y": "CAND",
+        "axis_constraints.loading.z": "CALC",
+        "helper_compatible": "FILE",
+        "helper_axes_supported.0": "FILE",
+        "helper_axes_supported.1": "FILE",
+        "engine_axes_supported.0": "FILE",
+        "engine_axes_supported.1": "FILE",
+        "engine_axes_supported.2": "FILE",
+        "thermo_interval_steps": "CAND",
+        "trajectory_interval_steps": "CAND",
+        "preparation_output_intervals.thermo_steps": "CAND",
+        "preparation_output_intervals.trajectory_steps": "CAND",
+        "preparation_output_intervals.restart": "CAND",
+        "output_resolution.thermo_ps": "CALC",
+        "output_resolution.trajectory_ps": "CALC",
+        "output_resolution.thermo_delta_engineering_strain": "CALC",
+        "output_resolution.trajectory_delta_engineering_strain": "CALC",
+        "preparation_actions.0": "CAND",
+        "preparation_actions.1": "CAND",
+        "preparation_actions.2": "CAND",
+        "preparation_actions.3": "CAND",
+        "preparation_actions.4": "CAND",
+        "total_steps": "CALC",
+        "budget.base_relax_ps": "CAND",
+        "budget.maximum_relax_extension_ps": "CAND",
+        "budget.maximum_relax_extension_steps": "CALC",
+        "budget.base_total_steps": "CALC",
+        "budget.maximum_total_steps_with_relax_extension": "CALC",
+        "budget.independent_generator_trial_steps": "CAND",
+        "budget.trial_counted_as_physical_equilibration": "CAND",
+        "budget.wall_clock_promise": "CAND",
+        "timestep_control.required_for_first_data_generation": "CAND",
+        "timestep_control.optional_pairs.0.dt_fs": "CAND",
+        "timestep_control.optional_pairs.0.duration_ps": "CAND",
+        "timestep_control.optional_pairs.0.steps": "CALC",
+        "timestep_control.optional_pairs.0.T_coup": "CALC",
+        "timestep_control.optional_pairs.0.P_coup": "CALC",
+        "timestep_control.optional_pairs.1.dt_fs": "CAND",
+        "timestep_control.optional_pairs.1.duration_ps": "CAND",
+        "timestep_control.optional_pairs.1.steps": "CALC",
+        "timestep_control.optional_pairs.1.T_coup": "CALC",
+        "timestep_control.optional_pairs.1.P_coup": "CALC",
+        "timestep_control.additional_steps_if_selected": "CALC",
+        "stress_convention": "CAND",
+        "output_records.0": "CAND",
+        "output_records.1": "CAND",
+        "output_records.2": "CAND",
+        "output_records.3": "CAND",
+        "output_records.4": "CAND",
+        "output_records.5": "CAND",
+        "output_records.6": "CAND",
+        "output_records.7": "CAND",
+        "screening.status": "RUNTIME",
+        "screening.windows_ps.0": "CAND",
+        "screening.windows_ps.1": "CAND",
+        "screening.temperature_tolerance_K": "CALC",
+        "screening.pressure_tolerance_GPa": "CALC",
+        "screening.relative_volume_mean_difference_max": "CALC",
+        "screening.potential_energy_mean_difference_eV_per_atom_max": "CAND",
+        "screening.interpretation": "CAND",
+        "target_criteria": "CAND",
+        "orientation_control.selected_as_first_run": "CAND",
+        "orientation_control.alternative_loading_direction": "CAND",
+        "orientation_control.model_requirement": "CAND",
+        "orientation_control.additional_relax_steps": "CALC",
+        "orientation_control.additional_load_steps": "CALC",
+        "orientation_control.additional_total_steps": "CALC",
+        "orientation_control.combined_base_plus_control_steps": "CALC"
+      },
+      "direct_parameter_rule_map": [
+        {
+          "status": "FILE",
+          "rule_ids": [],
+          "evidence_ids": [
+            "U-01"
+          ],
+          "parameters": [
+            "potential_id",
+            "potential_sha256",
+            "potential_file_label"
+          ]
+        },
+        {
+          "status": "USER",
+          "rule_ids": [
+            "U-D03"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "composition.Ti"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "U-D03"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "composition.atom_counts.Ti"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "U-D03"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "initial_state.type",
+            "initial_state.orientation.z",
+            "initial_state.orientation.basal_axes",
+            "initial_state.orthorhombic_cell_basis_atoms",
+            "initial_state.cell_repeats.0",
+            "initial_state.cell_repeats.1",
+            "initial_state.cell_repeats.2",
+            "initial_state.model_status",
+            "initial_state.velocities",
+            "N",
+            "temperature_K"
+          ]
+        },
+        {
+          "status": "RUNTIME",
+          "rule_ids": [
+            "U-D03"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "initial_state.lattice_a_A",
+            "initial_state.lattice_c_A"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-01",
+            "U-D03"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "pbc.x",
+            "pbc.y",
+            "pbc.z"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-01",
+            "T-01",
+            "U-D03"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "box_geometry"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "T-01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "pressure_GPa.relax.x",
+            "pressure_GPa.relax.y",
+            "pressure_GPa.relax.z",
+            "pressure_GPa.loading.x",
+            "pressure_GPa.loading.y",
+            "axis_constraints.relax.x",
+            "axis_constraints.relax.y",
+            "axis_constraints.relax.z",
+            "axis_constraints.loading.x",
+            "axis_constraints.loading.y"
+          ]
+        },
+        {
+          "status": "FILE",
+          "rule_ids": [
+            "T-01"
+          ],
+          "evidence_ids": [
+            "C-02"
+          ],
+          "parameters": [
+            "pressure_GPa.loading.z",
+            "pressure_GPa.loading_z_meaning"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "dt_fs",
+            "thermostat",
+            "tau_T_fs",
+            "tau_P_fs",
+            "control_moduli_GPa.x",
+            "control_moduli_GPa.y",
+            "control_moduli_GPa.z",
+            "control_moduli_GPa.meaning"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-01"
+          ],
+          "evidence_ids": [
+            "C-02"
+          ],
+          "parameters": [
+            "barostat"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "D-01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "T_coup",
+            "P_coup"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "T-03",
+            "U-D03"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "relax_ps",
+            "rate_s_inv"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "T-03"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "relax_steps"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-02"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "seed.value",
+            "seed.repeat_control_value",
+            "seed.policy",
+            "budget.base_relax_ps",
+            "budget.maximum_relax_extension_ps",
+            "budget.independent_generator_trial_steps",
+            "budget.trial_counted_as_physical_equilibration",
+            "budget.wall_clock_promise"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "T-02",
+            "U-D03"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "strain_definition",
+            "axes",
+            "strain_end"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "T-02"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "load_duration_ps",
+            "load_steps",
+            "increment_formula",
+            "total_steps"
+          ]
+        },
+        {
+          "status": "RUNTIME",
+          "rule_ids": [
+            "T-05"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "reference_status"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "T-02",
+            "T-05"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "increment_A_per_step.x",
+            "increment_A_per_step.y"
+          ]
+        },
+        {
+          "status": "RUNTIME",
+          "rule_ids": [
+            "T-02",
+            "T-05"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "increment_A_per_step.z"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "T-01",
+            "T-02",
+            "T-05"
+          ],
+          "evidence_ids": [
+            "C-02"
+          ],
+          "parameters": [
+            "axis_constraints.loading.z"
+          ]
+        },
+        {
+          "status": "FILE",
+          "rule_ids": [
+            "T-05"
+          ],
+          "evidence_ids": [
+            "C-02"
+          ],
+          "parameters": [
+            "helper_compatible",
+            "helper_axes_supported.0",
+            "helper_axes_supported.1",
+            "engine_axes_supported.0",
+            "engine_axes_supported.1",
+            "engine_axes_supported.2"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "T-04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "thermo_interval_steps",
+            "trajectory_interval_steps",
+            "stress_convention"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-03"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "preparation_output_intervals.thermo_steps",
+            "preparation_output_intervals.trajectory_steps",
+            "preparation_output_intervals.restart"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "T-04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "output_resolution.thermo_ps",
+            "output_resolution.trajectory_ps",
+            "output_resolution.thermo_delta_engineering_strain",
+            "output_resolution.trajectory_delta_engineering_strain"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-02",
+            "T-03",
+            "T-05",
+            "U-D03"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "preparation_actions.0",
+            "preparation_actions.1",
+            "preparation_actions.2",
+            "preparation_actions.3",
+            "preparation_actions.4"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "D-02"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "budget.maximum_relax_extension_steps",
+            "budget.base_total_steps",
+            "budget.maximum_total_steps_with_relax_extension"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-05"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "timestep_control.required_for_first_data_generation",
+            "timestep_control.optional_pairs.0.dt_fs",
+            "timestep_control.optional_pairs.0.duration_ps",
+            "timestep_control.optional_pairs.1.dt_fs",
+            "timestep_control.optional_pairs.1.duration_ps"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "D-05"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "timestep_control.optional_pairs.0.steps",
+            "timestep_control.optional_pairs.0.T_coup",
+            "timestep_control.optional_pairs.0.P_coup",
+            "timestep_control.optional_pairs.1.steps",
+            "timestep_control.optional_pairs.1.T_coup",
+            "timestep_control.optional_pairs.1.P_coup",
+            "timestep_control.additional_steps_if_selected"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-03",
+            "T-04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "output_records.0",
+            "output_records.1",
+            "output_records.2",
+            "output_records.3",
+            "output_records.4",
+            "output_records.5",
+            "output_records.6",
+            "output_records.7"
+          ]
+        },
+        {
+          "status": "RUNTIME",
+          "rule_ids": [
+            "D-04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "screening.status"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "screening.windows_ps.0",
+            "screening.windows_ps.1",
+            "screening.potential_energy_mean_difference_eV_per_atom_max",
+            "screening.interpretation"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "D-04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "screening.temperature_tolerance_K",
+            "screening.pressure_tolerance_GPa",
+            "screening.relative_volume_mean_difference_max"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-08",
+            "T-04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "target_criteria"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "U-D03",
+            "D-06"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "orientation_control.selected_as_first_run",
+            "orientation_control.alternative_loading_direction",
+            "orientation_control.model_requirement"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "U-D03",
+            "D-06"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "orientation_control.additional_relax_steps",
+            "orientation_control.additional_load_steps",
+            "orientation_control.additional_total_steps",
+            "orientation_control.combined_base_plus_control_steps"
+          ]
+        }
+      ],
+      "semantic_splits": [
+        {
+          "original_field": "parameters.axis_constraints.loading.z",
+          "original_status": "CAND",
+          "components": {
+            "driven_axis": {
+              "value": "z",
+              "status": "CAND",
+              "rule_ids": [
+                "T-01",
+                "U-D03"
+              ]
+            },
+            "length_law": {
+              "value": "Lz(n)=Lz0*(1+0.10*n/load_steps); deform enabled; Pzz is an output",
+              "status": "CALC",
+              "rule_ids": [
+                "T-02"
+              ]
+            },
+            "Lz0_A": {
+              "value": null,
+              "status": "RUNTIME",
+              "rule_ids": [
+                "T-05"
+              ]
+            },
+            "no_independent_Pzz_target": {
+              "value": true,
+              "status": "FILE",
+              "rule_ids": [
+                "T-01"
+              ],
+              "evidence_ids": [
+                "C-02"
+              ]
+            }
+          }
+        },
+        {
+          "original_field": "parameters.stress_convention",
+          "original_status": "CAND",
+          "components": {
+            "chosen_tensile_positive_convention": {
+              "value": true,
+              "status": "CAND",
+              "rule_ids": [
+                "T-04"
+              ]
+            },
+            "pressure_to_current_volume_tensile_stress": {
+              "value": "sigma_zz=-Pzz",
+              "status": "CALC",
+              "rule_ids": [
+                "T-04"
+              ],
+              "formula": "sign inversion under the selected convention"
+            },
+            "engineering_stress_conversion_requirement": {
+              "value": "requires initial/current section relation",
+              "status": "FILE",
+              "rule_ids": [
+                "T-04"
+              ]
+            }
+          }
+        },
+        {
+          "original_field": "parameters.budget",
+          "original_status": "CALC",
+          "components_note": "叶级表分别标候选时长/试跑政策CAND与步数/合计CALC；不再整组CALC。"
+        },
+        {
+          "original_field": "parameters.timestep_control",
+          "original_status": "CAND",
+          "components_note": "叶级表分别标候选dt/物理时长CAND与steps/T_coup/P_coup/总额CALC；tau物理时间不变。"
+        },
+        {
+          "original_field": "parameters.screening",
+          "original_status": "CAND",
+          "components_note": "候选窗口/阈值政策CAND；代入300K/0GPa所得数值阈值和百分数换算CALC；待检状态RUNTIME。"
+        }
+      ],
+      "parameter_values_changed": false
+    },
+    {
+      "case_id": "T03",
+      "findings": 34,
+      "corrections": [
+        {
+          "original_field": "parameters.potential_file_label",
+          "original_value": "PdCuNiP/nep4.txt",
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.potential_file_label",
+          "corrected_status": "FILE",
+          "basis_rule_ids": [],
+          "basis_evidence_ids": [
+            "P-01"
+          ],
+          "contract_basis": "classification_rules: potential_id, potential_file_label, potential_sha256",
+          "reason": "既有势文件登记的身份/名称/哈希为FILE；选择这个势与文件身份是两个命题。"
+        },
+        {
+          "original_field": "parameters.initial_state.orientation",
+          "original_value": "no crystal orientation is imposed on the glass",
+          "original_status": "USER",
+          "original_status_inherited_from": "parameter_status.initial_state",
+          "corrected_status": "CAND",
+          "basis_rule_ids": [
+            "P-D01"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.pressure_GPa.loading.z",
+          "original_value": null,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.pressure_GPa",
+          "corrected_status": "FILE",
+          "basis_rule_ids": [
+            "T-01"
+          ],
+          "basis_evidence_ids": [
+            "C-02"
+          ],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "此null表示被deform驱动轴不施加独立Pzz目标，不是一个待测压力数值。"
+        },
+        {
+          "original_field": "parameters.pressure_GPa.loading_z_meaning",
+          "original_value": "z is prescribed by deform; no independent Pzz target",
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.pressure_GPa",
+          "corrected_status": "FILE",
+          "basis_rule_ids": [
+            "T-01"
+          ],
+          "basis_evidence_ids": [
+            "C-02"
+          ],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "此null表示被deform驱动轴不施加独立Pzz目标，不是一个待测压力数值。"
+        },
+        {
+          "original_field": "parameters.seed.apply_to_existing_velocities",
+          "original_value": false,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.seed",
+          "corrected_status": "USER",
+          "basis_rule_ids": [
+            "P-D01"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.increment_A_per_step.x",
+          "original_value": 0,
+          "original_status": "RUNTIME",
+          "original_status_inherited_from": "parameter_status.increment_A_per_step",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "T-02",
+            "T-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "unloaded axis deform increment=0",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.increment_A_per_step.y",
+          "original_value": 0,
+          "original_status": "RUNTIME",
+          "original_status_inherited_from": "parameter_status.increment_A_per_step",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "T-02",
+            "T-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "unloaded axis deform increment=0",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.axis_constraints.loading.z",
+          "original_value": "Lz(n)=Lz0*(1+0.10*n/load_steps); deform enabled; Pzz is an output",
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.axis_constraints",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "T-01",
+            "T-02",
+            "T-05"
+          ],
+          "basis_evidence_ids": [
+            "C-02"
+          ],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "此文本含长度公式(CALC)、驱动轴选择(USER或CAND)和未知Lz0(RUNTIME)，完整拆分见semantic_splits。"
+        },
+        {
+          "original_field": "parameters.budget.base_relax_ps",
+          "original_value": 100,
+          "original_status": "CALC",
+          "original_status_inherited_from": "parameter_status.budget",
+          "corrected_status": "CAND",
+          "basis_rule_ids": [
+            "D-02"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.budget.maximum_relax_extension_ps",
+          "original_value": 100,
+          "original_status": "CALC",
+          "original_status_inherited_from": "parameter_status.budget",
+          "corrected_status": "CAND",
+          "basis_rule_ids": [
+            "D-02"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.budget.independent_generator_trial_steps",
+          "original_value": 200,
+          "original_status": "CALC",
+          "original_status_inherited_from": "parameter_status.budget",
+          "corrected_status": "CAND",
+          "basis_rule_ids": [
+            "D-02"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.budget.trial_counted_as_physical_equilibration",
+          "original_value": false,
+          "original_status": "CALC",
+          "original_status_inherited_from": "parameter_status.budget",
+          "corrected_status": "CAND",
+          "basis_rule_ids": [
+            "D-02"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.budget.wall_clock_promise",
+          "original_value": false,
+          "original_status": "CALC",
+          "original_status_inherited_from": "parameter_status.budget",
+          "corrected_status": "CAND",
+          "basis_rule_ids": [
+            "D-02"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.budget.qualified_reference_shortcut.condition",
+          "original_value": "only if an already qualified same-state formal reference is actually provided and verified",
+          "original_status": "CALC",
+          "original_status_inherited_from": "parameter_status.budget",
+          "corrected_status": "RUNTIME",
+          "basis_rule_ids": [
+            "T-03",
+            "P-D04"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "是否存在合格同态参考必须查上游文件；选择允许免预平衡的策略另为CAND。"
+        },
+        {
+          "original_field": "parameters.timestep_control.optional_pairs.0.steps",
+          "original_value": 10000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.timestep_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "steps=duration_ps*1000/dt_fs",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.timestep_control.optional_pairs.0.T_coup",
+          "original_value": 100,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.timestep_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "T_coup=100fs/dt_fs",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.timestep_control.optional_pairs.0.P_coup",
+          "original_value": 1000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.timestep_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "P_coup=1000fs/dt_fs",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.timestep_control.optional_pairs.1.steps",
+          "original_value": 20000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.timestep_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "steps=duration_ps*1000/dt_fs",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.timestep_control.optional_pairs.1.T_coup",
+          "original_value": 200,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.timestep_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "T_coup=100fs/dt_fs",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.timestep_control.optional_pairs.1.P_coup",
+          "original_value": 2000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.timestep_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "P_coup=1000fs/dt_fs",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.timestep_control.additional_steps_if_selected",
+          "original_value": 30000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.timestep_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-05"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "additional_steps=sum(optional_pairs[*].steps)=10000+20000",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.screening.status",
+          "original_value": "CHECK_PENDING",
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.screening",
+          "corrected_status": "RUNTIME",
+          "basis_rule_ids": [
+            "D-04"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "CHECK_PENDING是待执行检查状态，不能作为候选材料值或已通过事实。"
+        },
+        {
+          "original_field": "parameters.screening.temperature_tolerance_K",
+          "original_value": 6,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.screening",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-04"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "max(5 K,0.02*temperature_K)=6 K",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.screening.pressure_tolerance_GPa",
+          "original_value": 0.1,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.screening",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-04"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "max(0.1 GPa,0.02*abs(P_target=0))=0.1 GPa",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.screening.relative_volume_mean_difference_max",
+          "original_value": 0.005,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.screening",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "D-04"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "0.5 percent/100=0.005; underlying 0.5 percent threshold is CAND policy",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.rate_control.variant_load_ps",
+          "original_value": 5000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.rate_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "T-03",
+            "D-06"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "variant_duration_ps=strain_end/variant_rate_s_inv*1e12",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.rate_control.variant_load_steps",
+          "original_value": 5000000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.rate_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "T-03",
+            "D-06"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "variant_load_steps=ceil(strain_end/(variant_rate_s_inv*dt_fs*1e-15)); additional_load_steps=variant_load_steps",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.rate_control.additional_load_steps",
+          "original_value": 5000000,
+          "original_status": "CAND",
+          "original_status_inherited_from": "parameter_status.rate_control",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "T-03",
+            "D-06"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "variant_load_steps=ceil(strain_end/(variant_rate_s_inv*dt_fs*1e-15)); additional_load_steps=variant_load_steps",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.paper_comparison.status",
+          "original_value": "not a replication",
+          "original_status": "LIT",
+          "original_status_inherited_from": "parameter_status.paper_comparison",
+          "corrected_status": "CAND",
+          "basis_rule_ids": [
+            "P-D04"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.paper_comparison.if_selected_instead_of_100ps.relax_steps",
+          "original_value": 2000000,
+          "original_status": "LIT",
+          "original_status_inherited_from": "parameter_status.paper_comparison",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "P-D04"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "2000ps*1000/1fs=2000000",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.paper_comparison.if_selected_instead_of_100ps.load_steps",
+          "original_value": 10000000,
+          "original_status": "LIT",
+          "original_status_inherited_from": "parameter_status.paper_comparison",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "P-D04"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "0.10/(1e7*1e-15)=10000000",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.paper_comparison.if_selected_instead_of_100ps.total_steps",
+          "original_value": 12000000,
+          "original_status": "LIT",
+          "original_status_inherited_from": "parameter_status.paper_comparison",
+          "corrected_status": "CALC",
+          "basis_rule_ids": [
+            "P-D04"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "formula": "2000000+10000000=12000000",
+          "reason": "按参数本身的来源逐叶标记；候选选择、派生算术和运行时事实不得继承混合容器的单一标签。"
+        },
+        {
+          "original_field": "parameters.paper_comparison.preparation_state_difference",
+          "original_value": "existing arbitrary heat-treated model is not established as the paper 2e10-glass",
+          "original_status": "LIT",
+          "original_status_inherited_from": "parameter_status.paper_comparison",
+          "corrected_status": "RUNTIME",
+          "basis_rule_ids": [
+            "P-D01",
+            "P-D04"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "未提供完整历史，不能确认既有模型与论文制备态一致；这不是论文对本模型的观测。"
+        },
+        {
+          "original_field": "parameters.paper_comparison.rate_strain_definition_caution",
+          "original_value": "1e7 s^-1 is a literature-inspired candidate engineering rate; paper strain convention not fully checked",
+          "original_status": "LIT",
+          "original_status_inherited_from": "parameter_status.paper_comparison",
+          "corrected_status": "CAND",
+          "basis_rule_ids": [
+            "P-D04"
+          ],
+          "basis_evidence_ids": [],
+          "contract_basis": "classification_rules: mixed nested objects / derived values / unknown actual assets",
+          "reason": "reported rate LIT、选择工程速率CAND、原文应变定义未核实RUNTIME必须拆开；见paper_comparison_split。"
+        }
+      ],
+      "container_status_removals": [
+        {
+          "original_field": "parameters.composition",
+          "original_status": "USER",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.initial_state",
+          "original_status": "USER",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.pbc",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.pressure_GPa",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.control_moduli_GPa",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.seed",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.increment_A_per_step",
+          "original_status": "RUNTIME",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.axis_constraints",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.helper_axes_supported",
+          "original_status": "FILE",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.engine_axes_supported",
+          "original_status": "FILE",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.preparation_output_intervals",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.output_resolution",
+          "original_status": "CALC",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.preparation_actions",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.budget",
+          "original_status": "CALC",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.timestep_control",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.output_records",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.screening",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.rate_control",
+          "original_status": "CAND",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        },
+        {
+          "original_field": "parameters.paper_comparison",
+          "original_status": "LIT",
+          "action": "remove container-wide status; use leaf_parameter_status entries below",
+          "basis": "handoff-contract: mixed nested objects"
+        }
+      ],
+      "orphan_status_entries": [
+        {
+          "original_status_field": "parameter_status.pbc.validation",
+          "original_status": "RUNTIME",
+          "action": "remove as a parameter status; retain actual-asset requirement under runtime_dependencies",
+          "reason": "原parameters内不存在该路径，不能当作已存在参数的逐叶标记。"
+        }
+      ],
+      "leaf_parameter_status": {
+        "potential_id": "FILE",
+        "potential_sha256": "FILE",
+        "potential_file_label": "FILE",
+        "composition.Pd": "USER",
+        "composition.Cu": "USER",
+        "composition.Ni": "USER",
+        "composition.P": "USER",
+        "composition.atom_counts": "RUNTIME",
+        "initial_state.type": "USER",
+        "initial_state.rebuild": "USER",
+        "initial_state.remelt": "USER",
+        "initial_state.recool": "USER",
+        "initial_state.history_policy": "USER",
+        "initial_state.model_path": "RUNTIME",
+        "initial_state.velocities": "RUNTIME",
+        "initial_state.orientation": "CAND",
+        "N": "RUNTIME",
+        "pbc.x": "CAND",
+        "pbc.y": "CAND",
+        "pbc.z": "CAND",
+        "box_geometry": "CAND",
+        "temperature_K": "USER",
+        "pressure_GPa.relax.x": "CAND",
+        "pressure_GPa.relax.y": "CAND",
+        "pressure_GPa.relax.z": "CAND",
+        "pressure_GPa.loading.x": "CAND",
+        "pressure_GPa.loading.y": "CAND",
+        "pressure_GPa.loading.z": "FILE",
+        "pressure_GPa.loading_z_meaning": "FILE",
+        "dt_fs": "CAND",
+        "thermostat": "CAND",
+        "barostat": "CAND",
+        "tau_T_fs": "CAND",
+        "tau_P_fs": "CAND",
+        "T_coup": "CALC",
+        "P_coup": "CALC",
+        "control_moduli_GPa.x": "CAND",
+        "control_moduli_GPa.y": "CAND",
+        "control_moduli_GPa.z": "CAND",
+        "control_moduli_GPa.meaning": "CAND",
+        "relax_ps": "CAND",
+        "relax_steps": "CALC",
+        "seed.value": "CAND",
+        "seed.repeat_control_value": "CAND",
+        "seed.apply_to_existing_velocities": "USER",
+        "seed.policy": "CAND",
+        "strain_definition": "CAND",
+        "axes": "USER",
+        "strain_end": "CAND",
+        "rate_s_inv": "CAND",
+        "load_duration_ps": "CALC",
+        "load_steps": "CALC",
+        "reference_status": "RUNTIME",
+        "increment_A_per_step.x": "CALC",
+        "increment_A_per_step.y": "CALC",
+        "increment_A_per_step.z": "RUNTIME",
+        "increment_formula": "CALC",
+        "axis_constraints.relax.x": "CAND",
+        "axis_constraints.relax.y": "CAND",
+        "axis_constraints.relax.z": "CAND",
+        "axis_constraints.loading.x": "CAND",
+        "axis_constraints.loading.y": "CAND",
+        "axis_constraints.loading.z": "CALC",
+        "helper_compatible": "FILE",
+        "helper_axes_supported.0": "FILE",
+        "helper_axes_supported.1": "FILE",
+        "engine_axes_supported.0": "FILE",
+        "engine_axes_supported.1": "FILE",
+        "engine_axes_supported.2": "FILE",
+        "thermo_interval_steps": "CAND",
+        "trajectory_interval_steps": "CAND",
+        "preparation_output_intervals.thermo_steps": "CAND",
+        "preparation_output_intervals.trajectory_steps": "CAND",
+        "preparation_output_intervals.restart": "CAND",
+        "output_resolution.thermo_ps": "CALC",
+        "output_resolution.trajectory_ps": "CALC",
+        "output_resolution.thermo_delta_engineering_strain": "CALC",
+        "output_resolution.trajectory_delta_engineering_strain": "CALC",
+        "preparation_actions.0": "CAND",
+        "preparation_actions.1": "CAND",
+        "preparation_actions.2": "CAND",
+        "preparation_actions.3": "CAND",
+        "preparation_actions.4": "CAND",
+        "total_steps": "CALC",
+        "budget.base_relax_ps": "CAND",
+        "budget.maximum_relax_extension_ps": "CAND",
+        "budget.maximum_relax_extension_steps": "CALC",
+        "budget.base_total_steps": "CALC",
+        "budget.maximum_total_steps_with_relax_extension": "CALC",
+        "budget.independent_generator_trial_steps": "CAND",
+        "budget.trial_counted_as_physical_equilibration": "CAND",
+        "budget.wall_clock_promise": "CAND",
+        "budget.qualified_reference_shortcut.relax_steps": "CALC",
+        "budget.qualified_reference_shortcut.total_steps": "CALC",
+        "budget.qualified_reference_shortcut.condition": "RUNTIME",
+        "timestep_control.required_for_first_data_generation": "CAND",
+        "timestep_control.optional_pairs.0.dt_fs": "CAND",
+        "timestep_control.optional_pairs.0.duration_ps": "CAND",
+        "timestep_control.optional_pairs.0.steps": "CALC",
+        "timestep_control.optional_pairs.0.T_coup": "CALC",
+        "timestep_control.optional_pairs.0.P_coup": "CALC",
+        "timestep_control.optional_pairs.1.dt_fs": "CAND",
+        "timestep_control.optional_pairs.1.duration_ps": "CAND",
+        "timestep_control.optional_pairs.1.steps": "CALC",
+        "timestep_control.optional_pairs.1.T_coup": "CALC",
+        "timestep_control.optional_pairs.1.P_coup": "CALC",
+        "timestep_control.additional_steps_if_selected": "CALC",
+        "stress_convention": "CAND",
+        "output_records.0": "CAND",
+        "output_records.1": "CAND",
+        "output_records.2": "CAND",
+        "output_records.3": "CAND",
+        "output_records.4": "CAND",
+        "output_records.5": "CAND",
+        "output_records.6": "CAND",
+        "output_records.7": "CAND",
+        "screening.status": "RUNTIME",
+        "screening.windows_ps.0": "CAND",
+        "screening.windows_ps.1": "CAND",
+        "screening.temperature_tolerance_K": "CALC",
+        "screening.pressure_tolerance_GPa": "CALC",
+        "screening.relative_volume_mean_difference_max": "CALC",
+        "screening.potential_energy_mean_difference_eV_per_atom_max": "CAND",
+        "screening.interpretation": "CAND",
+        "target_criteria": "CAND",
+        "rate_control.selected_as_first_run": "CAND",
+        "rate_control.variant_rate_s_inv": "CAND",
+        "rate_control.variant_load_ps": "CALC",
+        "rate_control.variant_load_steps": "CALC",
+        "rate_control.additional_load_steps": "CALC",
+        "rate_control.shared_reference": "CAND",
+        "paper_comparison.status": "CAND",
+        "paper_comparison.reported_preload_ps": "LIT",
+        "paper_comparison.reported_preload_status": "LIT",
+        "paper_comparison.if_selected_instead_of_100ps.relax_steps": "CALC",
+        "paper_comparison.if_selected_instead_of_100ps.load_steps": "CALC",
+        "paper_comparison.if_selected_instead_of_100ps.total_steps": "CALC",
+        "paper_comparison.preparation_state_difference": "RUNTIME",
+        "paper_comparison.rate_strain_definition_caution": "CAND"
+      },
+      "direct_parameter_rule_map": [
+        {
+          "status": "FILE",
+          "rule_ids": [],
+          "evidence_ids": [
+            "P-01"
+          ],
+          "parameters": [
+            "potential_id",
+            "potential_sha256",
+            "potential_file_label"
+          ]
+        },
+        {
+          "status": "USER",
+          "rule_ids": [
+            "P-D01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "composition.Pd",
+            "composition.Cu",
+            "composition.Ni",
+            "composition.P",
+            "initial_state.type",
+            "initial_state.rebuild",
+            "initial_state.remelt",
+            "initial_state.recool",
+            "initial_state.history_policy",
+            "seed.apply_to_existing_velocities"
+          ]
+        },
+        {
+          "status": "RUNTIME",
+          "rule_ids": [
+            "P-D01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "composition.atom_counts",
+            "initial_state.model_path",
+            "initial_state.velocities",
+            "N"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "P-D01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "initial_state.orientation"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-01",
+            "P-D04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "pbc.x",
+            "pbc.y",
+            "pbc.z"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-01",
+            "T-01",
+            "P-D04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "box_geometry"
+          ]
+        },
+        {
+          "status": "USER",
+          "rule_ids": [
+            "P-D04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "temperature_K"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "T-01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "pressure_GPa.relax.x",
+            "pressure_GPa.relax.y",
+            "pressure_GPa.relax.z",
+            "pressure_GPa.loading.x",
+            "pressure_GPa.loading.y",
+            "axis_constraints.relax.x",
+            "axis_constraints.relax.y",
+            "axis_constraints.relax.z",
+            "axis_constraints.loading.x",
+            "axis_constraints.loading.y"
+          ]
+        },
+        {
+          "status": "FILE",
+          "rule_ids": [
+            "T-01"
+          ],
+          "evidence_ids": [
+            "C-02"
+          ],
+          "parameters": [
+            "pressure_GPa.loading.z",
+            "pressure_GPa.loading_z_meaning"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "dt_fs",
+            "thermostat",
+            "tau_T_fs",
+            "tau_P_fs",
+            "control_moduli_GPa.x",
+            "control_moduli_GPa.y",
+            "control_moduli_GPa.z",
+            "control_moduli_GPa.meaning"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-01"
+          ],
+          "evidence_ids": [
+            "C-02"
+          ],
+          "parameters": [
+            "barostat"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "D-01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "T_coup",
+            "P_coup"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "T-03",
+            "P-D04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "relax_ps",
+            "rate_s_inv"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "T-03"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "relax_steps"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-02"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "seed.value",
+            "seed.repeat_control_value",
+            "seed.policy",
+            "budget.base_relax_ps",
+            "budget.maximum_relax_extension_ps",
+            "budget.independent_generator_trial_steps",
+            "budget.trial_counted_as_physical_equilibration",
+            "budget.wall_clock_promise"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "T-02",
+            "P-D04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "strain_definition",
+            "strain_end"
+          ]
+        },
+        {
+          "status": "USER",
+          "rule_ids": [
+            "T-02",
+            "P-D04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "axes"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "T-02"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "load_duration_ps",
+            "load_steps",
+            "increment_formula",
+            "total_steps"
+          ]
+        },
+        {
+          "status": "RUNTIME",
+          "rule_ids": [
+            "T-05"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "reference_status"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "T-02",
+            "T-05"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "increment_A_per_step.x",
+            "increment_A_per_step.y"
+          ]
+        },
+        {
+          "status": "RUNTIME",
+          "rule_ids": [
+            "T-02",
+            "T-05"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "increment_A_per_step.z"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "T-01",
+            "T-02",
+            "T-05"
+          ],
+          "evidence_ids": [
+            "C-02"
+          ],
+          "parameters": [
+            "axis_constraints.loading.z"
+          ]
+        },
+        {
+          "status": "FILE",
+          "rule_ids": [
+            "T-05"
+          ],
+          "evidence_ids": [
+            "C-02"
+          ],
+          "parameters": [
+            "helper_compatible",
+            "helper_axes_supported.0",
+            "helper_axes_supported.1",
+            "engine_axes_supported.0",
+            "engine_axes_supported.1",
+            "engine_axes_supported.2"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "P-D04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "thermo_interval_steps",
+            "trajectory_interval_steps",
+            "paper_comparison.status",
+            "paper_comparison.rate_strain_definition_caution"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-03"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "preparation_output_intervals.thermo_steps",
+            "preparation_output_intervals.trajectory_steps",
+            "preparation_output_intervals.restart"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "T-04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "output_resolution.thermo_ps",
+            "output_resolution.trajectory_ps",
+            "output_resolution.thermo_delta_engineering_strain",
+            "output_resolution.trajectory_delta_engineering_strain"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-02",
+            "T-03",
+            "T-05",
+            "P-D01"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "preparation_actions.0",
+            "preparation_actions.1",
+            "preparation_actions.2",
+            "preparation_actions.3",
+            "preparation_actions.4"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "D-02"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "budget.maximum_relax_extension_steps",
+            "budget.base_total_steps",
+            "budget.maximum_total_steps_with_relax_extension"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "T-03",
+            "P-D04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "budget.qualified_reference_shortcut.relax_steps",
+            "budget.qualified_reference_shortcut.total_steps"
+          ]
+        },
+        {
+          "status": "RUNTIME",
+          "rule_ids": [
+            "T-03",
+            "P-D04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "budget.qualified_reference_shortcut.condition"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-05"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "timestep_control.required_for_first_data_generation",
+            "timestep_control.optional_pairs.0.dt_fs",
+            "timestep_control.optional_pairs.0.duration_ps",
+            "timestep_control.optional_pairs.1.dt_fs",
+            "timestep_control.optional_pairs.1.duration_ps"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "D-05"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "timestep_control.optional_pairs.0.steps",
+            "timestep_control.optional_pairs.0.T_coup",
+            "timestep_control.optional_pairs.0.P_coup",
+            "timestep_control.optional_pairs.1.steps",
+            "timestep_control.optional_pairs.1.T_coup",
+            "timestep_control.optional_pairs.1.P_coup",
+            "timestep_control.additional_steps_if_selected"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "T-04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "stress_convention"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-03",
+            "T-04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "output_records.0",
+            "output_records.1",
+            "output_records.2",
+            "output_records.3",
+            "output_records.4",
+            "output_records.5",
+            "output_records.6",
+            "output_records.7"
+          ]
+        },
+        {
+          "status": "RUNTIME",
+          "rule_ids": [
+            "D-04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "screening.status"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "screening.windows_ps.0",
+            "screening.windows_ps.1",
+            "screening.potential_energy_mean_difference_eV_per_atom_max",
+            "screening.interpretation"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "D-04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "screening.temperature_tolerance_K",
+            "screening.pressure_tolerance_GPa",
+            "screening.relative_volume_mean_difference_max"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "D-08",
+            "T-04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "target_criteria"
+          ]
+        },
+        {
+          "status": "CAND",
+          "rule_ids": [
+            "T-03",
+            "D-06"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "rate_control.selected_as_first_run",
+            "rate_control.variant_rate_s_inv",
+            "rate_control.shared_reference"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "T-03",
+            "D-06"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "rate_control.variant_load_ps",
+            "rate_control.variant_load_steps",
+            "rate_control.additional_load_steps"
+          ]
+        },
+        {
+          "status": "LIT",
+          "rule_ids": [
+            "P-D04"
+          ],
+          "evidence_ids": [
+            "P-03"
+          ],
+          "parameters": [
+            "paper_comparison.reported_preload_ps",
+            "paper_comparison.reported_preload_status"
+          ]
+        },
+        {
+          "status": "CALC",
+          "rule_ids": [
+            "P-D04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "paper_comparison.if_selected_instead_of_100ps.relax_steps",
+            "paper_comparison.if_selected_instead_of_100ps.load_steps",
+            "paper_comparison.if_selected_instead_of_100ps.total_steps"
+          ]
+        },
+        {
+          "status": "RUNTIME",
+          "rule_ids": [
+            "P-D01",
+            "P-D04"
+          ],
+          "evidence_ids": [],
+          "parameters": [
+            "paper_comparison.preparation_state_difference"
+          ]
+        }
+      ],
+      "semantic_splits": [
+        {
+          "original_field": "parameters.axis_constraints.loading.z",
+          "original_status": "CAND",
+          "components": {
+            "driven_axis": {
+              "value": "z",
+              "status": "USER",
+              "rule_ids": [
+                "T-01",
+                "P-D04"
+              ]
+            },
+            "length_law": {
+              "value": "Lz(n)=Lz0*(1+0.10*n/load_steps); deform enabled; Pzz is an output",
+              "status": "CALC",
+              "rule_ids": [
+                "T-02"
+              ]
+            },
+            "Lz0_A": {
+              "value": null,
+              "status": "RUNTIME",
+              "rule_ids": [
+                "T-05"
+              ]
+            },
+            "no_independent_Pzz_target": {
+              "value": true,
+              "status": "FILE",
+              "rule_ids": [
+                "T-01"
+              ],
+              "evidence_ids": [
+                "C-02"
+              ]
+            }
+          }
+        },
+        {
+          "original_field": "parameters.stress_convention",
+          "original_status": "CAND",
+          "components": {
+            "chosen_tensile_positive_convention": {
+              "value": true,
+              "status": "CAND",
+              "rule_ids": [
+                "T-04"
+              ]
+            },
+            "pressure_to_current_volume_tensile_stress": {
+              "value": "sigma_zz=-Pzz",
+              "status": "CALC",
+              "rule_ids": [
+                "T-04"
+              ],
+              "formula": "sign inversion under the selected convention"
+            },
+            "engineering_stress_conversion_requirement": {
+              "value": "requires initial/current section relation",
+              "status": "FILE",
+              "rule_ids": [
+                "T-04"
+              ]
+            }
+          }
+        },
+        {
+          "original_field": "parameters.budget",
+          "original_status": "CALC",
+          "components_note": "叶级表分别标候选时长/试跑政策CAND与步数/合计CALC；不再整组CALC。"
+        },
+        {
+          "original_field": "parameters.timestep_control",
+          "original_status": "CAND",
+          "components_note": "叶级表分别标候选dt/物理时长CAND与steps/T_coup/P_coup/总额CALC；tau物理时间不变。"
+        },
+        {
+          "original_field": "parameters.screening",
+          "original_status": "CAND",
+          "components_note": "候选窗口/阈值政策CAND；代入300K/0GPa所得数值阈值和百分数换算CALC；待检状态RUNTIME。"
+        },
+        {
+          "original_field": "parameters.seed.policy",
+          "original_status": "CAND",
+          "components": {
+            "preserve_existing_velocities": {
+              "value": true,
+              "status": "USER",
+              "rule_ids": [
+                "P-D01"
+              ]
+            },
+            "initialize_only_if_missing": {
+              "value": true,
+              "status": "CAND",
+              "rule_ids": [
+                "D-02",
+                "P-D01"
+              ]
+            },
+            "actual_velocity_presence": {
+              "value": null,
+              "status": "RUNTIME",
+              "rule_ids": [
+                "P-D01"
+              ]
+            }
+          }
+        }
+      ],
+      "parameter_values_changed": false,
+      "paper_comparison_split": {
+        "original_field": "parameters.paper_comparison",
+        "original_status": "LIT",
+        "action": "取消整体LIT；下面抽取原对象已含事实/条件，不改变任何数值。",
+        "reported_paper_values": {
+          "preload_ps": {
+            "value": 2000,
+            "status": "LIT",
+            "rule_ids": [
+              "P-D04"
+            ],
+            "evidence_ids": [
+              "P-03"
+            ]
+          },
+          "loading_rate_s_inv": {
+            "value": 10000000,
+            "status": "LIT",
+            "rule_ids": [
+              "P-D04"
+            ],
+            "evidence_ids": [
+              "P-03"
+            ],
+            "note": "原谨慎字段中引用的论文参照速率；本次选择工程口径另列。"
+          }
+        },
+        "proposed_run_choices": {
+          "optional_preload_ps": {
+            "value": 2000,
+            "status": "CAND",
+            "rule_ids": [
+              "P-D04"
+            ],
+            "note": "仅当选择匹配论文前置时间时替代100ps主方案；这不是USER已锁条件。"
+          },
+          "selected_for_primary_run": {
+            "value": false,
+            "status": "CAND",
+            "rule_ids": [
+              "P-D04"
+            ]
+          },
+          "engineering_rate_s_inv": {
+            "value": 10000000,
+            "status": "CAND",
+            "rule_ids": [
+              "P-D04"
+            ]
+          },
+          "strain_definition": {
+            "value": "engineering",
+            "status": "CAND",
+            "rule_ids": [
+              "T-02",
+              "P-D04"
+            ]
+          },
+          "replication_claim": {
+            "value": "not a replication",
+            "status": "CAND",
+            "rule_ids": [
+              "P-D04"
+            ]
+          }
+        },
+        "derived_run_values": {
+          "relax_steps": {
+            "value": 2000000,
+            "status": "CALC",
+            "rule_ids": [
+              "P-D04"
+            ],
+            "formula": "2000ps*1000fs/ps/1fs"
+          },
+          "load_steps": {
+            "value": 10000000,
+            "status": "CALC",
+            "rule_ids": [
+              "T-02"
+            ],
+            "formula": "0.10/(1e7s^-1*1e-15s)"
+          },
+          "total_steps": {
+            "value": 12000000,
+            "status": "CALC",
+            "rule_ids": [
+              "T-02"
+            ],
+            "formula": "2000000+10000000"
+          }
+        },
+        "unresolved_values": {
+          "paper_strain_definition": {
+            "value": null,
+            "status": "RUNTIME",
+            "rule_ids": [
+              "P-D04"
+            ],
+            "note": "原文口径未完全核对；不能把未核对状态标LIT已知值。"
+          },
+          "existing_model_matches_paper_preparation": {
+            "value": null,
+            "status": "RUNTIME",
+            "rule_ids": [
+              "P-D01",
+              "P-D04"
+            ],
+            "note": "必须读取实际模型制备历史；不因用户说热处理后就认作2e10-glass。"
+          }
+        },
+        "provenance_annotation": {
+          "original_field": "parameters.paper_comparison.reported_preload_status",
+          "original_value": "LIT via P-D04/P-03",
+          "meaning": "原文数值的来源注释；不再把注释继承为整个paper_comparison对象的LIT标签。"
+        }
+      }
+    }
+  ],
+  "validation": {
+    "all_original_parameter_leaves_covered": true,
+    "status_vocabulary": [
+      "USER",
+      "FILE",
+      "LIT",
+      "CAND",
+      "CALC",
+      "RUNTIME",
+      "BLOCK"
+    ],
+    "no_original_parameter_value_edits": true,
+    "numeric_schedule_recalculated_or_changed": false,
+    "new_simulation": false,
+    "network_used": false,
+    "other_reports_read": false
+  }
+}

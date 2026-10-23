@@ -65,7 +65,7 @@ def test_agent_filters_visible_tools_and_enforces_execution(tmp_path: Path):
     )
     agent = Agent(_UnusedLLM(), SessionManager(tmp_path / "sessions"), profile=profile)
 
-    definitions = agent._build_tool_definitions()
+    definitions = agent.prompt_builder.build_tool_definitions()
     names = {item["function"]["name"] for item in definitions}
 
     assert names == {"read"}
@@ -143,11 +143,71 @@ def test_subagent_uses_independent_profiled_agent_and_real_sandbox(
     assert [event["status"] for event in events] == ["pending", "running", "done"]
 
 
+def test_delegated_agent_keeps_parent_project_workspace(tmp_path: Path, monkeypatch):
+    profiles = tmp_path / "profiles"
+    _write_profile(profiles, "worker")
+    template = Agent(_UnusedLLM(), SessionManager(tmp_path / "sessions"))
+    manager = SubAgentManager(template, template.sessions, catalog=AgentCatalog([profiles]))
+    register_subagent_manager(manager)
+    project = tmp_path / "项目"
+    project.mkdir()
+    seen = {}
+
+    async def fake_process(self, context, **kwargs):
+        seen["workspace"] = active_workspace_dir()
+        seen["metadata"] = context.metadata.get("workspace_dir")
+        return "completed"
+
+    monkeypatch.setattr(Agent, "_process_message", fake_process)
+
+    async def run():
+        receipt = await delegate_task_tool(
+            "worker", "make files", sandbox=False,
+            _context={"chat_id": "parent", "workspace_dir": str(project)},
+        )
+        return await manager.wait(receipt["task_id"])
+
+    assert asyncio.run(run()) == "completed"
+    assert seen == {"workspace": project, "metadata": str(project)}
+
+
+def test_delegation_does_not_reuse_task_across_projects(tmp_path: Path, monkeypatch):
+    profiles = tmp_path / "profiles"
+    _write_profile(profiles, "worker")
+    template = Agent(_UnusedLLM(), SessionManager(tmp_path / "sessions"))
+    manager = SubAgentManager(template, template.sessions, catalog=AgentCatalog([profiles]))
+    register_subagent_manager(manager)
+    projects = [tmp_path / "project-a", tmp_path / "project-b"]
+    for project in projects:
+        project.mkdir()
+
+    async def fake_process(self, context, **kwargs):
+        return "completed"
+
+    monkeypatch.setattr(Agent, "_process_message", fake_process)
+
+    async def run():
+        receipts = []
+        for project in projects:
+            receipt = await delegate_task_tool(
+                "worker", "same objective", sandbox=False,
+                _context={"chat_id": "parent", "workspace_dir": str(project)},
+            )
+            receipts.append(receipt)
+        for receipt in receipts:
+            await manager.wait(receipt["task_id"])
+        return receipts
+
+    first, second = asyncio.run(run())
+    assert first["task_id"] != second["task_id"]
+    assert second["reused"] is False
+
+
 def test_coordinator_exposes_delegation_but_not_execution_tools(tmp_path: Path):
     profile = AgentCatalog().require("coordinator")
     agent = Agent(_UnusedLLM(), SessionManager(tmp_path / "sessions"), profile=profile)
 
-    definitions = agent._build_tool_definitions()
+    definitions = agent.prompt_builder.build_tool_definitions()
     names = {definition["function"]["name"] for definition in definitions}
 
     assert {

@@ -6,6 +6,7 @@ tools:
   allow:
     - browser_snapshot
     - copy_file
+    - edit
     - execute
     - generate_lammps_script
     - grep
@@ -21,3 +22,5 @@ tools:
     - web_search
     - write
     - write_json
+runtime:
+  max_tool_rounds: 60

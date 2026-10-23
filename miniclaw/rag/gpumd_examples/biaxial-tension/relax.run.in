@@ -1,0 +1,10 @@
+# Stage 1: example NPT equilibration; run with this file named run.in.
+potential nep.txt
+velocity 300 seed 20261017
+time_step 1
+
+ensemble npt_scr 300 300 100 0 0 0 100 100 100 1000
+dump_thermo 100
+dump_exyz 10000 0
+dump_restart 100000
+run 100000

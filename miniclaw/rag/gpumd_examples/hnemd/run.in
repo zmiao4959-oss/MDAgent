@@ -1,0 +1,14 @@
+# GPUMD 5.5 example: HNEMD lattice thermal transport, driving field along x.
+potential nep.txt
+velocity 300 seed 20261017
+time_step 1
+
+ensemble nvt_nhc 300 300 100
+dump_thermo 100
+run 100000
+
+ensemble nvt_nhc 300 300 100
+compute_hnemd 1000 0.00001 0 0
+dump_thermo 1000
+dump_restart 1000000
+run 1000000

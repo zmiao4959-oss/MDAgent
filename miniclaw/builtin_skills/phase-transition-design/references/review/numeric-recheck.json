@@ -1,0 +1,845 @@
+{
+  "scope": "Fixed numerical expectations, generic conservation checks and registered source IDs on INITIAL raw reports. Semantic audit and targeted fixes are reported separately.",
+  "numeric_assertions_passed": 58,
+  "numeric_assertions_total": 58,
+  "consistency_checks_passed": 60,
+  "consistency_checks_total": 60,
+  "unregistered_initial_citations": [
+    {
+      "case_id": "N02",
+      "id": "NIST-JANAF Ti-002 (quoted in U-D02; not independently opened)"
+    },
+    {
+      "case_id": "X03",
+      "id": "UNEP-v1 元素覆盖"
+    }
+  ],
+  "assertions": [
+    {
+      "case_id": "N01",
+      "expected_path": "dt_fs",
+      "actual_path": "dt_fs",
+      "expected": 1,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "case_id": "N01",
+      "expected_path": "tau_T_ratio",
+      "actual_path": "T_coup",
+      "expected": 100,
+      "actual": 100,
+      "passed": true
+    },
+    {
+      "case_id": "N01",
+      "expected_path": "tau_P_ratio",
+      "actual_path": "P_coup",
+      "expected": 1000,
+      "actual": 1000,
+      "passed": true
+    },
+    {
+      "case_id": "N01",
+      "expected_path": "relax_ps",
+      "actual_path": "relax_ps",
+      "expected": 100,
+      "actual": 100,
+      "passed": true
+    },
+    {
+      "case_id": "N01",
+      "expected_path": "production_ps",
+      "actual_path": "production_ps",
+      "expected": 100,
+      "actual": 100,
+      "passed": true
+    },
+    {
+      "case_id": "N01",
+      "expected_path": "total_steps",
+      "actual_path": "total_steps",
+      "expected": 200000,
+      "actual": 200000,
+      "passed": true
+    },
+    {
+      "case_id": "N01",
+      "expected_path": "N",
+      "actual_path": "N",
+      "expected": 4000,
+      "actual": 4000,
+      "passed": true
+    },
+    {
+      "case_id": "N01",
+      "expected_path": "atom_counts",
+      "actual_path": "composition/atomic_counts",
+      "expected": {
+        "Cu": 2000,
+        "Ni": 2000
+      },
+      "actual": {
+        "Cu": 2000,
+        "Ni": 2000
+      },
+      "passed": true
+    },
+    {
+      "case_id": "N01",
+      "expected_path": "thermo_interval_steps",
+      "actual_path": "thermo_interval_steps",
+      "expected": 100,
+      "actual": 100,
+      "passed": true
+    },
+    {
+      "case_id": "N01",
+      "expected_path": "trajectory_interval_steps",
+      "actual_path": "trajectory_interval_steps",
+      "expected": 1000,
+      "actual": 1000,
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "expected_path": "dt_fs",
+      "actual_path": "dt_fs",
+      "expected": 1,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "expected_path": "initial_total_steps",
+      "actual_path": "total_steps",
+      "expected": 1800000,
+      "actual": 1800000,
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "expected_path": "maximum_total_steps",
+      "actual_path": "budget/maximum_main_steps",
+      "expected": 2500000,
+      "actual": 2500000,
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "expected_path": "platform_K",
+      "actual_path": "temperature_K/sampling_plateaux",
+      "expected": [
+        800,
+        900,
+        1000,
+        1100,
+        1200,
+        1300,
+        1400,
+        1500
+      ],
+      "actual": [
+        800,
+        900,
+        1000,
+        1100,
+        1200,
+        1300,
+        1400,
+        1500
+      ],
+      "passed": true
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "N",
+      "actual_path": "N",
+      "expected": 13500,
+      "actual": 13500,
+      "passed": true
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "atom_counts",
+      "actual_path": "composition/atomic_counts",
+      "expected": {
+        "Pd": 5400,
+        "Cu": 4050,
+        "Ni": 1350,
+        "P": 2700
+      },
+      "actual": {
+        "Pd": 5400,
+        "Cu": 4050,
+        "Ni": 1350,
+        "P": 2700
+      },
+      "passed": true
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "dt_fs",
+      "actual_path": "dt_fs",
+      "expected": 1,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "fast_cooling_steps",
+      "actual_path": "tiers/fast/cooling_steps",
+      "expected": 1100000,
+      "actual": 1100000,
+      "passed": true
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "fast_total_steps",
+      "actual_path": "tiers/fast/total_steps",
+      "expected": 2200000,
+      "actual": 2200000,
+      "passed": true
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "paper_rate_cooling_steps",
+      "actual_path": "tiers/literature_rate/cooling_steps",
+      "expected": 110000000,
+      "actual": 110000000,
+      "passed": true
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "paper_rate_total_steps",
+      "actual_path": "tiers/literature_rate/total_steps",
+      "expected": 111100000,
+      "actual": 111100000,
+      "passed": true
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "fast_thermo_interval_steps",
+      "actual_path": "thermo_interval_steps/cooling_fast",
+      "expected": 500,
+      "actual": 500,
+      "passed": true
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "fast_trajectory_interval_steps",
+      "actual_path": "trajectory_interval_steps/cooling_fast",
+      "expected": 2500,
+      "actual": 2500,
+      "passed": true
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "slow_thermo_interval_steps",
+      "actual_path": "thermo_interval_steps/cooling_literature_rate",
+      "expected": 1000,
+      "actual": 1000,
+      "passed": true
+    },
+    {
+      "case_id": "G01",
+      "expected_path": "slow_trajectory_interval_steps",
+      "actual_path": "trajectory_interval_steps/cooling_literature_rate",
+      "expected": 250000,
+      "actual": 250000,
+      "passed": true
+    },
+    {
+      "case_id": "T01",
+      "expected_path": "dt_fs",
+      "actual_path": "dt_fs",
+      "expected": 1,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "case_id": "T01",
+      "expected_path": "rate_s_inv",
+      "actual_path": "rate_s_inv",
+      "expected": 100000000,
+      "actual": 100000000,
+      "passed": true
+    },
+    {
+      "case_id": "T01",
+      "expected_path": "strain_end",
+      "actual_path": "strain_end",
+      "expected": 0.1,
+      "actual": 0.1,
+      "passed": true
+    },
+    {
+      "case_id": "T01",
+      "expected_path": "load_ps",
+      "actual_path": "load_duration_ps",
+      "expected": 1000,
+      "actual": 1000,
+      "passed": true
+    },
+    {
+      "case_id": "T01",
+      "expected_path": "load_steps",
+      "actual_path": "load_steps",
+      "expected": 1000000,
+      "actual": 1000000,
+      "passed": true
+    },
+    {
+      "case_id": "T01",
+      "expected_path": "thermo_interval_steps",
+      "actual_path": "thermo_interval_steps",
+      "expected": 100,
+      "actual": 100,
+      "passed": true
+    },
+    {
+      "case_id": "T01",
+      "expected_path": "trajectory_interval_steps",
+      "actual_path": "trajectory_interval_steps",
+      "expected": 1000,
+      "actual": 1000,
+      "passed": true
+    },
+    {
+      "case_id": "T01",
+      "expected_path": "N",
+      "actual_path": "N",
+      "expected": 4000,
+      "actual": 4000,
+      "passed": true
+    },
+    {
+      "case_id": "T01",
+      "expected_path": "total_steps_with_relax",
+      "actual_path": "total_steps",
+      "expected": 1100000,
+      "actual": 1100000,
+      "passed": true
+    },
+    {
+      "case_id": "T02",
+      "expected_path": "dt_fs",
+      "actual_path": "dt_fs",
+      "expected": 1,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "case_id": "T02",
+      "expected_path": "rate_s_inv",
+      "actual_path": "rate_s_inv",
+      "expected": 100000000,
+      "actual": 100000000,
+      "passed": true
+    },
+    {
+      "case_id": "T02",
+      "expected_path": "strain_end",
+      "actual_path": "strain_end",
+      "expected": 0.1,
+      "actual": 0.1,
+      "passed": true
+    },
+    {
+      "case_id": "T02",
+      "expected_path": "load_ps",
+      "actual_path": "load_duration_ps",
+      "expected": 1000,
+      "actual": 1000,
+      "passed": true
+    },
+    {
+      "case_id": "T02",
+      "expected_path": "load_steps",
+      "actual_path": "load_steps",
+      "expected": 1000000,
+      "actual": 1000000,
+      "passed": true
+    },
+    {
+      "case_id": "T03",
+      "expected_path": "dt_fs",
+      "actual_path": "dt_fs",
+      "expected": 1,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "case_id": "T03",
+      "expected_path": "rate_s_inv",
+      "actual_path": "rate_s_inv",
+      "expected": 10000000,
+      "actual": 10000000,
+      "passed": true
+    },
+    {
+      "case_id": "T03",
+      "expected_path": "strain_end",
+      "actual_path": "strain_end",
+      "expected": 0.1,
+      "actual": 0.1,
+      "passed": true
+    },
+    {
+      "case_id": "T03",
+      "expected_path": "load_ps",
+      "actual_path": "load_duration_ps",
+      "expected": 10000,
+      "actual": 10000,
+      "passed": true
+    },
+    {
+      "case_id": "T03",
+      "expected_path": "load_steps",
+      "actual_path": "load_steps",
+      "expected": 10000000,
+      "actual": 10000000,
+      "passed": true
+    },
+    {
+      "case_id": "T03",
+      "expected_path": "thermo_interval_steps",
+      "actual_path": "thermo_interval_steps",
+      "expected": 1000,
+      "actual": 1000,
+      "passed": true
+    },
+    {
+      "case_id": "T03",
+      "expected_path": "trajectory_interval_steps",
+      "actual_path": "trajectory_interval_steps",
+      "expected": 10000,
+      "actual": 10000,
+      "passed": true
+    },
+    {
+      "case_id": "X01",
+      "expected_path": "duration_ps",
+      "actual_path": "load_duration_ps",
+      "expected": 100,
+      "actual": 100,
+      "passed": true
+    },
+    {
+      "case_id": "X01",
+      "expected_path": "rate_s_inv",
+      "actual_path": "rate_s_inv",
+      "expected": 3000000000,
+      "actual": 3000000000,
+      "passed": true
+    },
+    {
+      "case_id": "X01",
+      "expected_path": "steps",
+      "actual_path": "load_steps",
+      "expected": 100000,
+      "actual": 100000,
+      "passed": true
+    },
+    {
+      "case_id": "X01",
+      "expected_path": "dL_A_per_step/x",
+      "actual_path": "increment_A_per_step/x",
+      "expected": 0.000105,
+      "actual": 0.000105,
+      "passed": true
+    },
+    {
+      "case_id": "X01",
+      "expected_path": "dL_A_per_step/y",
+      "actual_path": "increment_A_per_step/y",
+      "expected": 0.000108,
+      "actual": 0.000108,
+      "passed": true
+    },
+    {
+      "case_id": "X02",
+      "expected_path": "dt_fs",
+      "actual_path": "dt_fs",
+      "expected": 0.5,
+      "actual": 0.5,
+      "passed": true
+    },
+    {
+      "case_id": "X02",
+      "expected_path": "tau_T_ratio",
+      "actual_path": "T_coup",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    },
+    {
+      "case_id": "X02",
+      "expected_path": "tau_P_ratio",
+      "actual_path": "P_coup",
+      "expected": 2000,
+      "actual": 2000,
+      "passed": true
+    },
+    {
+      "case_id": "X02",
+      "expected_path": "load_steps",
+      "actual_path": "load_steps",
+      "expected": 2000000,
+      "actual": 2000000,
+      "passed": true
+    },
+    {
+      "case_id": "X02",
+      "expected_path": "duration_ps",
+      "actual_path": "load_duration_ps",
+      "expected": 1000,
+      "actual": 1000,
+      "passed": true
+    },
+    {
+      "case_id": "X02",
+      "expected_path": "dLz_A_per_step",
+      "actual_path": "increment_A_per_step/z",
+      "expected": 5e-06,
+      "actual": 5e-06,
+      "passed": true
+    },
+    {
+      "case_id": "X02",
+      "expected_path": "seed",
+      "actual_path": "seed",
+      "expected": 42,
+      "actual": 42,
+      "passed": true
+    }
+  ],
+  "consistency": [
+    {
+      "case_id": "N01",
+      "check": "T_coup*dt=tau_T_fs",
+      "passed": true
+    },
+    {
+      "case_id": "N01",
+      "check": "P_coup*dt=tau_P_fs",
+      "passed": true
+    },
+    {
+      "case_id": "N01",
+      "check": "stage step sum",
+      "passed": true
+    },
+    {
+      "case_id": "N01",
+      "check": "N01_equil time",
+      "passed": true
+    },
+    {
+      "case_id": "N01",
+      "check": "N01_production time",
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "check": "T_coup*dt=tau_T_fs",
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "check": "P_coup*dt=tau_P_fs",
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "check": "stage step sum",
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "check": "Ti_300_equil time",
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "check": "Ti_300_to_800 time",
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "check": "Ti_800_adapt time",
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "check": "Ti_800_sample time",
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "check": "Ti_900_adapt time",
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "check": "Ti_900_sample time",
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "check": "Ti_1000_adapt time",
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "check": "Ti_1000_sample time",
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "check": "Ti_1100_adapt time",
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "check": "Ti_1100_sample time",
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "check": "Ti_1200_adapt time",
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "check": "Ti_1200_sample time",
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "check": "Ti_1300_adapt time",
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "check": "Ti_1300_sample time",
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "check": "Ti_1400_adapt time",
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "check": "Ti_1400_sample time",
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "check": "Ti_1500_adapt time",
+      "passed": true
+    },
+    {
+      "case_id": "N02",
+      "check": "Ti_1500_sample time",
+      "passed": true
+    },
+    {
+      "case_id": "G01",
+      "check": "T_coup*dt=tau_T_fs",
+      "passed": true
+    },
+    {
+      "case_id": "G01",
+      "check": "P_coup*dt=tau_P_fs",
+      "passed": true
+    },
+    {
+      "case_id": "G01",
+      "check": "stage step sum",
+      "passed": true
+    },
+    {
+      "case_id": "G01",
+      "check": "Pd_highT_prepare time",
+      "passed": true
+    },
+    {
+      "case_id": "G01",
+      "check": "Pd_fast_cooling time",
+      "passed": true
+    },
+    {
+      "case_id": "G01",
+      "check": "Pd_300_observe time",
+      "passed": true
+    },
+    {
+      "case_id": "T01",
+      "check": "T_coup*dt=tau_T_fs",
+      "passed": true
+    },
+    {
+      "case_id": "T01",
+      "check": "P_coup*dt=tau_P_fs",
+      "passed": true
+    },
+    {
+      "case_id": "T01",
+      "check": "load steps and duration",
+      "passed": true
+    },
+    {
+      "case_id": "T01",
+      "check": "thermo_interval_steps strain resolution",
+      "actual_delta": 1e-05,
+      "limit": 1e-05,
+      "passed": true
+    },
+    {
+      "case_id": "T01",
+      "check": "trajectory_interval_steps strain resolution",
+      "actual_delta": 0.0001,
+      "limit": 0.0001,
+      "passed": true
+    },
+    {
+      "case_id": "T02",
+      "check": "T_coup*dt=tau_T_fs",
+      "passed": true
+    },
+    {
+      "case_id": "T02",
+      "check": "P_coup*dt=tau_P_fs",
+      "passed": true
+    },
+    {
+      "case_id": "T02",
+      "check": "load steps and duration",
+      "passed": true
+    },
+    {
+      "case_id": "T02",
+      "check": "thermo_interval_steps strain resolution",
+      "actual_delta": 1e-05,
+      "limit": 1e-05,
+      "passed": true
+    },
+    {
+      "case_id": "T02",
+      "check": "trajectory_interval_steps strain resolution",
+      "actual_delta": 0.0001,
+      "limit": 0.0001,
+      "passed": true
+    },
+    {
+      "case_id": "T03",
+      "check": "T_coup*dt=tau_T_fs",
+      "passed": true
+    },
+    {
+      "case_id": "T03",
+      "check": "P_coup*dt=tau_P_fs",
+      "passed": true
+    },
+    {
+      "case_id": "T03",
+      "check": "load steps and duration",
+      "passed": true
+    },
+    {
+      "case_id": "T03",
+      "check": "thermo_interval_steps strain resolution",
+      "actual_delta": 1e-05,
+      "limit": 1e-05,
+      "passed": true
+    },
+    {
+      "case_id": "T03",
+      "check": "trajectory_interval_steps strain resolution",
+      "actual_delta": 0.0001,
+      "limit": 0.0001,
+      "passed": true
+    },
+    {
+      "case_id": "X01",
+      "check": "T_coup*dt=tau_T_fs",
+      "passed": true
+    },
+    {
+      "case_id": "X01",
+      "check": "P_coup*dt=tau_P_fs",
+      "passed": true
+    },
+    {
+      "case_id": "X01",
+      "check": "load steps and duration",
+      "passed": true
+    },
+    {
+      "case_id": "X01",
+      "check": "thermo_interval_steps strain resolution",
+      "actual_delta": 9e-06,
+      "limit": 1e-05,
+      "passed": true
+    },
+    {
+      "case_id": "X01",
+      "check": "trajectory_interval_steps strain resolution",
+      "actual_delta": 9.900000000000001e-05,
+      "limit": 0.0001,
+      "passed": true
+    },
+    {
+      "case_id": "X02",
+      "check": "T_coup*dt=tau_T_fs",
+      "passed": true
+    },
+    {
+      "case_id": "X02",
+      "check": "P_coup*dt=tau_P_fs",
+      "passed": true
+    },
+    {
+      "case_id": "X02",
+      "check": "load steps and duration",
+      "passed": true
+    },
+    {
+      "case_id": "X02",
+      "check": "thermo_interval_steps strain resolution",
+      "actual_delta": 5e-06,
+      "limit": 1e-05,
+      "passed": true
+    },
+    {
+      "case_id": "X02",
+      "check": "trajectory_interval_steps strain resolution",
+      "actual_delta": 5e-05,
+      "limit": 0.0001,
+      "passed": true
+    },
+    {
+      "case_id": "X04",
+      "check": "T_coup*dt=tau_T_fs",
+      "passed": true
+    },
+    {
+      "case_id": "X04",
+      "check": "P_coup*dt=tau_P_fs",
+      "passed": true
+    },
+    {
+      "case_id": "X04",
+      "check": "load steps and duration",
+      "passed": true
+    }
+  ],
+  "not_measured": [
+    "Physical validity or optimality of candidates",
+    "Generalization beyond these cases",
+    "MD outcomes",
+    "Model token costs or wall-clock latency"
+  ]
+}

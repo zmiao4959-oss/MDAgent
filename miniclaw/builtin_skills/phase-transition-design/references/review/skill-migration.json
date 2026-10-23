@@ -1,0 +1,675 @@
+{
+  "schema_version": 1,
+  "migrated_on": "2026-10-21",
+  "knowledge_version": "0.3",
+  "scope": "Skill packaging, navigation and arithmetic entry only; scientific candidate policy unchanged. Historical agent reports and manifests retain their original bytes and do not validate this skill packaging.",
+  "original_root": "knowledge/phase-transition",
+  "skill_root": "miniclaw/builtin_skills/phase-transition-design",
+  "files": [
+    {
+      "original_path": "knowledge/phase-transition/agent-entry.md",
+      "skill_path": "references/agent-entry.md",
+      "original_sha256": "88fe92ca0b0f5b9f2b56164b887c029d923bcce7f1db35c8b5b301c69b853659",
+      "original_bytes": 4300,
+      "migrated_sha256": "6a27a2ae2502ace2d53299ec8f15aea3124f4359e1f948d32c2fa77db55bbe0d",
+      "migrated_bytes": 4300,
+      "change": "packaging_or_entry_updated"
+    },
+    {
+      "original_path": "knowledge/phase-transition/catalog.json",
+      "skill_path": "references/catalog.json",
+      "original_sha256": "7b1a7958d7bc2e26726c6d21a5a2fca4d7a11a13efd94e1297031daf0c1751d8",
+      "original_bytes": 6114,
+      "migrated_sha256": "2db2667b548a05bb0038f84b2912c7c072f9ba1794f770d517d54d27debb128c",
+      "migrated_bytes": 6185,
+      "change": "packaging_or_entry_updated"
+    },
+    {
+      "original_path": "knowledge/phase-transition/CHANGELOG.md",
+      "skill_path": "references/CHANGELOG.md",
+      "original_sha256": "2ab1b1a7005567cd0fd06544f1223bc9c776ea0aac3ed4688d41d3756e494ab1",
+      "original_bytes": 1348,
+      "migrated_sha256": "a88660ab6ba63b4ef564f98d812c92e3f1159b3cea3ac8057d77fe2977cf555b",
+      "migrated_bytes": 2030,
+      "change": "packaging_or_entry_updated"
+    },
+    {
+      "original_path": "knowledge/phase-transition/index.md",
+      "skill_path": "references/index.md",
+      "original_sha256": "aa1fa48c2534e8e693618715514593e80e6ccba363e1324fa724e10366a9bd89",
+      "original_bytes": 3004,
+      "migrated_sha256": "aa1fa48c2534e8e693618715514593e80e6ccba363e1324fa724e10366a9bd89",
+      "migrated_bytes": 3004,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/README.md",
+      "skill_path": "references/README.md",
+      "original_sha256": "52a01298b2d94fba392ef4223abf0e58d14a4211e5c9f2c41287800e058a23b2",
+      "original_bytes": 4416,
+      "migrated_sha256": "2086da272541b8065716cb62656295f97e4830ea215ec6de1c4705685e44bd3a",
+      "migrated_bytes": 4715,
+      "change": "packaging_or_entry_updated"
+    },
+    {
+      "original_path": "knowledge/phase-transition/assets/local-inventory.json",
+      "skill_path": "references/assets/local-inventory.json",
+      "original_sha256": "7a5d2a743c4b2851db08e6e8b720301a1ebae4e23a89509634f9f251db4418a1",
+      "original_bytes": 15702,
+      "migrated_sha256": "7a5d2a743c4b2851db08e6e8b720301a1ebae4e23a89509634f9f251db4418a1",
+      "migrated_bytes": 15702,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/common/capabilities.md",
+      "skill_path": "references/common/capabilities.md",
+      "original_sha256": "3b78b40f5975500a82fc6992612bb7701d14c582fb4fb7ba16746d8b8d7caa3e",
+      "original_bytes": 3486,
+      "migrated_sha256": "e492c2b70ae8cb77e70a63905612fa603844292f9ac365e4baaca13db463f208",
+      "migrated_bytes": 3617,
+      "change": "packaging_or_entry_updated"
+    },
+    {
+      "original_path": "knowledge/phase-transition/common/npt-parameters.md",
+      "skill_path": "references/common/npt-parameters.md",
+      "original_sha256": "2fcf16200736c479408f053429bdcf57825a80c2b271e2cab2639cbd6c1a9dff",
+      "original_bytes": 3774,
+      "migrated_sha256": "2fcf16200736c479408f053429bdcf57825a80c2b271e2cab2639cbd6c1a9dff",
+      "migrated_bytes": 3774,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/common/observables.md",
+      "skill_path": "references/common/observables.md",
+      "original_sha256": "55d0aa9869985a151a7464c5f1b0bc25d734a8d683483f33559d0180a42be5e1",
+      "original_bytes": 3304,
+      "migrated_sha256": "55d0aa9869985a151a7464c5f1b0bc25d734a8d683483f33559d0180a42be5e1",
+      "migrated_bytes": 3304,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/common/research-questions.md",
+      "skill_path": "references/common/research-questions.md",
+      "original_sha256": "2d1ff62491568fb988e3a1bd7abf9ea143fd0d7021f8b60d02b6951981b145cf",
+      "original_bytes": 2728,
+      "migrated_sha256": "2d1ff62491568fb988e3a1bd7abf9ea143fd0d7021f8b60d02b6951981b145cf",
+      "migrated_bytes": 2728,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/common/sampling.md",
+      "skill_path": "references/common/sampling.md",
+      "original_sha256": "661dbda6b7571c8f683c4757f2eb8e5a46971cb5bc5e0836af5a088009060414",
+      "original_bytes": 2951,
+      "migrated_sha256": "661dbda6b7571c8f683c4757f2eb8e5a46971cb5bc5e0836af5a088009060414",
+      "migrated_bytes": 2951,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/decisions/calculation.md",
+      "skill_path": "references/decisions/calculation.md",
+      "original_sha256": "2c43dea974b38620a7de3af774ed6a6ef197539a22f34e474ad2230947a5cd04",
+      "original_bytes": 1497,
+      "migrated_sha256": "f1b88cbc2afb0ed17f31ba31dee7ac4bfff50c8dc10bae5fd3351706d955463d",
+      "migrated_bytes": 2983,
+      "change": "packaging_or_entry_updated"
+    },
+    {
+      "original_path": "knowledge/phase-transition/decisions/handoff-contract.json",
+      "skill_path": "references/decisions/handoff-contract.json",
+      "original_sha256": "fb34d4992356a54fcb4857b7a84b06ba98a56aae4fd10ec55b246b7076a33178",
+      "original_bytes": 1918,
+      "migrated_sha256": "fb34d4992356a54fcb4857b7a84b06ba98a56aae4fd10ec55b246b7076a33178",
+      "migrated_bytes": 1918,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/decisions/npt.md",
+      "skill_path": "references/decisions/npt.md",
+      "original_sha256": "7919ff245887f87a8e7cd69d3b57621b4ae7aafdc778c30583825b580e1a58f7",
+      "original_bytes": 3449,
+      "migrated_sha256": "7919ff245887f87a8e7cd69d3b57621b4ae7aafdc778c30583825b580e1a58f7",
+      "migrated_bytes": 3449,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/decisions/parameter-table.md",
+      "skill_path": "references/decisions/parameter-table.md",
+      "original_sha256": "e063dca77eb3031f9ab4ec8d4d1053964e82c47c50e351d2f118dbdcf71152c7",
+      "original_bytes": 4926,
+      "migrated_sha256": "e063dca77eb3031f9ab4ec8d4d1053964e82c47c50e351d2f118dbdcf71152c7",
+      "migrated_bytes": 4926,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/decisions/pdcunip.md",
+      "skill_path": "references/decisions/pdcunip.md",
+      "original_sha256": "70dac289f7c82433276cc39540815d2600b61903b668f557e9d333f03f509eed",
+      "original_bytes": 4204,
+      "migrated_sha256": "70dac289f7c82433276cc39540815d2600b61903b668f557e9d333f03f509eed",
+      "migrated_bytes": 4204,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/decisions/policies.json",
+      "skill_path": "references/decisions/policies.json",
+      "original_sha256": "72011a26e3ebca0be81653acd6f173763ca95ec3cbeec96e96f8b2e68f094518",
+      "original_bytes": 2248,
+      "migrated_sha256": "72011a26e3ebca0be81653acd6f173763ca95ec3cbeec96e96f8b2e68f094518",
+      "migrated_bytes": 2248,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/decisions/reference-index.json",
+      "skill_path": "references/decisions/reference-index.json",
+      "original_sha256": "0c9a90813464fc0d9797c25494eae08bfc40fe752889fb3fc6d6b1e2a4d8e30e",
+      "original_bytes": 5520,
+      "migrated_sha256": "0c9a90813464fc0d9797c25494eae08bfc40fe752889fb3fc6d6b1e2a4d8e30e",
+      "migrated_bytes": 5520,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/decisions/tension.md",
+      "skill_path": "references/decisions/tension.md",
+      "original_sha256": "d4d93ae4d8aea9ad7ffcf50e2c96589ce67222fac0d374739ecfe76ca6e4c46a",
+      "original_bytes": 4765,
+      "migrated_sha256": "d4d93ae4d8aea9ad7ffcf50e2c96589ce67222fac0d374739ecfe76ca6e4c46a",
+      "migrated_bytes": 4765,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/decisions/unep-v1.md",
+      "skill_path": "references/decisions/unep-v1.md",
+      "original_sha256": "97eb28a58ef55dde13f0f6900e0061592a17927afa508933bdd57e51420645a4",
+      "original_bytes": 3694,
+      "migrated_sha256": "97eb28a58ef55dde13f0f6900e0061592a17927afa508933bdd57e51420645a4",
+      "migrated_bytes": 3694,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/evidence/C-01-gpumd55.md",
+      "skill_path": "references/evidence/C-01-gpumd55.md",
+      "original_sha256": "57147bfed30f8c1b1e64c9612d897f97caf3feace14d03e9ef4d077f80431b33",
+      "original_bytes": 1847,
+      "migrated_sha256": "57147bfed30f8c1b1e64c9612d897f97caf3feace14d03e9ef4d077f80431b33",
+      "migrated_bytes": 1847,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/evidence/C-02-deformation.md",
+      "skill_path": "references/evidence/C-02-deformation.md",
+      "original_sha256": "59bf1afe2f33f1af46f5b1dd541d0c77d9d6f4ee9845d6af888e3e72c7e03e67",
+      "original_bytes": 1976,
+      "migrated_sha256": "ee1f09e4cabbfb7ac399d6a94a5cd6bab02e00ecfd0c27a8d072a620f3be00c6",
+      "migrated_bytes": 1989,
+      "change": "packaging_or_entry_updated"
+    },
+    {
+      "original_path": "knowledge/phase-transition/evidence/M-01-ptm.md",
+      "skill_path": "references/evidence/M-01-ptm.md",
+      "original_sha256": "5019a2eabf0722fee0fcf47ac627f1e5b1bd57c138a7b3cf1f62a627b59aaa50",
+      "original_bytes": 1330,
+      "migrated_sha256": "5019a2eabf0722fee0fcf47ac627f1e5b1bd57c138a7b3cf1f62a627b59aaa50",
+      "migrated_bytes": 1330,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/evidence/M-02-barostat.md",
+      "skill_path": "references/evidence/M-02-barostat.md",
+      "original_sha256": "1fdb725ce7318f54b4884ddc2ed7fab5caba8283a22749e8abd2a8b936996d05",
+      "original_bytes": 1017,
+      "migrated_sha256": "1fdb725ce7318f54b4884ddc2ed7fab5caba8283a22749e8abd2a8b936996d05",
+      "migrated_bytes": 1017,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/evidence/M-03-equilibration.md",
+      "skill_path": "references/evidence/M-03-equilibration.md",
+      "original_sha256": "f74a7becebe31ba5f85710854c35122b9fdeb0699a3685ab1e52596d99d95d9c",
+      "original_bytes": 1083,
+      "migrated_sha256": "f74a7becebe31ba5f85710854c35122b9fdeb0699a3685ab1e52596d99d95d9c",
+      "migrated_bytes": 1083,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/evidence/P-01-local-model.md",
+      "skill_path": "references/evidence/P-01-local-model.md",
+      "original_sha256": "e40c334716ae5d609f7daa8e237907894e0fe546f7a6adc6c9117ff0b44e9e25",
+      "original_bytes": 1395,
+      "migrated_sha256": "e40c334716ae5d609f7daa8e237907894e0fe546f7a6adc6c9117ff0b44e9e25",
+      "migrated_bytes": 1395,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/evidence/P-02-paper-protocols.md",
+      "skill_path": "references/evidence/P-02-paper-protocols.md",
+      "original_sha256": "5402bb8692729ccbbaab80807aa98887c38b80283d66097eec52fcd217380969",
+      "original_bytes": 1594,
+      "migrated_sha256": "5402bb8692729ccbbaab80807aa98887c38b80283d66097eec52fcd217380969",
+      "migrated_bytes": 1594,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/evidence/P-03-paper-mechanics.md",
+      "skill_path": "references/evidence/P-03-paper-mechanics.md",
+      "original_sha256": "6cbd27d12072107d22a8a2b50c795ca7744ece91e7f8ab918b47af8b6e87ea0d",
+      "original_bytes": 777,
+      "migrated_sha256": "6cbd27d12072107d22a8a2b50c795ca7744ece91e7f8ab918b47af8b6e87ea0d",
+      "migrated_bytes": 777,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/evidence/README.md",
+      "skill_path": "references/evidence/README.md",
+      "original_sha256": "172d031f31ad5e7bacebea691a41abfd0eeb14f24207c5a9ddc13ecc8de01c8f",
+      "original_bytes": 1809,
+      "migrated_sha256": "172d031f31ad5e7bacebea691a41abfd0eeb14f24207c5a9ddc13ecc8de01c8f",
+      "migrated_bytes": 1809,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/evidence/U-01-local-model.md",
+      "skill_path": "references/evidence/U-01-local-model.md",
+      "original_sha256": "2b40cb0f4833c86db5cd44bfa5f7c2005d59198c1e18b22fcfd0649099bc0ed7",
+      "original_bytes": 1499,
+      "migrated_sha256": "2b40cb0f4833c86db5cd44bfa5f7c2005d59198c1e18b22fcfd0649099bc0ed7",
+      "migrated_bytes": 1499,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/evidence/U-02-paper-scope.md",
+      "skill_path": "references/evidence/U-02-paper-scope.md",
+      "original_sha256": "7a1c2423654553da770430f39fcce84ac0a25907ea9cdaae784ce664e2c3e86d",
+      "original_bytes": 1343,
+      "migrated_sha256": "7a1c2423654553da770430f39fcce84ac0a25907ea9cdaae784ce664e2c3e86d",
+      "migrated_bytes": 1343,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/maintenance/calculate_plan.py",
+      "skill_path": "scripts/calculate_plan.py",
+      "original_sha256": "5be4964520c076445dcfea6b7b115de178d380501e9a4c21bf5cc076b7014748",
+      "original_bytes": 7947,
+      "migrated_sha256": "ba2a481ce91a8388df1e422799755d4508d8ad4ab445860f4aa5550327ad7386",
+      "migrated_bytes": 14329,
+      "change": "packaging_or_entry_updated"
+    },
+    {
+      "original_path": "knowledge/phase-transition/maintenance/check_calculator.py",
+      "skill_path": "scripts/check_calculator.py",
+      "original_sha256": "72c8bc0c7e9d980516877595dfdb21faf08d5698ce728228b691e1efcc75a27d",
+      "original_bytes": 2576,
+      "migrated_sha256": "fa110fa489401ae7355ada959e360557b382fae1cd47c613be3fc95228d9784c",
+      "migrated_bytes": 2650,
+      "change": "packaging_or_entry_updated"
+    },
+    {
+      "original_path": "knowledge/phase-transition/maintenance/check_fast_route.py",
+      "skill_path": "scripts/check_fast_route.py",
+      "original_sha256": "3bbd04749ef4372052931e27b0f1176264aac4f541242fe7d77f2d05faca8b17",
+      "original_bytes": 4297,
+      "migrated_sha256": "493b146e72b8187b19bac7cc8fc299b1f8d403b371107f93cbeeba43d0481ce7",
+      "migrated_bytes": 4384,
+      "change": "packaging_or_entry_updated"
+    },
+    {
+      "original_path": "knowledge/phase-transition/maintenance/check_knowledge.py",
+      "skill_path": "scripts/check_knowledge.py",
+      "original_sha256": "3d73c01e9e81e46ced2ced4736326c44f2b01dcfda3750263104b9f71c061a5c",
+      "original_bytes": 4955,
+      "migrated_sha256": "36dd20caca0a67a0845347d04f786a05c9ab07e20df9d96aa99830850765b6bd",
+      "migrated_bytes": 8052,
+      "change": "packaging_or_entry_updated"
+    },
+    {
+      "original_path": "knowledge/phase-transition/maintenance/grade_agent_reports.py",
+      "skill_path": "scripts/grade_agent_reports.py",
+      "original_sha256": "3724c31fe4c935a7060c0c31495a8ea1d00a2b0d474d32aadcf330621420d2e2",
+      "original_bytes": 4506,
+      "migrated_sha256": "c4d7ca82a6923fc6123a80436b7623b59f16d8986cb9e2a8afdb74ffc4c3d066",
+      "migrated_bytes": 4609,
+      "change": "packaging_or_entry_updated"
+    },
+    {
+      "original_path": "knowledge/phase-transition/maintenance/measure_reads.py",
+      "skill_path": "scripts/measure_reads.py",
+      "original_sha256": "9760908ce535fb88f9933cb64687cd3450d99ca93d4158d9387011b25367eea5",
+      "original_bytes": 2225,
+      "migrated_sha256": "6d71d8d6a8336fcb67b7fa218dcb1916277c06c428c106ce3f1990142f0c63c6",
+      "migrated_bytes": 2662,
+      "change": "packaging_or_entry_updated"
+    },
+    {
+      "original_path": "knowledge/phase-transition/maintenance/refresh_inventory.py",
+      "skill_path": "scripts/refresh_inventory.py",
+      "original_sha256": "524c30a2e75d1e7aa1feb063efdbf8cb2dff6d5715b6cd760b89ea7c8d608c7b",
+      "original_bytes": 6596,
+      "migrated_sha256": "584bd1eb2083204daaea752cf139314b8572d365d0c8fe8274240141cd6c7e19",
+      "migrated_bytes": 6767,
+      "change": "packaging_or_entry_updated"
+    },
+    {
+      "original_path": "knowledge/phase-transition/potentials/pdcunip/dataset-audit.md",
+      "skill_path": "references/potentials/pdcunip/dataset-audit.md",
+      "original_sha256": "7f52002401fa609b76efd79a20426ddb9d8844eb924ee4c3a14a950f8543c242",
+      "original_bytes": 2096,
+      "migrated_sha256": "75580e8b836781c44ecba3caa921421be16ad6ae1fd7ccb47336087afc71fcd3",
+      "migrated_bytes": 2130,
+      "change": "packaging_or_entry_updated"
+    },
+    {
+      "original_path": "knowledge/phase-transition/potentials/pdcunip/README.md",
+      "skill_path": "references/potentials/pdcunip/README.md",
+      "original_sha256": "16d2d0e623376fe6bf5373a17067e1a320fce6c1dd5dcfab6ee05a63d0604fe5",
+      "original_bytes": 2332,
+      "migrated_sha256": "16d2d0e623376fe6bf5373a17067e1a320fce6c1dd5dcfab6ee05a63d0604fe5",
+      "migrated_bytes": 2332,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/potentials/unep-v1/README.md",
+      "skill_path": "references/potentials/unep-v1/README.md",
+      "original_sha256": "1e8c664c36fe0c93f68c4dfb28c840640e75af63edd4580dfb1dba7933fb3006",
+      "original_bytes": 2228,
+      "migrated_sha256": "1e8c664c36fe0c93f68c4dfb28c840640e75af63edd4580dfb1dba7933fb3006",
+      "migrated_bytes": 2228,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/questions.md",
+      "skill_path": "references/review/questions.md",
+      "original_sha256": "7bba08264a91d29941fcc7b95f718cf36dd27659d4f82964a8530cc7111a2868",
+      "original_bytes": 3067,
+      "migrated_sha256": "7bba08264a91d29941fcc7b95f718cf36dd27659d4f82964a8530cc7111a2868",
+      "migrated_bytes": 3067,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/validation.json",
+      "skill_path": "references/review/validation.json",
+      "original_sha256": "47ee0bf2bac7888dac2c11ea1b2a846f6c4b560d9f4ede695c20bb806f65d34b",
+      "original_bytes": 945,
+      "migrated_sha256": "d43552606680d1d08191dc6eadc52b89dffc48e9a173c976d67d8be846e68a50",
+      "migrated_bytes": 1224,
+      "change": "generated_validation"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/agent-case-specs.json",
+      "skill_path": "references/review/agent-tests/agent-case-specs.json",
+      "original_sha256": "8f687950adbb4da23d41699c6db726b432abce648502dc8fc0a7fb9ce6cee9ee",
+      "original_bytes": 8403,
+      "migrated_sha256": "8f687950adbb4da23d41699c6db726b432abce648502dc8fc0a7fb9ce6cee9ee",
+      "migrated_bytes": 8403,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/baseline.json",
+      "skill_path": "references/review/agent-tests/baseline.json",
+      "original_sha256": "6e796558568b27e80060fafd9269a5472c791dc5148bcffef1785a2ec104a3fe",
+      "original_bytes": 1690,
+      "migrated_sha256": "6e796558568b27e80060fafd9269a5472c791dc5148bcffef1785a2ec104a3fe",
+      "migrated_bytes": 1690,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/calculator-cases.json",
+      "skill_path": "references/review/agent-tests/calculator-cases.json",
+      "original_sha256": "5edb8853bff01545cde347e2e731f00186dd78c180657201f33afec7ab821090",
+      "original_bytes": 5305,
+      "migrated_sha256": "5edb8853bff01545cde347e2e731f00186dd78c180657201f33afec7ab821090",
+      "migrated_bytes": 5305,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/calculator-results.json",
+      "skill_path": "references/review/agent-tests/calculator-results.json",
+      "original_sha256": "7c2927b818c9f16d94598c1223c91637de1625e0db47188c028fd2b261ea6b03",
+      "original_bytes": 8127,
+      "migrated_sha256": "7c2927b818c9f16d94598c1223c91637de1625e0db47188c028fd2b261ea6b03",
+      "migrated_bytes": 8127,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/evaluation-summary.json",
+      "skill_path": "references/review/agent-tests/evaluation-summary.json",
+      "original_sha256": "13ad398bc86d706714185615e5f13521b4e5086a59e3f71f0cd18efb17952951",
+      "original_bytes": 1946,
+      "migrated_sha256": "13ad398bc86d706714185615e5f13521b4e5086a59e3f71f0cd18efb17952951",
+      "migrated_bytes": 1946,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/fast-numeric-results.json",
+      "skill_path": "references/review/agent-tests/fast-numeric-results.json",
+      "original_sha256": "d0895216687eb2a8fdc5044785a3ffb79533643f2e9f826d95f46030bdafa979",
+      "original_bytes": 6145,
+      "migrated_sha256": "d0895216687eb2a8fdc5044785a3ffb79533643f2e9f826d95f46030bdafa979",
+      "migrated_bytes": 6145,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/independent-audit.json",
+      "skill_path": "references/review/agent-tests/independent-audit.json",
+      "original_sha256": "22fd7514cbdb99be12fdcfadd163ccef8227f9b7e932320f00ff75b9b499aced",
+      "original_bytes": 16260,
+      "migrated_sha256": "22fd7514cbdb99be12fdcfadd163ccef8227f9b7e932320f00ff75b9b499aced",
+      "migrated_bytes": 16260,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/independent-final-gate.json",
+      "skill_path": "references/review/agent-tests/independent-final-gate.json",
+      "original_sha256": "9b36b89202902ede77d8a9372087c6dae82ad218d9615c565883d096852bac2a",
+      "original_bytes": 4402,
+      "migrated_sha256": "9b36b89202902ede77d8a9372087c6dae82ad218d9615c565883d096852bac2a",
+      "migrated_bytes": 4402,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/independent-remediation-audit.json",
+      "skill_path": "references/review/agent-tests/independent-remediation-audit.json",
+      "original_sha256": "7b881112e8f1e792225cadadd7b19ebf7440ef4bb1adece092b51d1f33f88d36",
+      "original_bytes": 6813,
+      "migrated_sha256": "7b881112e8f1e792225cadadd7b19ebf7440ef4bb1adece092b51d1f33f88d36",
+      "migrated_bytes": 6813,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/numeric-bindings.json",
+      "skill_path": "references/review/agent-tests/numeric-bindings.json",
+      "original_sha256": "ac98170646ff753226ceb6fefb9da217dc484348287c5e8deb2438c50674a32c",
+      "original_bytes": 7191,
+      "migrated_sha256": "ac98170646ff753226ceb6fefb9da217dc484348287c5e8deb2438c50674a32c",
+      "migrated_bytes": 7191,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/numeric-results.json",
+      "skill_path": "references/review/agent-tests/numeric-results.json",
+      "original_sha256": "361da8c67c8c46e27adad3189407ad84946659625e13855f247c7b402eef5630",
+      "original_bytes": 19381,
+      "migrated_sha256": "361da8c67c8c46e27adad3189407ad84946659625e13855f247c7b402eef5630",
+      "migrated_bytes": 19381,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/post-fast-provenance.json",
+      "skill_path": "references/review/agent-tests/post-fast-provenance.json",
+      "original_sha256": "da79bb3a0ad5f1ff03f1f9b20db2a0b9649ceb612ab0684bb773ee6837c0cc17",
+      "original_bytes": 33100,
+      "migrated_sha256": "da79bb3a0ad5f1ff03f1f9b20db2a0b9649ceb612ab0684bb773ee6837c0cc17",
+      "migrated_bytes": 33100,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/post-fast-route.json",
+      "skill_path": "references/review/agent-tests/post-fast-route.json",
+      "original_sha256": "f72677edfe5e4f7b35c10176b588e4da5a80bede37d7e075cb29bce0fc707e71",
+      "original_bytes": 29928,
+      "migrated_sha256": "f72677edfe5e4f7b35c10176b588e4da5a80bede37d7e075cb29bce0fc707e71",
+      "migrated_bytes": 29928,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/post-holdouts-citations.json",
+      "skill_path": "references/review/agent-tests/post-holdouts-citations.json",
+      "original_sha256": "7b02a34d6079dac1b49bdd369f2c9446fe55cecfb251d1e1e9375b58cb65961d",
+      "original_bytes": 11218,
+      "migrated_sha256": "7b02a34d6079dac1b49bdd369f2c9446fe55cecfb251d1e1e9375b58cb65961d",
+      "migrated_bytes": 11218,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/post-holdouts.json",
+      "skill_path": "references/review/agent-tests/post-holdouts.json",
+      "original_sha256": "427a9e5bd467cc692bb028851622aab8510167f86d0724ccc9d863e90a165b94",
+      "original_bytes": 30413,
+      "migrated_sha256": "427a9e5bd467cc692bb028851622aab8510167f86d0724ccc9d863e90a165b94",
+      "migrated_bytes": 30413,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/post-npt.json",
+      "skill_path": "references/review/agent-tests/post-npt.json",
+      "original_sha256": "f6e4575baca5ccd23eefcf9ad1036186f0f3af9ccaab6aca6b557c832bf98211",
+      "original_bytes": 93880,
+      "migrated_sha256": "f6e4575baca5ccd23eefcf9ad1036186f0f3af9ccaab6aca6b557c832bf98211",
+      "migrated_bytes": 93880,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/post-tension-provenance.json",
+      "skill_path": "references/review/agent-tests/post-tension-provenance.json",
+      "original_sha256": "faa0ba19b916b97ff82323c2bf9e51374ca223022f74bd7c9c96ac5f22f6a044",
+      "original_bytes": 145284,
+      "migrated_sha256": "faa0ba19b916b97ff82323c2bf9e51374ca223022f74bd7c9c96ac5f22f6a044",
+      "migrated_bytes": 145284,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/post-tension.json",
+      "skill_path": "references/review/agent-tests/post-tension.json",
+      "original_sha256": "bdb350216951a8d2cd2a1bd6d989a289b0cef8a14df82dd7293e63a5b04037cb",
+      "original_bytes": 52022,
+      "migrated_sha256": "bdb350216951a8d2cd2a1bd6d989a289b0cef8a14df82dd7293e63a5b04037cb",
+      "migrated_bytes": 52022,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/read-measurements.json",
+      "skill_path": "references/review/agent-tests/read-measurements.json",
+      "original_sha256": "724617c8bdac054645d5ca791ebe6b72e10cdae6848aea489d5e8f512c8547f7",
+      "original_bytes": 9436,
+      "migrated_sha256": "724617c8bdac054645d5ca791ebe6b72e10cdae6848aea489d5e8f512c8547f7",
+      "migrated_bytes": 9436,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/README.md",
+      "skill_path": "references/review/agent-tests/README.md",
+      "original_sha256": "7dab3819c6f92399d59ea72f620f11cc48ae7e8345dd71875cdcbe9aea50dc5e",
+      "original_bytes": 6790,
+      "migrated_sha256": "4c5d26a70cd25341025031db5e5715d887c8ee7d2902a48a4c3c50c1455a3938",
+      "migrated_bytes": 7241,
+      "change": "packaging_or_entry_updated"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/v0.1-manifest.json",
+      "skill_path": "references/review/agent-tests/v0.1-manifest.json",
+      "original_sha256": "d43dbbe816e1b234b43b48018e319eb624122e207eec9e82300e1b6dcca2c547",
+      "original_bytes": 4936,
+      "migrated_sha256": "d43dbbe816e1b234b43b48018e319eb624122e207eec9e82300e1b6dcca2c547",
+      "migrated_bytes": 4936,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/v0.1-snapshot.zip",
+      "skill_path": "references/review/agent-tests/v0.1-snapshot.zip",
+      "original_sha256": "a486548090bb355811e999c1b541714f4d9806617ecf4879d3c2e5d7889fe313",
+      "original_bytes": 49341,
+      "migrated_sha256": "a486548090bb355811e999c1b541714f4d9806617ecf4879d3c2e5d7889fe313",
+      "migrated_bytes": 49341,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/v0.2-decision-manifest.json",
+      "skill_path": "references/review/agent-tests/v0.2-decision-manifest.json",
+      "original_sha256": "e24dca89e2f3a11aa55ba55428d8418f7d79d68b9559449d2a3d03ff9569efc9",
+      "original_bytes": 1350,
+      "migrated_sha256": "e24dca89e2f3a11aa55ba55428d8418f7d79d68b9559449d2a3d03ff9569efc9",
+      "migrated_bytes": 1350,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/v0.2-fast-route-manifest.json",
+      "skill_path": "references/review/agent-tests/v0.2-fast-route-manifest.json",
+      "original_sha256": "be4a6221adaf8d3431d08fd9afe85d42d72d15cbbd0f0cbbd7d8a580a96871cd",
+      "original_bytes": 1324,
+      "migrated_sha256": "be4a6221adaf8d3431d08fd9afe85d42d72d15cbbd0f0cbbd7d8a580a96871cd",
+      "migrated_bytes": 1324,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/review/agent-tests/v0.2-initial-decision-manifest.json",
+      "skill_path": "references/review/agent-tests/v0.2-initial-decision-manifest.json",
+      "original_sha256": "55718e33546bf369bce6c2c395a465ad18bb99cdc5a8531d0c3282b324a4e5c0",
+      "original_bytes": 1167,
+      "migrated_sha256": "55718e33546bf369bce6c2c395a465ad18bb99cdc5a8531d0c3282b324a4e5c0",
+      "migrated_bytes": 1167,
+      "change": "historical_evaluation_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/sources/README.md",
+      "skill_path": "references/sources/README.md",
+      "original_sha256": "ec9c8e64b760a477612e5b6244d012f4fa63a03b62910a7a7019046bbd96f2b5",
+      "original_bytes": 6024,
+      "migrated_sha256": "11f2108c4fc02d42a2a968e5643bfe742b204e6419db61998c69dae95cdd4f79",
+      "migrated_bytes": 6070,
+      "change": "packaging_or_entry_updated"
+    },
+    {
+      "original_path": "knowledge/phase-transition/sources/sources.json",
+      "skill_path": "references/sources/sources.json",
+      "original_sha256": "c5eda6b835f88299aa60f4023fa22e88158cd37c9960986820c682ac826e9491",
+      "original_bytes": 13058,
+      "migrated_sha256": "c5eda6b835f88299aa60f4023fa22e88158cd37c9960986820c682ac826e9491",
+      "migrated_bytes": 13058,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/templates/research-plan.md",
+      "skill_path": "references/templates/research-plan.md",
+      "original_sha256": "de094d7e040f11f81b69ada4fd79c22005b4e4d659752982ca880d5467f02ac8",
+      "original_bytes": 3771,
+      "migrated_sha256": "de094d7e040f11f81b69ada4fd79c22005b4e4d659752982ca880d5467f02ac8",
+      "migrated_bytes": 3771,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/topics/pdcunip-glass.md",
+      "skill_path": "references/topics/pdcunip-glass.md",
+      "original_sha256": "daa7b17e563fe4888c187f5fcd6cb32906ab2d2b0cbf313cdb0a5f69c42ee342",
+      "original_bytes": 3999,
+      "migrated_sha256": "daa7b17e563fe4888c187f5fcd6cb32906ab2d2b0cbf313cdb0a5f69c42ee342",
+      "migrated_bytes": 3999,
+      "change": "byte_preserved"
+    },
+    {
+      "original_path": "knowledge/phase-transition/topics/unep-npt-structure.md",
+      "skill_path": "references/topics/unep-npt-structure.md",
+      "original_sha256": "f65794e22b0b1a37ee2ee002559a15039a198416dd1a3341f2c7cc840e359faa",
+      "original_bytes": 3865,
+      "migrated_sha256": "f65794e22b0b1a37ee2ee002559a15039a198416dd1a3341f2c7cc840e359faa",
+      "migrated_bytes": 3865,
+      "change": "byte_preserved"
+    }
+  ],
+  "path_resolution": "original_path is relative to the repository; skill_path is relative to skill_root. Historical manifests use original hashes, not migrated hashes.",
+  "generated_output_policy": "review/validation.json is regenerated by check_knowledge.py and excluded from stable-current hashes. New rechecks write review/*-recheck.json or calculator-regression.json, preserving historical agent-tests results. This migration map excludes its own hash.",
+  "summary": {
+    "packaging_or_entry_updated": 17,
+    "byte_preserved": 31,
+    "generated_validation": 1,
+    "historical_evaluation_preserved": 24
+  }
+}

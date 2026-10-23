@@ -1,0 +1,359 @@
+{
+  "test_type": "targeted",
+  "kb_version": "v0.2",
+  "scope": "针对最终入口严格引用规则与新 reference-index.json 的定向引用回归；不是全新盲测，不重新生成或修改参数。",
+  "input_reconstruction_source": "original_prompt_excerpt 逐字抄录本 agent 最初收到的 NEW_TASK 原题，不从自己的答案倒推。",
+  "original_prompt_excerpt": {
+    "X03": "X03：用户要求UNEP-v1计算Fe50Ni50，300K、0GPa结构；能否直接给运行方案？保留科学边界。",
+    "X04": "X04：UNEP-v1 CuNi，300K，要求z恒真应变率1e8 s^-1到真应变0.1，同时要求z保持0GPa，并用当前tension_workflow helper；请评估冲突并给正确交接状态。"
+  },
+  "explicit_user_condition_audit": {
+    "X03": {
+      "temperature_300K_explicit": true,
+      "pressure_0GPa_explicit": true,
+      "scope": "Fe50Ni50、UNEP-v1、300 K、0 GPa 结构目标均明确。"
+    },
+    "X04": {
+      "temperature_300K_explicit": true,
+      "z_pressure_0GPa_explicit": true,
+      "all_axis_pressure_0GPa_explicit": false,
+      "scope": "明确同一 z 轴恒真应变率路径和 z=0 GPa；没有明确三轴零压。"
+    }
+  },
+  "cases": [
+    {
+      "case_id": "X01",
+      "original_source_ids": [
+        "D-01",
+        "D-02",
+        "D-03",
+        "D-04",
+        "D-05",
+        "D-07",
+        "D-08",
+        "T-01",
+        "T-02",
+        "T-03",
+        "T-04",
+        "T-05",
+        "U-D01",
+        "C-02"
+      ],
+      "source_ids": [
+        "D-01",
+        "D-02",
+        "D-03",
+        "D-04",
+        "D-05",
+        "D-07",
+        "D-08",
+        "T-01",
+        "T-02",
+        "T-03",
+        "T-04",
+        "T-05",
+        "U-D01",
+        "C-02"
+      ],
+      "changes": [],
+      "registered_id_check": {
+        "all_registered": true,
+        "unregistered_ids": []
+      },
+      "reference_locations": {
+        "D-01": "decisions/parameter-table.md",
+        "D-02": "decisions/parameter-table.md",
+        "D-03": "decisions/parameter-table.md",
+        "D-04": "decisions/parameter-table.md",
+        "D-05": "decisions/parameter-table.md",
+        "D-07": "decisions/parameter-table.md",
+        "D-08": "decisions/parameter-table.md",
+        "T-01": "decisions/tension.md",
+        "T-02": "decisions/tension.md",
+        "T-03": "decisions/tension.md",
+        "T-04": "decisions/tension.md",
+        "T-05": "decisions/tension.md",
+        "U-D01": "decisions/unep-v1.md",
+        "C-02": "evidence/C-02-deformation.md"
+      },
+      "key_claim_sources": {
+        "工程应变率/时长/不同初长对应增量": [
+          "T-02",
+          "D-07"
+        ],
+        "耦合物理时间/输入比值/控制模量": [
+          "D-01"
+        ],
+        "已知正式参考直接绑定": [
+          "T-03",
+          "T-05"
+        ],
+        "驱动轴与横向零压语义": [
+          "T-01",
+          "C-02"
+        ],
+        "输出间隔/实际分辨率": [
+          "T-04"
+        ],
+        "当前 helper 的 xy 支持": [
+          "T-05",
+          "C-02"
+        ],
+        "有限验证与检查边界": [
+          "D-04",
+          "D-05",
+          "D-08"
+        ]
+      },
+      "other_citation_issues": [
+        "原报告只有题级 source_ids 聚合清单，未给每一个关键参数单列直接规则 ID；最新入口明确了细粒度要求。本报告补充关键主张映射，原报告、参数和参数状态保持不变。"
+      ],
+      "original_prompt_excerpt": null
+    },
+    {
+      "case_id": "X02",
+      "original_source_ids": [
+        "D-01",
+        "D-02",
+        "D-03",
+        "D-06",
+        "D-07",
+        "D-08",
+        "T-01",
+        "T-02",
+        "T-03",
+        "T-04",
+        "T-05",
+        "U-D01",
+        "C-02"
+      ],
+      "source_ids": [
+        "D-01",
+        "D-02",
+        "D-03",
+        "D-06",
+        "D-07",
+        "D-08",
+        "T-01",
+        "T-02",
+        "T-03",
+        "T-04",
+        "T-05",
+        "U-D01",
+        "C-02"
+      ],
+      "changes": [],
+      "registered_id_check": {
+        "all_registered": true,
+        "unregistered_ids": []
+      },
+      "reference_locations": {
+        "D-01": "decisions/parameter-table.md",
+        "D-02": "decisions/parameter-table.md",
+        "D-03": "decisions/parameter-table.md",
+        "D-06": "decisions/parameter-table.md",
+        "D-07": "decisions/parameter-table.md",
+        "D-08": "decisions/parameter-table.md",
+        "T-01": "decisions/tension.md",
+        "T-02": "decisions/tension.md",
+        "T-03": "decisions/tension.md",
+        "T-04": "decisions/tension.md",
+        "T-05": "decisions/tension.md",
+        "U-D01": "decisions/unep-v1.md",
+        "C-02": "evidence/C-02-deformation.md"
+      },
+      "key_claim_sources": {
+        "时间/精确步数/增量": [
+          "T-02",
+          "D-07"
+        ],
+        "0.5 fs 保留物理耦合时间并换算输入": [
+          "D-01"
+        ],
+        "合格预平衡态不重做": [
+          "T-03"
+        ],
+        "未指定横向条件提出零横压候选": [
+          "T-01"
+        ],
+        "应变分辨率及输出步数上限": [
+          "T-04"
+        ],
+        "z 引擎支持与 helper 缺口区分": [
+          "T-05",
+          "C-02"
+        ],
+        "一次有限速率对照": [
+          "D-06",
+          "T-03"
+        ]
+      },
+      "other_citation_issues": [
+        "原报告只有题级 source_ids 聚合清单，未给每一个关键参数单列直接规则 ID；最新入口明确了细粒度要求。本报告补充关键主张映射，原报告、参数和参数状态保持不变。"
+      ],
+      "original_prompt_excerpt": null
+    },
+    {
+      "case_id": "X03",
+      "original_source_ids": [
+        "D-01",
+        "D-08",
+        "N-01",
+        "UNEP-v1 元素覆盖",
+        "U-D01"
+      ],
+      "source_ids": [
+        "D-01",
+        "D-08",
+        "N-01",
+        "U-01",
+        "U-D01"
+      ],
+      "changes": [
+        {
+          "operation": "replace",
+          "removed_id": "UNEP-v1 元素覆盖",
+          "replacement_id": "U-01",
+          "reason": "自由描述不是登记 ID。U-01 在新引用索引中登记为 UNEP-v1 本地模型证据卡；原先已读 decisions/unep-v1.md 的元素覆盖清单链接该 ID。",
+          "provenance_limit": "本次未读 U-01 证据卡正文，只核验索引登记。Fe 缺失事实仍来自先前已读 UNEP 决策包摘要；不声称新做了势文件或证据卡独立核验。"
+        }
+      ],
+      "registered_id_check": {
+        "all_registered": true,
+        "unregistered_ids": []
+      },
+      "reference_locations": {
+        "D-01": "decisions/parameter-table.md",
+        "D-08": "decisions/parameter-table.md",
+        "N-01": "decisions/npt.md",
+        "U-01": "evidence/U-01-local-model.md",
+        "U-D01": "decisions/unep-v1.md"
+      },
+      "key_claim_sources": {
+        "UNEP-v1 不覆盖 Fe，不能直接用于 Fe50Ni50": [
+          "U-01"
+        ],
+        "势与元素不覆盖时阻断并保留科学边界": [
+          "D-01",
+          "D-08"
+        ],
+        "CuNi 的 FCC/N=4000 是体系限定候选": [
+          "U-D01"
+        ],
+        "固定温压结构观察的有限解释边界": [
+          "N-01"
+        ]
+      },
+      "other_citation_issues": [
+        "原报告只有题级 source_ids 聚合清单，未给每一个关键参数单列直接规则 ID；最新入口明确了细粒度要求。本报告补充关键主张映射，原报告、参数和参数状态保持不变。",
+        "U-01 为决策包摘要所链接的间接证据；本次只确认登记定位，未独立重读其正文。"
+      ],
+      "original_prompt_excerpt": "X03：用户要求UNEP-v1计算Fe50Ni50，300K、0GPa结构；能否直接给运行方案？保留科学边界。"
+    },
+    {
+      "case_id": "X04",
+      "original_source_ids": [
+        "D-01",
+        "D-02",
+        "D-03",
+        "D-04",
+        "D-07",
+        "D-08",
+        "T-01",
+        "T-02",
+        "T-03",
+        "T-04",
+        "T-05",
+        "U-D01",
+        "C-02"
+      ],
+      "source_ids": [
+        "D-01",
+        "D-02",
+        "D-03",
+        "D-04",
+        "D-07",
+        "D-08",
+        "T-01",
+        "T-02",
+        "T-03",
+        "T-04",
+        "T-05",
+        "U-D01",
+        "C-02"
+      ],
+      "changes": [],
+      "registered_id_check": {
+        "all_registered": true,
+        "unregistered_ids": []
+      },
+      "reference_locations": {
+        "D-01": "decisions/parameter-table.md",
+        "D-02": "decisions/parameter-table.md",
+        "D-03": "decisions/parameter-table.md",
+        "D-04": "decisions/parameter-table.md",
+        "D-07": "decisions/parameter-table.md",
+        "D-08": "decisions/parameter-table.md",
+        "T-01": "decisions/tension.md",
+        "T-02": "decisions/tension.md",
+        "T-03": "decisions/tension.md",
+        "T-04": "decisions/tension.md",
+        "T-05": "decisions/tension.md",
+        "U-D01": "decisions/unep-v1.md",
+        "C-02": "evidence/C-02-deformation.md"
+      },
+      "key_claim_sources": {
+        "规定 z 长度路径与同轴独立定压冲突": [
+          "T-01",
+          "C-02"
+        ],
+        "恒真应变率指数路径/不可换成工程应变": [
+          "T-02"
+        ],
+        "当前 helper 不支持 z 或真应变率": [
+          "T-05",
+          "C-02"
+        ],
+        "候选 dt/物理耦合/输入比值": [
+          "D-01"
+        ],
+        "正式参考与已合格态优先": [
+          "T-03",
+          "T-05"
+        ],
+        "输出按应变分辨率约束": [
+          "T-04"
+        ],
+        "有限预平衡预算与检查边界": [
+          "D-02",
+          "D-04",
+          "D-08"
+        ]
+      },
+      "other_citation_issues": [
+        "原报告只有题级 source_ids 聚合清单，未给每一个关键参数单列直接规则 ID；最新入口明确了细粒度要求。本报告补充关键主张映射，原报告、参数和参数状态保持不变。"
+      ],
+      "original_prompt_excerpt": "X04：UNEP-v1 CuNi，300K，要求z恒真应变率1e8 s^-1到真应变0.1，同时要求z保持0GPa，并用当前tension_workflow helper；请评估冲突并给正确交接状态。"
+    }
+  ],
+  "summary": {
+    "cases_reviewed": 4,
+    "invalid_original_ids": 1,
+    "replacements": 1,
+    "invalid_corrected_ids": 0,
+    "other_registered_id_errors_found": false,
+    "granularity_issue_found": true
+  },
+  "read_files": [
+    "agent-entry.md",
+    "decisions/reference-index.json"
+  ],
+  "prior_context_used": "依据本 agent 先前工具调用中保留在对话上下文的原报告构造文本还原四题 source_ids；本次未重读原报告、其他 agent 报告、答案、夹具、baseline 或索引目标正文。",
+  "unchanged_artifacts": [
+    "review/agent-tests/post-holdouts.json"
+  ],
+  "limitations": [
+    "登记核验只能确认 ID 与索引定位，不等于重新核验所有目标正文或外部来源。",
+    "每项关键参数直接规则 ID 的最新要求在本次定向复核中报告，不能冒称原始盲测已满足。"
+  ]
+}

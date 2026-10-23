@@ -1,0 +1,217 @@
+{
+  "schema_version": 2,
+  "version": "0.3",
+  "updated_on": "2026-10-21",
+  "entry": "agent-entry.md",
+  "human_entry": "README.md",
+  "navigation": "index.md",
+  "organization": "hierarchical_markdown",
+  "pages": [
+    {
+      "path": "agent-entry.md",
+      "title": "研究 agent 入口 · v0.3",
+      "kind": "entry",
+      "status": "decision_candidate"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "title": "变更记录",
+      "kind": "entry",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "common/capabilities.md",
+      "title": "当前执行能力与研究需求",
+      "kind": "common",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "common/npt-parameters.md",
+      "title": "NPT 参数怎样确定",
+      "kind": "common",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "common/observables.md",
+      "title": "观测量怎样支持结论",
+      "kind": "common",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "common/research-questions.md",
+      "title": "研究问题与证据",
+      "kind": "common",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "common/sampling.md",
+      "title": "平衡、采样与停止条件",
+      "kind": "common",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "decisions/calculation.md",
+      "title": "参数算术契约",
+      "kind": "decisions",
+      "status": "decision_candidate"
+    },
+    {
+      "path": "decisions/npt.md",
+      "title": "恒温恒压、温扫与冷却决策",
+      "kind": "decisions",
+      "status": "decision_candidate"
+    },
+    {
+      "path": "decisions/parameter-table.md",
+      "title": "参数决策表 · 首轮必须读",
+      "kind": "decisions",
+      "status": "decision_candidate"
+    },
+    {
+      "path": "decisions/pdcunip.md",
+      "title": "Pd–Cu–Ni–P · 快速决策包",
+      "kind": "decisions",
+      "status": "decision_candidate"
+    },
+    {
+      "path": "decisions/tension.md",
+      "title": "拉伸诱导结构变化的参数决策",
+      "kind": "decisions",
+      "status": "decision_candidate"
+    },
+    {
+      "path": "decisions/unep-v1.md",
+      "title": "UNEP-v1 · 快速决策包",
+      "kind": "decisions",
+      "status": "decision_candidate"
+    },
+    {
+      "path": "evidence/C-01-gpumd55.md",
+      "title": "C-01 · GPUMD 5.5 参数与输出",
+      "kind": "evidence",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "evidence/C-02-deformation.md",
+      "title": "C-02 · GPUMD 5.5 拉伸与现有入口",
+      "kind": "evidence",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "evidence/M-01-ptm.md",
+      "title": "M-01 · PTM 识别的对象",
+      "kind": "evidence",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "evidence/M-02-barostat.md",
+      "title": "M-02 · 压力控制与涨落",
+      "kind": "evidence",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "evidence/M-03-equilibration.md",
+      "title": "M-03 · 初始过渡与有效采样",
+      "kind": "evidence",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "evidence/P-01-local-model.md",
+      "title": "P-01 · Pd–Cu–Ni–P 本地模型与数据",
+      "kind": "evidence",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "evidence/P-02-paper-protocols.md",
+      "title": "P-02 · Pd–Cu–Ni–P 文献参照",
+      "kind": "evidence",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "evidence/P-03-paper-mechanics.md",
+      "title": "P-03 · Pd–Cu–Ni–P 力学文献参照",
+      "kind": "evidence",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "evidence/README.md",
+      "title": "证据卡片",
+      "kind": "evidence",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "evidence/U-01-local-model.md",
+      "title": "U-01 · UNEP-v1 本地模型身份",
+      "kind": "evidence",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "evidence/U-02-paper-scope.md",
+      "title": "U-02 · UNEP-v1 论文的研究范围",
+      "kind": "evidence",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "index.md",
+      "title": "分级总目录",
+      "kind": "entry",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "potentials/pdcunip/dataset-audit.md",
+      "title": "Pd–Cu–Ni–P 本地数据审计",
+      "kind": "potentials",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "potentials/pdcunip/README.md",
+      "title": "Pd–Cu–Ni–P 势函数档案",
+      "kind": "potentials",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "potentials/unep-v1/README.md",
+      "title": "UNEP-v1 势函数档案",
+      "kind": "potentials",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "README.md",
+      "title": "合金相变研究知识库",
+      "kind": "entry",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "review/questions.md",
+      "title": "审阅问题与参考答案",
+      "kind": "review",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "sources/README.md",
+      "title": "来源、定位与阅读状态",
+      "kind": "sources",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "templates/research-plan.md",
+      "title": "研究方案交付模板",
+      "kind": "templates",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "topics/pdcunip-glass.md",
+      "title": "专题 B · Pd–Cu–Ni–P 玻璃制备与转变",
+      "kind": "topics",
+      "status": "reviewed_reference"
+    },
+    {
+      "path": "topics/unep-npt-structure.md",
+      "title": "专题 A · UNEP-v1 下的 NPT 结构演化",
+      "kind": "topics",
+      "status": "reviewed_reference"
+    }
+  ],
+  "runtime_discovery": "packaged_skill_and_researcher",
+  "live_process_reload_not_verified": true
+}

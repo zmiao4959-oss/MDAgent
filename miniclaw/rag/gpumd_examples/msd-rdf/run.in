@@ -1,0 +1,16 @@
+# GPUMD 5.5 example: equilibrate in NVT, then collect all-atom MSD and partial RDFs in NVE.
+# The supplied cell/density and 8 Angstrom RDF cutoff must suit the actual system.
+potential nep.txt
+velocity 300 seed 20261017
+time_step 1
+
+ensemble nvt_nhc 300 300 100
+dump_thermo 100
+run 100000
+
+ensemble nve
+compute_msd 10 1000
+compute_rdf 8.0 400 1000
+dump_thermo 1000
+dump_restart 1000000
+run 1000000

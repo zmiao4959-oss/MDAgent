@@ -1,0 +1,67 @@
+{
+  "version": "0.2",
+  "date": "2026-10-20",
+  "design_handoffs": {
+    "baseline_complete": 0,
+    "baseline_cases": 6,
+    "improved_candidate_complete": 6,
+    "scope": "Parameter completeness; runtime and scientific validation remain separate"
+  },
+  "initial_numeric_checks": {
+    "expected_values": [
+      58,
+      58
+    ],
+    "conservation": [
+      60,
+      60
+    ]
+  },
+  "fast_route_checks": [
+    43,
+    43
+  ],
+  "calculator_checks": [
+    16,
+    16
+  ],
+  "initial_independent_strict_delivery": {
+    "passed": 5,
+    "total": 10,
+    "failures_preserved": true,
+    "report": "independent-audit.json"
+  },
+  "remediation": {
+    "type": "targeted",
+    "original_answers_unchanged": true,
+    "reports": [
+      "post-holdouts-citations.json",
+      "post-tension-provenance.json",
+      "post-fast-provenance.json"
+    ],
+    "independent_final_gate": "independent-final-gate.json",
+    "verdict": "PASS_FOR_ORIGINAL_PLUS_TARGETED_OVERLAY",
+    "unresolved_within_gate_scope": 0
+  },
+  "observed_reading_bytes": {
+    "npt_three_case_union": {
+      "baseline": 46745,
+      "fast_route": 20112
+    },
+    "tension_three_case_union": {
+      "baseline": 36779,
+      "improved": 24139
+    },
+    "metric_scope": "Declared knowledge files, not tokens or latency; entry snapshots and raw reports are pinned"
+  },
+  "scientific_validation": "NOT_PERFORMED",
+  "material_parameters": "CAND values are proposed exploration policies; not validated material constants",
+  "known_runtime_gaps": [
+    "z and constant-true-strain helper paths",
+    "confirmed thermo T/P window statistics",
+    "complete stress-strain mapping and transition localization",
+    "Tg fitting/uncertainty and phase-resolved chemical composition analysis"
+  ],
+  "final_entry_sha256": "88fe92ca0b0f5b9f2b56164b887c029d923bcce7f1db35c8b5b301c69b853659",
+  "test_report": "README.md"
+}

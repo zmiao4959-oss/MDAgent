@@ -51,6 +51,10 @@ class RequestPreparer:
                 context.channel,
                 context.account_id,
             )
+        for key in ("project_id", "parent_session_id", "root_session_id", "task_id"):
+            if context.metadata.get(key):
+                session.metadata[key] = context.metadata[key]
+        session.metadata.setdefault("root_session_id", session.session_id)
 
         hook = await hook_system.fire(
             "before_agent",

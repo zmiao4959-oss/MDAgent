@@ -1,0 +1,1011 @@
+{
+  "kb_version": "v0.2",
+  "cases": [
+    {
+      "case_id": "T01",
+      "answer_markdown": "采用 UNEP-v1 的 FCC 随机替换单晶作首轮探索：Cu2000Ni2000，10×10×10 个四原子常规胞，N=4000，[100]//x、[010]//y、[001]//z。这些初态、晶向、尺寸和未给数值均为 CAND，不能代表所有 Cu50Ni50 制备态；用户给定的 300 K、三向周期 bulk、z 工程拉伸至 0.10、x/y 零横压保持为 USER。model-worker 选择并报告晶格常数及实际初始盒长，此处不捏造 Å 数值。\n\n势文件标签为 16元/UNEP-v1-main.txt；知识库记录 SHA-256 为 8f97c30cc366c30e687a8672bd8d76e624a16caf4337b1277a44aa166c5bceb4（FILE，U-D01/U-01）。generator 正式写输入前核对实际势文件和元素。数值控制按 D-01 采用 dt=1 fs、npt_scr、tauT=100 fs、tauP=1000 fs、T_coup=100、P_coup=1000，独立方向控制模量均 100 GPa。这些是 CAND 控制尺度，绝非本材料实测弹性模量。新模型以种子 20261020 初始化 300 K 速度，保留建模和随机替换记录。\n\n正式阶段一为 300 K、三轴 0 GPa 的 100 ps 预平衡，即 100000 步，thermo/轨迹每 100/1000 步，末态写 restart。加载阶段维持 300 K，x/y 目标 0 GPa、允许横向长度响应；z 由 deform 驱动，不能把输入中 z 的零压力数字解释为 Pzz 同时为零。候选工程应变率 1e8 s^-1，终点 0.10；t=0.10/1e8=1 ns=1000 ps，加载 1000000 步，主方案合计 1100000 步/1.1 ns（CALC）。\n\n正式 Lz0 只能从正式预平衡末态的同一个 restart 盒矩阵读取（RUNTIME）。冻结该参考后使用 Lz(n)=Lz0(1+1e-7 n)，dLz=0.10 Lz0/1000000=1e-7 Lz0 Å/步；dLx=dLy=0。当前 Lz0 和 dLz 数值留空，已有的是完整绑定公式。不得用初始盒长、trial restart，也不要求用户预先给未来盒长。generator 要实现参考读取/核验、计算数值和写出六参数行 deform 0 0 <dLz> 0 0 1，并按 GPUMD 5.5 配合独立方向的 npt_scr 输入。引擎支持 z；本地 tension_workflow.py 只支持 x/xy，不能向它传 --axes z，也不改轴代替。\n\n加载 thermo 每 100 步（0.1 ps、Δε=1e-5），轨迹每 1000 步（1 ps、Δε=1e-4）。保存压力张量、U/K、盒矢量、正式参考和各阶段映射，记录实际首个输出步，不能假定第一帧是 t=0。拉伸为正的当前体积应力是 σzz=-Pzz；工程应力仍需截面口径转换。PTM cutoff 首轮固定 0.1（CAND），只报告工具支持的结构指标，不以普通 MSD 推断拉伸中扩散。\n\n有限筛查使用预平衡末两个相邻 20 ps 窗口：T 偏差≤6 K、P 偏差≤0.1 GPa、体积均值相对差≤0.5%、U/N 均值差≤0.005 eV。现有 T/P 窗口统计入口未确认，标 CHECK_PENDING，不能谎报通过；健康异常可加一次 100 ps，仍异常则停在可审查状态，总主预算上限 1200000 步。200 步 generator 流程试跑在独立目录进行，不计作预平衡，不污染正式参考。1/0.5 fs、各 10 ps 的步长对照可在数值疑虑时选做，额外共 30000 步且 tau 物理时间保持不变。若要论证速率敏感性，可预选一次 5e7 s^-1 对照，冻结同一参考，额外加载 2000000 步；首轮无需同时跑所有对照。\n\n交接：DESIGN_READY；模型生成、正式参考和 z 输入绑定为 RUNTIME_PENDING。研究设计无需等待用户填写数值。完整应力–应变联合分析、转变应变和局部塑性判据仍有工具缺口；本次只交付候选输入及原始数据契约，不声称得到转变结论。",
+      "parameters": {
+        "potential_id": "UNEP-v1",
+        "potential_sha256": "8f97c30cc366c30e687a8672bd8d76e624a16caf4337b1277a44aa166c5bceb4",
+        "potential_file_label": "16元/UNEP-v1-main.txt",
+        "composition": {
+          "Cu": 0.5,
+          "Ni": 0.5,
+          "atom_counts": {
+            "Cu": 2000,
+            "Ni": 2000
+          }
+        },
+        "initial_state": {
+          "type": "FCC random-substitution single crystal",
+          "conventional_cell_repeats": [
+            10,
+            10,
+            10
+          ],
+          "basis_atoms": 4,
+          "orientation": {
+            "x": "[100]",
+            "y": "[010]",
+            "z": "[001]"
+          },
+          "model_status": "candidate; model-worker must generate and report actual lattice constant and initial box",
+          "lattice_constant_A": null,
+          "velocities": "new 300 K initialization with stated seed"
+        },
+        "N": 4000,
+        "pbc": {
+          "x": true,
+          "y": true,
+          "z": true
+        },
+        "box_geometry": "axis-aligned orthorhombic bulk",
+        "temperature_K": 300,
+        "pressure_GPa": {
+          "relax": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "loading": {
+            "x": 0,
+            "y": 0,
+            "z": null
+          },
+          "loading_z_meaning": "z is prescribed by deform; no independent Pzz target"
+        },
+        "dt_fs": 1,
+        "thermostat": "GPUMD 5.5 ensemble npt_scr temperature control",
+        "barostat": "GPUMD 5.5 npt_scr independent orthorhombic directional pressure control; deform overrides driven z",
+        "tau_T_fs": 100,
+        "tau_P_fs": 1000,
+        "T_coup": 100,
+        "P_coup": 1000,
+        "control_moduli_GPa": {
+          "x": 100,
+          "y": 100,
+          "z": 100,
+          "meaning": "control scales, not measured elastic moduli"
+        },
+        "relax_ps": 100,
+        "relax_steps": 100000,
+        "seed": {
+          "value": 20261020,
+          "repeat_control_value": 20261021,
+          "policy": "preserve existing velocities; use seed for new initialization only"
+        },
+        "strain_definition": "engineering",
+        "axes": "z",
+        "strain_end": 0.1,
+        "rate_s_inv": 100000000,
+        "load_duration_ps": 1000,
+        "load_steps": 1000000,
+        "reference_status": "RUNTIME_PENDING",
+        "increment_A_per_step": {
+          "x": 0,
+          "y": 0,
+          "z": null
+        },
+        "increment_formula": "dLz_A_per_step = 0.10 * Lz0_A / 1000000 = 1e-7 * Lz0_A; dLx=dLy=0",
+        "axis_constraints": {
+          "relax": {
+            "x": "P=0 GPa, variable Lx",
+            "y": "P=0 GPa, variable Ly",
+            "z": "P=0 GPa, variable Lz"
+          },
+          "loading": {
+            "x": "P=0 GPa, variable Lx",
+            "y": "P=0 GPa, variable Ly",
+            "z": "Lz(n)=Lz0*(1+0.10*n/load_steps); deform enabled; Pzz is an output"
+          }
+        },
+        "helper_compatible": false,
+        "helper_axes_supported": [
+          "x",
+          "xy"
+        ],
+        "engine_axes_supported": [
+          "x",
+          "y",
+          "z"
+        ],
+        "thermo_interval_steps": 100,
+        "trajectory_interval_steps": 1000,
+        "preparation_output_intervals": {
+          "thermo_steps": 100,
+          "trajectory_steps": 1000,
+          "restart": "end of formal relax"
+        },
+        "output_resolution": {
+          "thermo_ps": 0.1,
+          "trajectory_ps": 1,
+          "thermo_delta_engineering_strain": 0.00001,
+          "trajectory_delta_engineering_strain": 0.0001
+        },
+        "preparation_actions": [
+          "model-worker build the stated 4000-atom random FCC Cu/Ni candidate; report lattice constant, random assignment record, counts, box and model identity",
+          "initialize new model velocities at 300 K with seed 20261020",
+          "formal 100 ps at 300 K, three independent pressures 0 GPa; write restart",
+          "perform finite health screening when statistics are available; at most one 100 ps extension",
+          "bind official Lz0 from the formal restart and generate the z load stage; preserve reference velocities"
+        ],
+        "total_steps": 1100000,
+        "budget": {
+          "base_relax_ps": 100,
+          "maximum_relax_extension_ps": 100,
+          "maximum_relax_extension_steps": 100000,
+          "base_total_steps": 1100000,
+          "maximum_total_steps_with_relax_extension": 1200000,
+          "independent_generator_trial_steps": 200,
+          "trial_counted_as_physical_equilibration": false,
+          "wall_clock_promise": false
+        },
+        "timestep_control": {
+          "required_for_first_data_generation": false,
+          "optional_pairs": [
+            {
+              "dt_fs": 1,
+              "duration_ps": 10,
+              "steps": 10000,
+              "T_coup": 100,
+              "P_coup": 1000
+            },
+            {
+              "dt_fs": 0.5,
+              "duration_ps": 10,
+              "steps": 20000,
+              "T_coup": 200,
+              "P_coup": 2000
+            }
+          ],
+          "additional_steps_if_selected": 30000
+        },
+        "stress_convention": "tensile-positive current-volume stress sigma_zz_GPa = -Pzz_GPa; engineering stress requires separately defined area transformation",
+        "output_records": [
+          "full pressure tensor",
+          "U and K",
+          "cell vectors",
+          "formal reference restart",
+          "trajectory",
+          "stage ID and dt",
+          "stage time offset",
+          "actual first output step and output interval"
+        ],
+        "screening": {
+          "status": "CHECK_PENDING",
+          "windows_ps": [
+            20,
+            20
+          ],
+          "temperature_tolerance_K": 6,
+          "pressure_tolerance_GPa": 0.1,
+          "relative_volume_mean_difference_max": 0.005,
+          "potential_energy_mean_difference_eV_per_atom_max": 0.005,
+          "interpretation": "engineering health screen only; not proof of equilibrium or ergodicity"
+        },
+        "target_criteria": "reach engineering strain 0.10 exactly by the stated finite number of increments; record structural trajectory and stress; do not claim a transformation or yield point without supported analysis",
+        "rate_control": {
+          "selected_as_first_run": false,
+          "variant_rate_s_inv": 50000000,
+          "variant_load_ps": 2000,
+          "variant_load_steps": 2000000,
+          "additional_load_steps": 2000000,
+          "shared_reference": "reuse one frozen formal reference for comparison; this avoids adding another preparation stage"
+        }
+      },
+      "parameter_status": {
+        "potential_id": "FILE",
+        "potential_sha256": "FILE",
+        "potential_file_label": "CAND",
+        "composition": "USER",
+        "initial_state": "CAND",
+        "N": "CAND",
+        "pbc": "USER",
+        "box_geometry": "CAND",
+        "temperature_K": "USER",
+        "pressure_GPa": "CAND",
+        "dt_fs": "CAND",
+        "thermostat": "CAND",
+        "barostat": "CAND",
+        "tau_T_fs": "CAND",
+        "tau_P_fs": "CAND",
+        "T_coup": "CALC",
+        "P_coup": "CALC",
+        "control_moduli_GPa": "CAND",
+        "relax_ps": "CAND",
+        "relax_steps": "CALC",
+        "seed": "CAND",
+        "strain_definition": "USER",
+        "axes": "USER",
+        "strain_end": "USER",
+        "rate_s_inv": "CAND",
+        "load_duration_ps": "CALC",
+        "load_steps": "CALC",
+        "reference_status": "RUNTIME",
+        "increment_A_per_step": "RUNTIME",
+        "increment_formula": "CALC",
+        "axis_constraints": "CAND",
+        "helper_compatible": "FILE",
+        "helper_axes_supported": "FILE",
+        "engine_axes_supported": "FILE",
+        "thermo_interval_steps": "CAND",
+        "trajectory_interval_steps": "CAND",
+        "preparation_output_intervals": "CAND",
+        "output_resolution": "CALC",
+        "preparation_actions": "CAND",
+        "total_steps": "CALC",
+        "budget": "CALC",
+        "timestep_control": "CAND",
+        "stress_convention": "CAND",
+        "output_records": "CAND",
+        "screening": "CAND",
+        "target_criteria": "CAND",
+        "rate_control": "CAND",
+        "pressure_GPa.loading.x": "USER",
+        "pressure_GPa.loading.y": "USER",
+        "pressure_GPa.relax": "CAND",
+        "composition.atom_counts": "CALC",
+        "initial_state.lattice_constant_A": "RUNTIME",
+        "increment_A_per_step.x": "CALC",
+        "increment_A_per_step.y": "CALC",
+        "increment_A_per_step.z": "RUNTIME"
+      },
+      "source_ids": [
+        "D-01",
+        "D-02",
+        "D-03",
+        "D-04",
+        "D-05",
+        "D-06",
+        "D-08",
+        "T-01",
+        "T-02",
+        "T-03",
+        "T-04",
+        "T-05",
+        "U-D01",
+        "U-01",
+        "C-02"
+      ],
+      "assumptions": [
+        "没有可定位既有模型时使用FCC随机替换单晶候选；用户现有模型若补充应优先保留。",
+        "晶格常数和正式参考盒长不是已知数值。",
+        "1e8 s^-1和N=4000为探索起点，未证明材料精度或尺寸/速率收敛。"
+      ],
+      "questions": [],
+      "runtime_dependencies": [
+        {
+          "id": "potential_verification",
+          "binding": "generator 定位所指定势文件，核对元素顺序和 SHA-256 与本交接值一致；不自动改用其他版本。"
+        },
+        {
+          "id": "geometry_validation",
+          "binding": "正式准备前核实三向周期、轴对齐正交盒、原子计数和元素；不满足适用范围时报告冲突，不静默改边界/模型。"
+        },
+        {
+          "id": "reference_restart",
+          "binding": "正式 300 K、三轴 0 GPa 预平衡最后的 restart.xyz；保留速度、元素顺序、原子 ID 和盒矩阵。只有已交付且核实合格的同态参考可替代该阶段；trial restart 和初始建模盒不可代用。"
+        },
+        {
+          "id": "reference_Lz0_A",
+          "binding": "由 reference_restart 的真实盒矩阵读取正交盒 Lz0（Å），数值产生前不填。"
+        },
+        {
+          "id": "load_binding",
+          "binding": "在正式 reference_restart 产生并冻结后按 increment_formula 计算 dLz，写出 deform 0 0 <dLz> 0 0 1；记录参考路径、哈希、盒长、单位和实际数值。此 z 绑定由 generator 实现，现有 helper 不能完成。"
+        },
+        {
+          "id": "screening",
+          "binding": "正式预平衡末两个相邻 20 ps 窗口的 T、P、U/N、V 筛查待工具执行；未计算时报告 CHECK_PENDING，不编造均值或已平衡结论。"
+        }
+      ],
+      "handoff_status": {
+        "design": "DESIGN_READY",
+        "model_and_reference": "RUNTIME_PENDING",
+        "generator_z_binding": "RUNTIME_PENDING",
+        "local_helper_for_z": "UNSUPPORTED",
+        "health_screen": "CHECK_PENDING"
+      },
+      "capability_gaps": [
+        "当前 tension_workflow.py 仅支持 x、xy；不能传 --axes z，不能自动旋转模型代替用户指定的 z。",
+        "GPUMD 5.5 支持 z deform，但 z 方向正式参考读取、数值代入及输入写出需 generator 明确实现；这不是已具备的 helper 功能。",
+        "thermo 的 T/P 两个 20 ps 窗口均值及置信区间没有确认的专用统计入口；健康筛查标 CHECK_PENDING，不能声称已通过。",
+        "尚无确认的应力–应变联合转换、转变应变定位、非仿射局部塑性/剪切带专用分析工具；保存原始数据并单列后续分析任务。"
+      ],
+      "used_files": [
+        "agent-entry.md",
+        "decisions/parameter-table.md",
+        "decisions/tension.md",
+        "decisions/calculation.md",
+        "evidence/C-02-deformation.md",
+        "decisions/unep-v1.md"
+      ]
+    },
+    {
+      "case_id": "T02",
+      "answer_markdown": "先采用一个明确可执行的候选基线：UNEP-v1 纯 Ti，HCP 单晶，[0001]//z，300 K、三向周期的轴对齐正交 bulk，三轴 0 GPa 预平衡后做 z 工程拉伸。请求未提供可定位的模型/晶向记录；若后续发现已有资产，先核实并沿用，不为默认值重建。没有已有模型时，model-worker 可用四原子正交 HCP 胞按 20×12×10 复制，首轮 N=9600（约 10000），实际 a、c、初始长度和完整取向矩阵由建模阶段报告。N/初相/取向/温压/边界均为 CAND，不能声称用户已选定或证明其稳定相。\n\nUNEP-v1 记录 SHA-256 为 8f97c30cc366c30e687a8672bd8d76e624a16caf4337b1277a44aa166c5bceb4，元素覆盖 Ti（FILE，U-D03/U-01）。generator 核对实际势文件。CAND 数值：dt=1 fs，npt_scr，tauT=100 fs、tauP=1000 fs；输入 T_coup=100、P_coup=1000；独立压控的控制模量 x/y/z 均 100 GPa，不作为弹性常数。新模型在 300 K 以种子 20261020 初始化速度；已有速度优先保留。\n\n首段 300 K、三轴 P=0 GPa，100 ps=100000 步；输出 thermo/轨迹 100/1000 步并写末态 restart。候选拉伸采用 εeng=(Lz-Lz0)/Lz0、1e8 s^-1、终点 0.10；加载 1000 ps=1 ns=1000000 步，总初始预算 1100000 步。加载时 x/y 零横压、允许横向盒长响应，z 是规定长度路径而非独立定压轴。正式 Lz0 从上述正式 restart 读取，dLz=0.10 Lz0/1000000=1e-7 Lz0 Å/步；数值在上游产生前留空，dLx=dLy=0。\n\ngenerator 接收结构假设和上述控制参数，完成正式准备后冻结参考、保留速度，读取正交 Lz0，代入 deform 0 0 <dLz> 0 0 1 并构造对应 5.5 npt_scr 独立方向输入。GPUMD 引擎支持 z；现成 helper 仅 x/xy，当前不能执行 --axes z，z 的参考绑定/输入实现需明确交给 generator，不能伪称已有自动入口。加载 thermo/轨迹间隔分别 100/1000 步，实际为 0.1/1 ps 及 Δε=1e-5/1e-4。保存压力张量、U/K、盒矢量、轨迹、正式参考、阶段时间偏移和实际首个输出步；σzz=-Pzz 是拉伸正号的当前体积应力，不直接命名为工程应力。\n\n有限分支只保留一个取向对照：[10-10]//z 的基面方向加载，其余研究条件相同；model-worker 构造相容正交超胞并报告实际 N，不能只把轴名改掉。该分支增加 100 ps 预平衡和 1 ns 加载，即 1100000 步，两分支合计 2200000 步；首轮基线并不强制同时运行对照。真正会改变研究对象的决策只有一组：是否接受 HCP/[0001]、300 K 和周期 bulk 作为目标，还是指定另一初相、温度或取向。dt、tau、输出频率等已有专业候选，不逐项询问；未答时本基线仍可交给 generator 做条件明确的探索准备。\n\n预平衡健康筛查按 D-04 的相邻两个 20 ps 窗口，阈值为 T≤6 K、P≤0.1 GPa、体积差≤0.5%、U/N 差≤0.005 eV；当前 T/P 窗口统计未有确认入口，CHECK_PENDING。最多给基线追加一次 100 ps，主方案上限 1200000 步，仍异常就报告，不无限续跑。独立 200 步试跑只检查流程；需要步长敏感性时再选 1/0.5 fs、各 10 ps、合计 30000 步对照，物理耦合时间保持 100/1000 fs。PTM cutoff 固定 0.1，以 HCP/BCC 等受支持模板和 U/V 观察信号；这不是平衡 α/β 相界，也不能据此确认 ω 相、局部剪切路径或精确转变应变。\n\n状态为 DESIGN_READY（明确的候选基线）和 RUNTIME_PENDING（模型、正式参考、z 输入绑定）。科学取向选择可按这一组合问题修订方案；不存在必须先问用户未来 Lz0 的障碍。专用应力–应变联合分析、转变定位及局部塑性/ω 相判据仍是能力缺口，不虚构结果。",
+      "parameters": {
+        "potential_id": "UNEP-v1",
+        "potential_sha256": "8f97c30cc366c30e687a8672bd8d76e624a16caf4337b1277a44aa166c5bceb4",
+        "potential_file_label": "16元/UNEP-v1-main.txt",
+        "composition": {
+          "Ti": 1,
+          "atom_counts": {
+            "Ti": 9600
+          }
+        },
+        "initial_state": {
+          "type": "HCP single crystal",
+          "orientation": {
+            "z": "[0001]",
+            "basal_axes": "model-worker construct two orthogonal basal axes and report full orientation matrix"
+          },
+          "orthorhombic_cell_basis_atoms": 4,
+          "cell_repeats": [
+            20,
+            12,
+            10
+          ],
+          "model_status": "new baseline candidate only if no existing model is provided; actual a/c and box to be reported by model-worker",
+          "lattice_a_A": null,
+          "lattice_c_A": null,
+          "velocities": "new 300 K initialization with seed 20261020"
+        },
+        "N": 9600,
+        "pbc": {
+          "x": true,
+          "y": true,
+          "z": true
+        },
+        "box_geometry": "axis-aligned orthorhombic bulk",
+        "temperature_K": 300,
+        "pressure_GPa": {
+          "relax": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "loading": {
+            "x": 0,
+            "y": 0,
+            "z": null
+          },
+          "loading_z_meaning": "z is prescribed by deform; no independent Pzz target"
+        },
+        "dt_fs": 1,
+        "thermostat": "GPUMD 5.5 ensemble npt_scr temperature control",
+        "barostat": "GPUMD 5.5 npt_scr independent orthorhombic directional pressure control; deform overrides driven z",
+        "tau_T_fs": 100,
+        "tau_P_fs": 1000,
+        "T_coup": 100,
+        "P_coup": 1000,
+        "control_moduli_GPa": {
+          "x": 100,
+          "y": 100,
+          "z": 100,
+          "meaning": "control scales, not measured elastic moduli"
+        },
+        "relax_ps": 100,
+        "relax_steps": 100000,
+        "seed": {
+          "value": 20261020,
+          "repeat_control_value": 20261021,
+          "policy": "preserve existing velocities; use seed for new initialization only"
+        },
+        "strain_definition": "engineering",
+        "axes": "z",
+        "strain_end": 0.1,
+        "rate_s_inv": 100000000,
+        "load_duration_ps": 1000,
+        "load_steps": 1000000,
+        "reference_status": "RUNTIME_PENDING",
+        "increment_A_per_step": {
+          "x": 0,
+          "y": 0,
+          "z": null
+        },
+        "increment_formula": "dLz_A_per_step = 0.10 * Lz0_A / 1000000 = 1e-7 * Lz0_A; dLx=dLy=0",
+        "axis_constraints": {
+          "relax": {
+            "x": "P=0 GPa, variable Lx",
+            "y": "P=0 GPa, variable Ly",
+            "z": "P=0 GPa, variable Lz"
+          },
+          "loading": {
+            "x": "P=0 GPa, variable Lx",
+            "y": "P=0 GPa, variable Ly",
+            "z": "Lz(n)=Lz0*(1+0.10*n/load_steps); deform enabled; Pzz is an output"
+          }
+        },
+        "helper_compatible": false,
+        "helper_axes_supported": [
+          "x",
+          "xy"
+        ],
+        "engine_axes_supported": [
+          "x",
+          "y",
+          "z"
+        ],
+        "thermo_interval_steps": 100,
+        "trajectory_interval_steps": 1000,
+        "preparation_output_intervals": {
+          "thermo_steps": 100,
+          "trajectory_steps": 1000,
+          "restart": "end of formal relax"
+        },
+        "output_resolution": {
+          "thermo_ps": 0.1,
+          "trajectory_ps": 1,
+          "thermo_delta_engineering_strain": 0.00001,
+          "trajectory_delta_engineering_strain": 0.0001
+        },
+        "preparation_actions": [
+          "first resolve any existing supplied model/record; preserve it if present rather than rebuilding",
+          "if no supplied model, model-worker create the candidate 4-atom orthorhombic HCP cell repeated 20x12x10, N=9600; c axis along z; report a,c,orientation matrix and actual model identity",
+          "initialize only new model velocities at 300 K with seed 20261020",
+          "formal 100 ps at 300 K and three independent zero pressures, preserve restart velocities",
+          "bind formal Lz0 and generate the z engineering-load input; evaluate optional orientation branch separately"
+        ],
+        "total_steps": 1100000,
+        "budget": {
+          "base_relax_ps": 100,
+          "maximum_relax_extension_ps": 100,
+          "maximum_relax_extension_steps": 100000,
+          "base_total_steps": 1100000,
+          "maximum_total_steps_with_relax_extension": 1200000,
+          "independent_generator_trial_steps": 200,
+          "trial_counted_as_physical_equilibration": false,
+          "wall_clock_promise": false
+        },
+        "timestep_control": {
+          "required_for_first_data_generation": false,
+          "optional_pairs": [
+            {
+              "dt_fs": 1,
+              "duration_ps": 10,
+              "steps": 10000,
+              "T_coup": 100,
+              "P_coup": 1000
+            },
+            {
+              "dt_fs": 0.5,
+              "duration_ps": 10,
+              "steps": 20000,
+              "T_coup": 200,
+              "P_coup": 2000
+            }
+          ],
+          "additional_steps_if_selected": 30000
+        },
+        "stress_convention": "tensile-positive current-volume stress sigma_zz_GPa = -Pzz_GPa; engineering stress requires separately defined area transformation",
+        "output_records": [
+          "full pressure tensor",
+          "U and K",
+          "cell vectors",
+          "formal reference restart",
+          "trajectory",
+          "stage ID and dt",
+          "stage time offset",
+          "actual first output step and output interval"
+        ],
+        "screening": {
+          "status": "CHECK_PENDING",
+          "windows_ps": [
+            20,
+            20
+          ],
+          "temperature_tolerance_K": 6,
+          "pressure_tolerance_GPa": 0.1,
+          "relative_volume_mean_difference_max": 0.005,
+          "potential_energy_mean_difference_eV_per_atom_max": 0.005,
+          "interpretation": "engineering health screen only; not proof of equilibrium or ergodicity"
+        },
+        "target_criteria": "reach engineering strain 0.10 exactly by the stated finite number of increments; record structural trajectory and stress; do not claim a transformation or yield point without supported analysis",
+        "orientation_control": {
+          "selected_as_first_run": false,
+          "alternative_loading_direction": "[10-10] // z",
+          "model_requirement": "construct a compatible orthorhombic HCP model near 10000 atoms; report actual N and lengths; same composition, T and rate",
+          "additional_relax_steps": 100000,
+          "additional_load_steps": 1000000,
+          "additional_total_steps": 1100000,
+          "combined_base_plus_control_steps": 2200000
+        }
+      },
+      "parameter_status": {
+        "potential_id": "FILE",
+        "potential_sha256": "FILE",
+        "potential_file_label": "CAND",
+        "composition": "USER",
+        "initial_state": "CAND",
+        "N": "CAND",
+        "pbc": "CAND",
+        "box_geometry": "CAND",
+        "temperature_K": "CAND",
+        "pressure_GPa": "CAND",
+        "dt_fs": "CAND",
+        "thermostat": "CAND",
+        "barostat": "CAND",
+        "tau_T_fs": "CAND",
+        "tau_P_fs": "CAND",
+        "T_coup": "CALC",
+        "P_coup": "CALC",
+        "control_moduli_GPa": "CAND",
+        "relax_ps": "CAND",
+        "relax_steps": "CALC",
+        "seed": "CAND",
+        "strain_definition": "CAND",
+        "axes": "CAND",
+        "strain_end": "CAND",
+        "rate_s_inv": "CAND",
+        "load_duration_ps": "CALC",
+        "load_steps": "CALC",
+        "reference_status": "RUNTIME",
+        "increment_A_per_step": "RUNTIME",
+        "increment_formula": "CALC",
+        "axis_constraints": "CAND",
+        "helper_compatible": "FILE",
+        "helper_axes_supported": "FILE",
+        "engine_axes_supported": "FILE",
+        "thermo_interval_steps": "CAND",
+        "trajectory_interval_steps": "CAND",
+        "preparation_output_intervals": "CAND",
+        "output_resolution": "CALC",
+        "preparation_actions": "CAND",
+        "total_steps": "CALC",
+        "budget": "CALC",
+        "timestep_control": "CAND",
+        "stress_convention": "CAND",
+        "output_records": "CAND",
+        "screening": "CAND",
+        "target_criteria": "CAND",
+        "orientation_control": "CAND",
+        "composition.atom_counts": "CALC",
+        "initial_state.lattice_a_A": "RUNTIME",
+        "initial_state.lattice_c_A": "RUNTIME",
+        "initial_state.actual_model_metadata": "RUNTIME"
+      },
+      "source_ids": [
+        "D-01",
+        "D-02",
+        "D-03",
+        "D-04",
+        "D-05",
+        "D-06",
+        "D-08",
+        "T-01",
+        "T-02",
+        "T-03",
+        "T-04",
+        "T-05",
+        "U-D03",
+        "U-01",
+        "C-02"
+      ],
+      "assumptions": [
+        "HCP/[0001]//z、300 K、周期正交bulk定义一个明确的候选研究对象，不等于用户已作决定。",
+        "四原子正交HCP胞×20×12×10得到N=9600；a/c与真实盒矢量由model-worker选择报告。",
+        "先检查是否存在用户模型/记录；本测试未提供可定位路径，因此没有捏造已读模型事实。",
+        "仅预留一个基面加载取向对照，不无界枚举温度、初相和所有方向。"
+      ],
+      "questions": [
+        {
+          "question": "是否接受 HCP 初相、[0001]//z、300 K、三向周期 bulk 作为研究基线；如目标是其他初相/温区/取向，请合并指定这组会改变研究对象的条件。",
+          "affects": [
+            "initial_state",
+            "temperature_K",
+            "pbc",
+            "orientation"
+          ],
+          "required_before_candidate_design": false,
+          "default": "按已明确标记的HCP/[0001]/300K bulk候选准备；不声称研究对象已获用户确认。"
+        }
+      ],
+      "runtime_dependencies": [
+        {
+          "id": "potential_verification",
+          "binding": "generator 定位所指定势文件，核对元素顺序和 SHA-256 与本交接值一致；不自动改用其他版本。"
+        },
+        {
+          "id": "geometry_validation",
+          "binding": "正式准备前核实三向周期、轴对齐正交盒、原子计数和元素；不满足适用范围时报告冲突，不静默改边界/模型。"
+        },
+        {
+          "id": "reference_restart",
+          "binding": "正式 300 K、三轴 0 GPa 预平衡最后的 restart.xyz；保留速度、元素顺序、原子 ID 和盒矩阵。只有已交付且核实合格的同态参考可替代该阶段；trial restart 和初始建模盒不可代用。"
+        },
+        {
+          "id": "reference_Lz0_A",
+          "binding": "由 reference_restart 的真实盒矩阵读取正交盒 Lz0（Å），数值产生前不填。"
+        },
+        {
+          "id": "load_binding",
+          "binding": "在正式 reference_restart 产生并冻结后按 increment_formula 计算 dLz，写出 deform 0 0 <dLz> 0 0 1；记录参考路径、哈希、盒长、单位和实际数值。此 z 绑定由 generator 实现，现有 helper 不能完成。"
+        },
+        {
+          "id": "screening",
+          "binding": "正式预平衡末两个相邻 20 ps 窗口的 T、P、U/N、V 筛查待工具执行；未计算时报告 CHECK_PENDING，不编造均值或已平衡结论。"
+        },
+        {
+          "id": "new_hcp_model",
+          "binding": "若没有既有模型，model-worker生成候选N=9600正交HCP超胞，报告a/c、完整取向矩阵、真实原子计数和盒矩阵；若已有资产则优先核实沿用。"
+        }
+      ],
+      "handoff_status": {
+        "candidate_design": "DESIGN_READY",
+        "research_object_choice": "candidate explicitly stated; user may revise the one grouped scientific decision",
+        "model_and_reference": "RUNTIME_PENDING",
+        "generator_z_binding": "RUNTIME_PENDING",
+        "local_helper_for_z": "UNSUPPORTED",
+        "health_screen": "CHECK_PENDING"
+      },
+      "capability_gaps": [
+        "当前 tension_workflow.py 仅支持 x、xy；不能传 --axes z，不能自动旋转模型代替用户指定的 z。",
+        "GPUMD 5.5 支持 z deform，但 z 方向正式参考读取、数值代入及输入写出需 generator 明确实现；这不是已具备的 helper 功能。",
+        "thermo 的 T/P 两个 20 ps 窗口均值及置信区间没有确认的专用统计入口；健康筛查标 CHECK_PENDING，不能声称已通过。",
+        "尚无确认的应力–应变联合转换、转变应变定位、非仿射局部塑性/剪切带专用分析工具；保存原始数据并单列后续分析任务。",
+        "现有正交bulk/PTM模板探索不足以确认ω相、剪切路径或平衡α/β相界；需另拟结构判据和必要盒型。"
+      ],
+      "used_files": [
+        "agent-entry.md",
+        "decisions/parameter-table.md",
+        "decisions/tension.md",
+        "decisions/calculation.md",
+        "evidence/C-02-deformation.md",
+        "decisions/unep-v1.md"
+      ]
+    },
+    {
+      "case_id": "T03",
+      "answer_markdown": "沿用本地 PdCuNiP/nep4.txt 和现有热处理后 Pd40Cu30Ni10P20 玻璃，保留原始模型、已有速度及全部已知制备历史，不重熔、不重新冷却，也不把未提供的历史写成论文 2e10-glass。用户给定的 300 K、z 拉伸、成分和已有玻璃状态为 USER；模型路径、N、实际元素计数、盒子和 PBC 应从现有文件核实，因此 N 当前为 RUNTIME，不能套用“无模型时 N=13500”的默认。该玻璃没有需要凭空指定的晶向。若已存模型不满足拟定的三向周期正交 bulk 条件，应报告具体冲突后调整研究边界，不能静默改造原文件。\n\n势的知识库 SHA-256 为 aec2bc972783f58e523c90574a96ebaad6b37a29bc3853e16099d4d43af96ad8，覆盖 Pd/Cu/Ni/P（FILE，P-D01/P-01）；generator 使用用户势文件并核对实际哈希、元素映射。拟定数值控制按 D-01：dt=1 fs、npt_scr、tauT=100 fs、tauP=1000 fs，T_coup=100、P_coup=1000，各轴控制模量 100 GPa，均为 CAND，不是弹性常数。现有速度保持；种子 20261020 只供确实缺速度时有记录的 300 K 初始化，不能重复重置已有速度。\n\n由于请求只说明“热处理后”，主方案新增 300 K、三轴 0 GPa 的 100 ps/100000 步预平衡，thermo/轨迹每 100/1000 步，末态保存正式参考。若输入本来就是经核实合格的同态正式预平衡 restart，可直接采用并记录免去该段，不能机械重跑。主加载候选为恒工程应变率 1e7 s^-1、εeng=0.10，来自 P-D04 的文献启发而非已验证材料定律；原文应变口径未完全核对，因此本次工程应变定义明确标 CAND。t=0.10/1e7=10 ns=10000 ps，加载 10000000 步；主方案总 10.1 ns/10100000 步，合格既有参考的短路方案则为 10000000 步。论文 300 K、再平衡 2 ns 是另一参照；若要匹配该前置则改为 2000000+10000000=12000000 步，并仍须保留制备态不匹配的限制，不把它叫完整复现。\n\n加载时 x/y 零横压为 CAND bulk 约束，盒长可响应；z 由 deform 控制，不能同时宣称 Pzz=0。正式 Lz0 从正式参考盒矩阵取值，加载采用 Lz(n)=Lz0(1+1e-8 n)，dLz=0.10 Lz0/10000000=1e-8 Lz0 Å/步，dLx=dLy=0。Lz0 和 dLz 目前没有数值，属于 RUNTIME 绑定；不得用热处理前盒长、初始盒长或 trial restart。generator 要保留原模型及历史 sidecar，冻结正式参考，核实元素计数/N/边界，读取 Lz0，代入 deform 0 0 <dLz> 0 0 1，并按 GPUMD 5.5 写独立方向 npt_scr 输入。引擎支持 z，但本地 helper 只支持 x/xy，不能传 --axes z；z 参考代入及输入写出是明确的实现交接。\n\n按 P-D04，加载 thermo 每 1000 步（1 ps，Δε=1e-5），轨迹每 10000 步（10 ps，Δε=1e-4）；这是玻璃拉伸的明确候选，未静默套用普通 NPT 时间上限。若另需快速局部事件，须单独加密及预算数据量。保存压力张量、U/K、盒矢量、轨迹、原始及正式参考、阶段时间偏移和实际首个输出步。σzz=-Pzz 为拉伸正号的当前体积应力；工程应力需截面转换。PTM cutoff 首轮固定 0.1，只作受支持的结构描述；Other≈100% 不能代替玻璃或塑性结论，仿射形变下的普通 MSD 不能当扩散。\n\n有限健康筛查为正式预平衡末两个相邻 20 ps 窗口：T 偏差≤6 K、P 偏差≤0.1 GPa、体积差≤0.5%、U/N 差≤0.005 eV。T/P 窗口统计的专用入口未确认，标 CHECK_PENDING，不能报告已过。最多追加一次 100 ps，主预算上限 10200000 步，仍异常就报告；独立 200 步流程试跑不当正式预平衡。必要时选择 1/0.5 fs 各 10 ps 的步长对照（额外 30000 步、保持 tau 物理时间），或同一冻结参考的 2e7 s^-1 速率对照（额外 5000000 加载步），不把所有对照变为每次强制计算。\n\n方案为 DESIGN_READY，实际模型元数据、正式参考及 z 输入绑定为 RUNTIME_PENDING；不需要再问用户势、成分或未来盒长。完整应力–应变、转变应变、玻璃判定及非仿射局部剪切仍缺专用分析入口；此交接保留可追溯原始数据，不虚构已完成的材料结论。",
+      "parameters": {
+        "potential_id": "PdCuNiP/nep4.txt",
+        "potential_sha256": "aec2bc972783f58e523c90574a96ebaad6b37a29bc3853e16099d4d43af96ad8",
+        "potential_file_label": "PdCuNiP/nep4.txt",
+        "composition": {
+          "Pd": 0.4,
+          "Cu": 0.3,
+          "Ni": 0.1,
+          "P": 0.2,
+          "atom_counts": null
+        },
+        "initial_state": {
+          "type": "existing post-heat-treatment glass",
+          "rebuild": false,
+          "remelt": false,
+          "recool": false,
+          "history_policy": "preserve all known heat-treatment and velocity history, retain original file; record missing history as unknown, never relabel as paper 2e10-glass",
+          "model_path": null,
+          "velocities": "preserve if present; inspect actual model before deciding if initialization is needed",
+          "orientation": "no crystal orientation is imposed on the glass"
+        },
+        "N": null,
+        "pbc": {
+          "x": true,
+          "y": true,
+          "z": true
+        },
+        "box_geometry": "axis-aligned orthorhombic bulk",
+        "temperature_K": 300,
+        "pressure_GPa": {
+          "relax": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "loading": {
+            "x": 0,
+            "y": 0,
+            "z": null
+          },
+          "loading_z_meaning": "z is prescribed by deform; no independent Pzz target"
+        },
+        "dt_fs": 1,
+        "thermostat": "GPUMD 5.5 ensemble npt_scr temperature control",
+        "barostat": "GPUMD 5.5 npt_scr independent orthorhombic directional pressure control; deform overrides driven z",
+        "tau_T_fs": 100,
+        "tau_P_fs": 1000,
+        "T_coup": 100,
+        "P_coup": 1000,
+        "control_moduli_GPa": {
+          "x": 100,
+          "y": 100,
+          "z": 100,
+          "meaning": "control scales, not measured elastic moduli"
+        },
+        "relax_ps": 100,
+        "relax_steps": 100000,
+        "seed": {
+          "value": 20261020,
+          "repeat_control_value": 20261021,
+          "apply_to_existing_velocities": false,
+          "policy": "preserve existing velocities; if actual file lacks velocities, record this fact and use a documented 300 K preparation initialization with this candidate seed; do not claim preserved velocities"
+        },
+        "strain_definition": "engineering",
+        "axes": "z",
+        "strain_end": 0.1,
+        "rate_s_inv": 10000000,
+        "load_duration_ps": 10000,
+        "load_steps": 10000000,
+        "reference_status": "RUNTIME_PENDING",
+        "increment_A_per_step": {
+          "x": 0,
+          "y": 0,
+          "z": null
+        },
+        "increment_formula": "dLz_A_per_step = 0.10 * Lz0_A / 10000000 = 1e-8 * Lz0_A; dLx=dLy=0",
+        "axis_constraints": {
+          "relax": {
+            "x": "P=0 GPa, variable Lx",
+            "y": "P=0 GPa, variable Ly",
+            "z": "P=0 GPa, variable Lz"
+          },
+          "loading": {
+            "x": "P=0 GPa, variable Lx",
+            "y": "P=0 GPa, variable Ly",
+            "z": "Lz(n)=Lz0*(1+0.10*n/load_steps); deform enabled; Pzz is an output"
+          }
+        },
+        "helper_compatible": false,
+        "helper_axes_supported": [
+          "x",
+          "xy"
+        ],
+        "engine_axes_supported": [
+          "x",
+          "y",
+          "z"
+        ],
+        "thermo_interval_steps": 1000,
+        "trajectory_interval_steps": 10000,
+        "preparation_output_intervals": {
+          "thermo_steps": 100,
+          "trajectory_steps": 1000,
+          "restart": "end of formal relax"
+        },
+        "output_resolution": {
+          "thermo_ps": 1,
+          "trajectory_ps": 10,
+          "thermo_delta_engineering_strain": 0.00001,
+          "trajectory_delta_engineering_strain": 0.0001
+        },
+        "preparation_actions": [
+          "locate and inspect the existing post-treatment model and preparation record; preserve original file and all known history",
+          "read actual N, element counts, velocities, cell, PBC and model ID; do not substitute the new-glass default N=13500 or claim a paper cooling rate",
+          "candidate 300 K, three-axis 0 GPa equilibration for 100 ps without remelting, recooling or replacing existing velocities",
+          "if a supplied qualified 300 K/0 GPa reference is verified, it may replace the added 100 ps stage, with the shortened total recorded",
+          "freeze official restart, bind Lz0 and generate z loading; preserve source/reference provenance"
+        ],
+        "total_steps": 10100000,
+        "budget": {
+          "base_relax_ps": 100,
+          "maximum_relax_extension_ps": 100,
+          "maximum_relax_extension_steps": 100000,
+          "base_total_steps": 10100000,
+          "maximum_total_steps_with_relax_extension": 10200000,
+          "independent_generator_trial_steps": 200,
+          "trial_counted_as_physical_equilibration": false,
+          "wall_clock_promise": false,
+          "qualified_reference_shortcut": {
+            "relax_steps": 0,
+            "total_steps": 10000000,
+            "condition": "only if an already qualified same-state formal reference is actually provided and verified"
+          }
+        },
+        "timestep_control": {
+          "required_for_first_data_generation": false,
+          "optional_pairs": [
+            {
+              "dt_fs": 1,
+              "duration_ps": 10,
+              "steps": 10000,
+              "T_coup": 100,
+              "P_coup": 1000
+            },
+            {
+              "dt_fs": 0.5,
+              "duration_ps": 10,
+              "steps": 20000,
+              "T_coup": 200,
+              "P_coup": 2000
+            }
+          ],
+          "additional_steps_if_selected": 30000
+        },
+        "stress_convention": "tensile-positive current-volume stress sigma_zz_GPa = -Pzz_GPa; engineering stress requires separately defined area transformation",
+        "output_records": [
+          "full pressure tensor",
+          "U and K",
+          "cell vectors",
+          "formal reference restart",
+          "trajectory",
+          "stage ID and dt",
+          "stage time offset",
+          "actual first output step and output interval"
+        ],
+        "screening": {
+          "status": "CHECK_PENDING",
+          "windows_ps": [
+            20,
+            20
+          ],
+          "temperature_tolerance_K": 6,
+          "pressure_tolerance_GPa": 0.1,
+          "relative_volume_mean_difference_max": 0.005,
+          "potential_energy_mean_difference_eV_per_atom_max": 0.005,
+          "interpretation": "engineering health screen only; not proof of equilibrium or ergodicity"
+        },
+        "target_criteria": "reach engineering strain 0.10 exactly by the stated finite number of increments; record structural trajectory and stress; do not claim a transformation or yield point without supported analysis",
+        "rate_control": {
+          "selected_as_first_run": false,
+          "variant_rate_s_inv": 20000000,
+          "variant_load_ps": 5000,
+          "variant_load_steps": 5000000,
+          "additional_load_steps": 5000000,
+          "shared_reference": "reuse same frozen formal reference, preserve thermal/history identity"
+        },
+        "paper_comparison": {
+          "status": "not a replication",
+          "reported_preload_ps": 2000,
+          "reported_preload_status": "LIT via P-D04/P-03",
+          "if_selected_instead_of_100ps": {
+            "relax_steps": 2000000,
+            "load_steps": 10000000,
+            "total_steps": 12000000
+          },
+          "preparation_state_difference": "existing arbitrary heat-treated model is not established as the paper 2e10-glass",
+          "rate_strain_definition_caution": "1e7 s^-1 is a literature-inspired candidate engineering rate; paper strain convention not fully checked"
+        }
+      },
+      "parameter_status": {
+        "potential_id": "FILE",
+        "potential_sha256": "FILE",
+        "potential_file_label": "CAND",
+        "composition": "USER",
+        "initial_state": "USER",
+        "N": "RUNTIME",
+        "pbc": "CAND",
+        "box_geometry": "CAND",
+        "temperature_K": "USER",
+        "pressure_GPa": "CAND",
+        "dt_fs": "CAND",
+        "thermostat": "CAND",
+        "barostat": "CAND",
+        "tau_T_fs": "CAND",
+        "tau_P_fs": "CAND",
+        "T_coup": "CALC",
+        "P_coup": "CALC",
+        "control_moduli_GPa": "CAND",
+        "relax_ps": "CAND",
+        "relax_steps": "CALC",
+        "seed": "CAND",
+        "strain_definition": "CAND",
+        "axes": "USER",
+        "strain_end": "CAND",
+        "rate_s_inv": "CAND",
+        "load_duration_ps": "CALC",
+        "load_steps": "CALC",
+        "reference_status": "RUNTIME",
+        "increment_A_per_step": "RUNTIME",
+        "increment_formula": "CALC",
+        "axis_constraints": "CAND",
+        "helper_compatible": "FILE",
+        "helper_axes_supported": "FILE",
+        "engine_axes_supported": "FILE",
+        "thermo_interval_steps": "CAND",
+        "trajectory_interval_steps": "CAND",
+        "preparation_output_intervals": "CAND",
+        "output_resolution": "CALC",
+        "preparation_actions": "CAND",
+        "total_steps": "CALC",
+        "budget": "CALC",
+        "timestep_control": "CAND",
+        "stress_convention": "CAND",
+        "output_records": "CAND",
+        "screening": "CAND",
+        "target_criteria": "CAND",
+        "rate_control": "CAND",
+        "paper_comparison": "LIT",
+        "composition.atom_counts": "RUNTIME",
+        "initial_state.model_path": "RUNTIME",
+        "initial_state.velocities": "RUNTIME",
+        "pbc.validation": "RUNTIME"
+      },
+      "source_ids": [
+        "D-01",
+        "D-02",
+        "D-03",
+        "D-04",
+        "D-05",
+        "D-06",
+        "D-08",
+        "T-01",
+        "T-02",
+        "T-03",
+        "T-04",
+        "T-05",
+        "P-D01",
+        "P-D04",
+        "P-01",
+        "P-03",
+        "C-02"
+      ],
+      "assumptions": [
+        "已有热处理后玻璃必须沿用；不知道制备历史的部分保持未知，不冒称论文玻璃。",
+        "三向周期正交bulk和x/y零横压为候选，须核实现有盒与边界；冲突时不能静默改模型。",
+        "现有态尚未被证明为合格的300K零压参考，因此主方案增加100ps且保留原有速度；合格同态参考允许有记录地免去该段。",
+        "N和实际元素计数未知，必须读取原模型，不替换成无模型分支的13500原子。",
+        "1e7 s^-1为文献启发的工程应变率候选；未声称原文应变定义已完全核对。"
+      ],
+      "questions": [],
+      "runtime_dependencies": [
+        {
+          "id": "potential_verification",
+          "binding": "generator 定位所指定势文件，核对元素顺序和 SHA-256 与本交接值一致；不自动改用其他版本。"
+        },
+        {
+          "id": "geometry_validation",
+          "binding": "正式准备前核实三向周期、轴对齐正交盒、原子计数和元素；不满足适用范围时报告冲突，不静默改边界/模型。"
+        },
+        {
+          "id": "reference_restart",
+          "binding": "正式 300 K、三轴 0 GPa 预平衡最后的 restart.xyz；保留速度、元素顺序、原子 ID 和盒矩阵。只有已交付且核实合格的同态参考可替代该阶段；trial restart 和初始建模盒不可代用。"
+        },
+        {
+          "id": "reference_Lz0_A",
+          "binding": "由 reference_restart 的真实盒矩阵读取正交盒 Lz0（Å），数值产生前不填。"
+        },
+        {
+          "id": "load_binding",
+          "binding": "在正式 reference_restart 产生并冻结后按 increment_formula 计算 dLz，写出 deform 0 0 <dLz> 0 0 1；记录参考路径、哈希、盒长、单位和实际数值。此 z 绑定由 generator 实现，现有 helper 不能完成。"
+        },
+        {
+          "id": "screening",
+          "binding": "正式预平衡末两个相邻 20 ps 窗口的 T、P、U/N、V 筛查待工具执行；未计算时报告 CHECK_PENDING，不编造均值或已平衡结论。"
+        },
+        {
+          "id": "existing_model_metadata",
+          "binding": "从已有热处理后模型及记录读取真实路径、N、各元素计数、速度是否存在、盒矢量、PBC与已知热处理历史；模型/参考路径优先由现有资产定位。缺历史如实未知。"
+        }
+      ],
+      "handoff_status": {
+        "design": "DESIGN_READY",
+        "existing_model_metadata_and_reference": "RUNTIME_PENDING",
+        "generator_z_binding": "RUNTIME_PENDING",
+        "local_helper_for_z": "UNSUPPORTED",
+        "health_screen": "CHECK_PENDING"
+      },
+      "capability_gaps": [
+        "当前 tension_workflow.py 仅支持 x、xy；不能传 --axes z，不能自动旋转模型代替用户指定的 z。",
+        "GPUMD 5.5 支持 z deform，但 z 方向正式参考读取、数值代入及输入写出需 generator 明确实现；这不是已具备的 helper 功能。",
+        "thermo 的 T/P 两个 20 ps 窗口均值及置信区间没有确认的专用统计入口；健康筛查标 CHECK_PENDING，不能声称已通过。",
+        "尚无确认的应力–应变联合转换、转变应变定位、非仿射局部塑性/剪切带专用分析工具；保存原始数据并单列后续分析任务。",
+        "玻璃判定与非仿射局部剪切缺专用分析；PTM Other比例不能替代这些结论。"
+      ],
+      "used_files": [
+        "agent-entry.md",
+        "decisions/parameter-table.md",
+        "decisions/tension.md",
+        "decisions/calculation.md",
+        "evidence/C-02-deformation.md",
+        "decisions/pdcunip.md"
+      ]
+    }
+  ],
+  "read_files": [
+    "agent-entry.md",
+    "decisions/parameter-table.md",
+    "decisions/tension.md",
+    "decisions/unep-v1.md",
+    "decisions/pdcunip.md",
+    "decisions/calculation.md",
+    "evidence/C-02-deformation.md"
+  ],
+  "execution_note": "独立只读研究设计测试；未读review答案/baseline/夹具/其他报告，未联网、未运行MD、未修改知识内容。简单闭合算术直接计算，未调用只读calculate_plan.py。势哈希来自决策包记录，未冒称重新读取了势文件。",
+  "knowledge_base_remaining_issues": [
+    "入口到完整参数设计基本可闭合，但z轴只有引擎契约，没有现成z参考绑定/输入生成helper；generator实现交接仍须实际完成。",
+    "T/P窗口统计、应力–应变联合转换、转变应变及非仿射/玻璃/ω相判据仍缺确认的专用工具，不能仅靠已保存数据宣称结论。",
+    "Ti候选只给约10000原子和取向边界，具体相容正交超胞、a/c和模型记录仍归model-worker；本测试可提出N=9600构造，但不是知识库已验证建模资产。",
+    "若模型文件或热处理记录未在研究请求中提供路径，仍需由现有资产定位/上游交接读取，不能从配比推断N或历史。"
+  ]
+}

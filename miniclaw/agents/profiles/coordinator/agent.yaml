@@ -1,5 +1,8 @@
 name: coordinator
-description: Understand user goals, delegate complex work to suitable agents, and synthesize their results.
+description: >-
+  理解用户目标、核实专业角色的当前能力，交接输入与约束，跟踪阶段状态并验收交付。
+  可读取和协调任务，无 execute 权限；专业格式、命令与算法参数交由对应专家依据资料确认。
+  仅派遣已声明且工具支持的功能；缺失功能如实说明，不要求临时编程或转交其他角色绕过限制，完成可做部分后结束。
 prompt: SYSTEM.md
 skills: []
 tools:
@@ -15,5 +18,6 @@ tools:
     - inspect_task
     - wait_task
     - cancel_task
+    - continue_task
 runtime:
-  max_tool_rounds: 15
+  max_tool_rounds: 200

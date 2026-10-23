@@ -2,7 +2,7 @@
 agent.py — Agent 主循环（★ 核心引擎）
 """
 import asyncio
-from typing import List, Dict, Optional, Any, Callable, Awaitable, Tuple, TYPE_CHECKING
+from typing import List, Dict, Optional, Any, Callable, Awaitable, TYPE_CHECKING
 
 from dataclasses import dataclass, field
 
@@ -52,6 +52,20 @@ class AgentContext:
 
 class Agent:
     """Agent 核心引擎"""
+
+    # 仅用于整个程序退出；所有身份（包括独立创建的子 Agent）共用。
+    _shutdown_requested = False
+    _running_tasks: set = set()
+
+    @staticmethod
+    def request_shutdown() -> tuple:
+        """停止所有 Agent runtime；重复调用只等待，不重复打断清理。"""
+        tasks = tuple(task for task in Agent._running_tasks if not task.done())
+        if not Agent._shutdown_requested:
+            Agent._shutdown_requested = True
+            for task in tasks:
+                task.cancel()
+        return tasks
 
     def __init__(
         self,
@@ -104,60 +118,6 @@ class Agent:
             profile=self.profile,
             memory_prefix=self._memory_prefix,
             experience_prefix=self._experience_prefix,
-        )
-        self._system_prompt_cache: Optional[str] = None
-        self._system_prompt_cache_key: Optional[Tuple[Any, ...]] = None
-
-    # ── 三层上下文工程 (Stable / Context / Volatile) ──
-
-    def _stable_fingerprint(self) -> Tuple[Any, ...]:
-        """Stable 层指纹：身份文件 + 工具 + 技能（最少变动，缓存友好）。"""
-        return self.prompt_builder.stable_fingerprint()
-
-    def _visible_tool_names(self) -> List[str]:
-        return self.prompt_builder.visible_tool_names()
-
-    def _visible_skills(self) -> List[Any]:
-        return self.prompt_builder.visible_skills()
-
-    def _context_fingerprint(self) -> Tuple[Any, ...]:
-        """Context 层指纹：环境文件（AGENTS.md, USER.md, MEMORY.md）。"""
-        return self.prompt_builder.context_fingerprint()
-
-    def _build_stable_prompt(self) -> str:
-        """Stable 层：身份 + 工具描述 + 技能列表（缓存友好，极少重建）。"""
-        return self.prompt_builder.build_stable_prompt()
-
-    def _build_tool_prompt_summary(self) -> str:
-        """Keep the prompt compact; exact tool schemas are sent separately."""
-        return self.prompt_builder.build_tool_summary()
-
-    def _build_skill_prompt_summary(self, skills_list: List[Any]) -> str:
-        """Summarise skills without flooding the prompt with file paths."""
-        return self.prompt_builder.build_skill_summary(skills_list)
-
-    def _build_context_prompt(self) -> str:
-        """Context 层：项目指令 + 用户偏好 + 长期记忆。"""
-        return self.prompt_builder.build_context_prompt()
-
-    def _build_system_prompt(self) -> str:
-        """三层上下文组装：Stable（缓存） + Context（文件感知缓存） + Volatile（每轮动态）。"""
-        self.prompt_builder.skill_loader = self._skill_loader
-        prompt = self.prompt_builder.build_system_prompt()
-        self._system_prompt_cache = prompt
-        return prompt
-
-    def _build_tool_definitions(self) -> List[Dict]:
-        """生成 OpenAI function-calling 格式的工具定义"""
-        return self.prompt_builder.build_tool_definitions()
-
-    async def _resolve_session(self, context: AgentContext) -> Session:
-        """优先从磁盘恢复会话，避免 Gateway 重启后丢失历史。"""
-        session = await self.sessions.resolve_session(context.chat_id)
-        if session is not None:
-            return session
-        return self.sessions.get_or_create(
-            context.chat_id, context.channel, context.account_id
         )
 
     def _memory_prefix(self, user_message: str) -> str:
@@ -330,6 +290,11 @@ class Agent:
             if on_stream_chunk and response.content:
                 await on_stream_chunk(response.content)
 
+        logger.info(
+            "LLM parsed response finish=%s content_chars=%s reasoning_chars=%s tool_calls=%s usage=%s",
+            response.finish_reason, len(response.content or ""),
+            len(response.reasoning_content or ""), len(response.tool_calls or []), response.usage,
+        )
         # ── after_llm hook ──
         await hook_system.fire("after_llm",
             data={
@@ -382,13 +347,20 @@ class Agent:
         on_progress: Optional[ProgressCallback] = None,
     ) -> str:
         """Run one request inside its project-specific workspace, if provided."""
-        with workspace_scope(context.metadata.get("workspace_dir")):
-            return await self._process_message(
-                context,
-                on_stream_chunk=on_stream_chunk,
-                on_viz_event=on_viz_event,
-                on_progress=on_progress,
-            )
+        if Agent._shutdown_requested:
+            raise asyncio.CancelledError("MiniClaw is shutting down")
+        task = asyncio.current_task()
+        Agent._running_tasks.add(task)
+        try:
+            with workspace_scope(context.metadata.get("workspace_dir")):
+                return await self._process_message(
+                    context,
+                    on_stream_chunk=on_stream_chunk,
+                    on_viz_event=on_viz_event,
+                    on_progress=on_progress,
+                )
+        finally:
+            Agent._running_tasks.discard(task)
 
     async def _process_message(
         self,

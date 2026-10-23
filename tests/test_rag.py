@@ -146,7 +146,7 @@ def test_discover_manual_urls_repairs_sitemap_path():
     </urlset>'''
 
     assert discover_manual_urls(sitemap) == [
-        "https://gpumd.org/gpumd/input_parameters/run.html"
+        "https://raw.githubusercontent.com/brucefan1983/GPUMD/v5.5/doc/gpumd/input_parameters/run.rst"
     ]
 
 
@@ -160,7 +160,7 @@ def test_extract_manual_sections_and_split():
     assert title == "run"
     assert sections[0] == ("run", "Run MD steps.")
     assert "run 1000" in sections[1][1]
-    assert len(split_text("a" * 6000)) >= 3
+    assert split_text("a" * 6000) == ["a" * 6000]
 
 
 def test_gpumd_query_expansion_supports_chinese_topics():
@@ -189,7 +189,7 @@ def test_gpumd_rerank_limits_repeated_sources_and_prefers_manual():
     results = rerank_gpumd_results(candidates, "NPT 怎么设置", 3)
 
     assert results[0].document.id == "manual"
-    assert sum(item.document.source == "tutorial-url" for item in results) == 2
+    assert sum(item.document.source == "tutorial-url" for item in results) == 1
 
 
 def test_volcengine_multimodal_embedding_uses_correct_endpoint_and_payload():
@@ -223,3 +223,28 @@ def test_embedding_factory_routes_versioned_vision_model_to_multimodal():
     )
 
     assert isinstance(client, VolcengineMultimodalEmbeddingClient)
+
+
+def test_query_embedding_can_fail_once_without_retry():
+    requests = []
+
+    def unavailable(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        assert request.extensions["timeout"]["read"] == 8.0
+        return httpx.Response(503, json={"error": "unavailable"})
+
+    client = VolcengineMultimodalEmbeddingClient(
+        base_url="https://example.invalid/api/v3",
+        api_key="test-key",
+        model="doubao-embedding-vision-251215",
+        timeout_sec=8.0,
+        max_retries=0,
+        transport=httpx.MockTransport(unavailable),
+    )
+    try:
+        client.embed(["双轴拉伸"])
+    except RuntimeError as exc:
+        assert "503" in str(exc)
+    else:
+        raise AssertionError("expected an embedding service failure")
+    assert len(requests) == 1

@@ -1,0 +1,49 @@
+{
+  "version": "0.3",
+  "date": "2026-10-21",
+  "layout": {
+    "entry": "SKILL.md",
+    "knowledge": "references/",
+    "parameter_calculator": "scripts/calculate_plan.py"
+  },
+  "researcher_profile": "miniclaw/agents/profiles/researcher",
+  "existing_execution_channel": "execute",
+  "new_registered_tools": [],
+  "checks": {
+    "skill_metadata": "passed",
+    "existing_profile_tool_prompt_tests": {
+      "passed": 14,
+      "total": 14
+    },
+    "real_tool_integration_tests": {
+      "passed": 8,
+      "total": 8,
+      "test_file": "tests/test_phase_design_skill.py"
+    },
+    "calculator_cli": {
+      "passed": 67,
+      "total": 67,
+      "report": "calculator-cli-results.json"
+    },
+    "forward_skill_cases": {
+      "cases": 2,
+      "passed_checks": 18,
+      "total_checks": 18,
+      "report": "skill-forward-checks.json"
+    },
+    "independent_integration_audit": "skill-integration-audit.json"
+  },
+  "migration": {
+    "old_knowledge_directory_exists": false,
+    "original_files": 73,
+    "history_artifacts_preserved": 24,
+    "manifest": "skill-migration.json"
+  },
+  "runtime_discovery_verified": true,
+  "limits": [
+    "No live configured project LLM/API call or MD run",
+    "Helper-only execute usage is a profile/Skill responsibility constraint, not a hard command sandbox",
+    "Deployment of an already running application instance was not restarted or verified"
+  ],
+  "current_role_permissions": "researcher-permissions.json"
+}

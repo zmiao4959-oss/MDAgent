@@ -8,7 +8,7 @@ llm:
   # api_key 优先从环境变量 MINICLAW_API_KEY 读取
   base_url: https://api.deepseek.com/v1
   temperature: 0.3
-  max_tokens: 8192
+  max_tokens: 393216
   fallback_providers:
     - provider: openai
       model: gpt-4o-mini
@@ -44,8 +44,56 @@ agent:
     temperature: 0.3
 
 execution:
+  shell: auto                   # 后端选择默认 shell：Windows cmd，其他平台 sh
   default_timeout_sec: 60       # execute 工具默认超时
   max_timeout_sec: 900          # execute 工具最大超时
+
+gpumd:
+  wsl_distribution: Ubuntu-24.04
+  executable: /home/zm/bin/gpumd
+
+# Remote simulation targets are independent modules. Enable after verifying paths.
+simulation:
+  enabled: true
+  submission_check_delay_sec: 10  # 提交后等待，再查询一次状态（0–60 秒）
+  targets:
+    local-lammps:
+      enabled: true
+      engine: lammps
+      scheduler: local
+      executable: lmp
+      mpi_launcher: mpiexec
+      cores: 4
+    local-gpumd:
+      enabled: true
+      engine: gpumd
+      scheduler: local
+      cores: 1
+    hpc:
+      enabled: false
+      engine: lammps
+      scheduler: lsf
+      ssh_alias: hpc
+      remote_base: ""
+      executable: ""
+      env_script: ""
+      queue: ""
+      cores: 24
+      mpi_launcher: mpirun
+    sugon:
+      enabled: false
+      engine: gpumd
+      scheduler: slurm
+      ssh_alias: sugon
+      remote_base: /work/home/zmzmzmzmzm/scratch/miniclaw
+      partition: dzagnormal
+      executable: ""
+      env_script: ""
+      nodes: 1
+      ntasks_per_node: 1
+      cpus_per_task: 4
+      gpus: 1
+      walltime: "24:00:00"
 
 # GPUMD 等内部知识库使用的远程向量接口。
 # 密钥请放在 MINICLAW_EMBEDDING_API_KEY 或 ARK_API_KEY 环境变量中。

@@ -1,0 +1,227 @@
+{
+  "scope": "Independent golden arithmetic and error cases; no MD validation",
+  "cases": [
+    {
+      "id": "engineering_known_reference",
+      "input": {
+        "mode": "engineering_tension",
+        "strain": 0.1,
+        "rate_s_inv": 100000000.0,
+        "dt_fs": 1,
+        "axes": "z",
+        "reference_lengths_A": {
+          "z": 100
+        },
+        "dump_strain": 0.0001
+      },
+      "expect": {
+        "steps": 1000000,
+        "duration_ps": 1000,
+        "actual_rate_s_inv": 100000000.0,
+        "increment_A_per_step.z": 1e-05,
+        "target_lengths_A.z": 110,
+        "output.interval_steps": 1000,
+        "output.resolution_satisfied": true
+      }
+    },
+    {
+      "id": "biax_independent_lengths",
+      "input": {
+        "mode": "engineering_tension",
+        "strain": 0.3,
+        "steps": 100000,
+        "dt_fs": 1,
+        "axes": "xy",
+        "reference_lengths_A": {
+          "x": 35,
+          "y": 36
+        }
+      },
+      "expect": {
+        "duration_ps": 100,
+        "actual_rate_s_inv": 3000000000.0,
+        "increment_A_per_step.x": 0.000105,
+        "increment_A_per_step.y": 0.000108
+      }
+    },
+    {
+      "id": "formal_reference_pending",
+      "input": {
+        "mode": "engineering_tension",
+        "strain": 0.1,
+        "rate_s_inv": 100000000.0,
+        "dt_fs": 1,
+        "axes": "z"
+      },
+      "expect": {
+        "reference_status": "RUNTIME",
+        "increment_A_per_step": {},
+        "missing_reference_axes": [
+          "z"
+        ]
+      }
+    },
+    {
+      "id": "fractional_step_rounding",
+      "input": {
+        "mode": "engineering_tension",
+        "strain": 0.1,
+        "rate_s_inv": 300000000.0,
+        "dt_fs": 1
+      },
+      "expect": {
+        "steps": 333334,
+        "duration_fs": 333334,
+        "actual_rate_s_inv": 299999400.0012
+      }
+    },
+    {
+      "id": "temperature_60_ns",
+      "input": {
+        "mode": "temperature_ramp",
+        "start_K": 1500,
+        "end_K": 300,
+        "rate_K_s": 20000000000.0,
+        "dt_fs": 1
+      },
+      "expect": {
+        "duration_ns": 60,
+        "steps": 60000000
+      }
+    },
+    {
+      "id": "glass_fast_output",
+      "input": {
+        "mode": "temperature_ramp",
+        "start_K": 2500,
+        "end_K": 300,
+        "rate_K_s": 2000000000000.0,
+        "dt_fs": 1,
+        "dump_delta_K": 1,
+        "dump_max_ps": 1
+      },
+      "expect": {
+        "duration_ns": 1.1,
+        "steps": 1100000,
+        "output.interval_steps": 500,
+        "output.increment": 1
+      }
+    },
+    {
+      "id": "glass_slow_structural_output",
+      "input": {
+        "mode": "temperature_ramp",
+        "start_K": 2500,
+        "end_K": 300,
+        "rate_K_s": 20000000000.0,
+        "dt_fs": 1,
+        "dump_delta_K": 5
+      },
+      "expect": {
+        "duration_ns": 110,
+        "steps": 110000000,
+        "output.interval_steps": 250000,
+        "output.increment": 5
+      }
+    },
+    {
+      "id": "substep_output_impossible",
+      "input": {
+        "mode": "engineering_tension",
+        "strain": 0.1,
+        "steps": 100,
+        "dt_fs": 1,
+        "dump_strain": 0.0001
+      },
+      "expect": {
+        "output.interval_steps": 1,
+        "output.resolution_satisfied": false
+      }
+    },
+    {
+      "id": "conflicting_rate_steps",
+      "input": {
+        "mode": "engineering_tension",
+        "strain": 0.1,
+        "rate_s_inv": 100000000.0,
+        "steps": 100000,
+        "dt_fs": 1
+      },
+      "error": true
+    },
+    {
+      "id": "conflicting_rate_duration",
+      "input": {
+        "mode": "engineering_tension",
+        "strain": 0.1,
+        "rate_s_inv": 100000000.0,
+        "duration_ps": 10,
+        "dt_fs": 1
+      },
+      "error": true
+    },
+    {
+      "id": "true_strain_not_substituted",
+      "input": {
+        "mode": "engineering_tension",
+        "strain_definition": "true",
+        "strain": 0.1,
+        "rate_s_inv": 100000000.0,
+        "dt_fs": 1
+      },
+      "error": true
+    },
+    {
+      "id": "bad_axis_rejected",
+      "input": {
+        "mode": "engineering_tension",
+        "strain": 0.1,
+        "steps": 1000,
+        "dt_fs": 1,
+        "axes": "xyx"
+      },
+      "error": true
+    },
+    {
+      "id": "zero_rate_rejected",
+      "input": {
+        "mode": "temperature_ramp",
+        "start_K": 1500,
+        "end_K": 300,
+        "rate_K_s": 0,
+        "dt_fs": 1
+      },
+      "error": true
+    },
+    {
+      "id": "boolean_step_rejected",
+      "input": {
+        "mode": "engineering_tension",
+        "strain": 0.1,
+        "steps": true,
+        "dt_fs": 1
+      },
+      "error": true
+    },
+    {
+      "id": "missing_kinematics_rejected",
+      "input": {
+        "mode": "engineering_tension",
+        "strain": 0.1,
+        "dt_fs": 1
+      },
+      "error": true
+    },
+    {
+      "id": "equal_temperatures_rejected",
+      "input": {
+        "mode": "temperature_ramp",
+        "start_K": 300,
+        "end_K": 300,
+        "rate_K_s": 20000000000.0,
+        "dt_fs": 1
+      },
+      "error": true
+    }
+  ]
+}

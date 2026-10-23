@@ -110,7 +110,7 @@ gpumd.org sitemap + GPUMD-Tutorials ZIP
           ├─ 修复稳定版 sitemap URL
           ├─ 提取正文、标题、代码和表格
           ├─ 按章节切块（最大约 2800 字符，重叠 240）
-          └─► ~/.miniclaw/workspace/skills/gpumd-script/references/corpus.jsonl
+          └─► ~/.miniclaw/workspace/rag/gpumd-script/corpus.jsonl
                   └─► rag/cli.py + rag/store.py
                         ├─ ID + 内容哈希 + 模型名增量判断
                         ├─ rag/embedding.py 调用远程 embedding

@@ -22,11 +22,17 @@ class EmbeddingClient(Protocol):
 class OpenAICompatibleEmbeddingClient:
     """通过 OpenAI 兼容的 ``/embeddings`` API 获取文本向量。"""
 
-    def __init__(self, *, base_url: str, api_key: str, model: str):
+    def __init__(
+        self, *, base_url: str, api_key: str, model: str,
+        timeout_sec: float = 60.0, max_retries: int = 3,
+    ):
         if not api_key:
             raise ValueError("未配置 embedding API 密钥")
         self._model = model
-        self._client = OpenAI(base_url=base_url.rstrip("/"), api_key=api_key)
+        self._client = OpenAI(
+            base_url=base_url.rstrip("/"), api_key=api_key,
+            timeout=timeout_sec, max_retries=max(0, int(max_retries)),
+        )
 
     @property
     def model(self) -> str:
@@ -59,12 +65,14 @@ class VolcengineMultimodalEmbeddingClient:
         model: str,
         max_concurrency: int = 4,
         timeout_sec: float = 60.0,
+        max_retries: int = 3,
         transport: httpx.BaseTransport | None = None,
     ):
         if not api_key:
             raise ValueError("未配置 embedding API 密钥")
         self._model = model
         self._max_concurrency = max(1, int(max_concurrency))
+        self._max_retries = max(0, int(max_retries))
         self._client = httpx.Client(
             base_url=base_url.rstrip("/") + "/",
             headers={
@@ -96,11 +104,12 @@ class VolcengineMultimodalEmbeddingClient:
             "input": [{"type": "text", "text": text}],
         }
         response: httpx.Response | None = None
-        for attempt in range(4):
+        for attempt in range(self._max_retries + 1):
             response = self._client.post("embeddings/multimodal", json=body)
             if response.status_code not in {429, 500, 502, 503, 504}:
                 break
-            time.sleep(0.5 * (2 ** attempt))
+            if attempt < self._max_retries:
+                time.sleep(0.5 * (2 ** attempt))
         assert response is not None
         try:
             response.raise_for_status()
@@ -136,6 +145,8 @@ def create_embedding_client(
     model: str,
     api_type: str = "auto",
     max_concurrency: int = 4,
+    timeout_sec: float = 60.0,
+    max_retries: int = 3,
 ) -> EmbeddingClient:
     """根据显式配置或带日期的 vision 模型名选择正确 API。"""
     selected = api_type.strip().lower()
@@ -151,9 +162,12 @@ def create_embedding_client(
             api_key=api_key,
             model=model,
             max_concurrency=max_concurrency,
+            timeout_sec=timeout_sec,
+            max_retries=max_retries,
         )
     if selected == "openai":
         return OpenAICompatibleEmbeddingClient(
-            base_url=base_url, api_key=api_key, model=model
+            base_url=base_url, api_key=api_key, model=model,
+            timeout_sec=timeout_sec, max_retries=max_retries,
         )
     raise ValueError(f"不支持的 embedding api_type：{api_type}")

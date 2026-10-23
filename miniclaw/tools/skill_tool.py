@@ -9,7 +9,6 @@ from .registry import tool_registry
 
 @tool_registry.register(
     name="read_skill",
-    description="Read a skill's SKILL.md by exact skill name.",
     schema={
         "type": "function",
         "function": {

@@ -1,0 +1,85 @@
+{
+  "audit_version": "1.0",
+  "audit_date": "2026-10-20",
+  "audit_type": "independent targeted remediation acceptance",
+  "scope": {
+    "preserved_audit": "review/agent-tests/independent-audit.json",
+    "read_files": ["agent-entry.md", "decisions/handoff-contract.json", "review/agent-tests/post-holdouts-citations.json", "review/agent-tests/post-tension-provenance.json", "review/agent-tests/post-fast-route.json"],
+    "not_yet_available": ["review/agent-tests/post-fast-provenance.json"],
+    "network_used": false,
+    "md_started": false,
+    "other_knowledge_or_reports_modified": false,
+    "comparison_basis": "原审计已读报告和已保存数值结论；本轮按限定范围只读新增指定文件，没有重读或改写原报告。"
+  },
+  "summary": {
+    "targeted_holdout_citation_acceptance": "PASS",
+    "targeted_tension_provenance_acceptance": "PASS",
+    "original_necessary_repairs_covered": true,
+    "original_numeric_designs_preserved_in_targeted_addenda": true,
+    "fresh_fast_route_core_design": "PASS_WITH_PROVENANCE_PENDING",
+    "remaining_actual_blocker_for_full_fast_metadata_acceptance": "post-fast-provenance.json尚未出现；fast-route原件仍有混合状态，不能据定向拉伸修复就宣称新NPT三题逐叶状态已通过。",
+    "newly_introduced_blocker_to_the_accepted_targeted_repairs": false,
+    "original_failures_rewritten_as_passes": false
+  },
+  "repair_acceptance": [
+    {
+      "repair_id": "A-01",
+      "status": "PASS_AS_FOLLOWUP_ARTIFACTS",
+      "evidence": [
+        "post-holdouts-citations的X03已将自由名称UNEP-v1 元素覆盖替换为U-01，reference_locations落到evidence/U-01-local-model.md。四个case的source_ids均使用先前登记过的规则/证据ID。",
+        "补充稿明确U-01来自先前决策包所链接的间接证据，本轮只核对登记定位，未伪称重读证据卡或重新核验势文件。",
+        "新fast-route的N02以U-D02明确归属1166K/0.1MPa先验，source_ids不再出现原NPT报告中的NIST-JANAF自由字符串；这是一份新首轮回答的引用结果，不是原N02报告被改写。",
+        "X03/X04逐字原题保留，证实300K以及X03的0GPa是USER输入；X04只有z零压，没有冒充三轴USER零压。"
+      ],
+      "limit": "未重新联网或重读所有引用目标；验收登记引用、落点和披露的证据链，不等于重新验证外部论文。"
+    },
+    {
+      "repair_id": "A-02",
+      "status": "PASS",
+      "evidence": [
+        "T01、T02、T03的leaf_parameter_status.potential_file_label均已FILE，与既有文件身份规则一致。",
+        "本次报告明确是targeted，不改原报告或参数值；候选模型/数值设置与文件身份已经分开。",
+        "三个case分别有129、128、139个原参数叶级状态；机械核对直接规则映射无遗漏、无未知叶、无状态不一致，来源状态枚举均合法。"
+      ]
+    },
+    {
+      "repair_id": "A-03",
+      "status": "PASS",
+      "evidence": [
+        "T03移除paper_comparison整体LIT，reported_preload_ps=2000为LIT，本次可选采用2000ps为CAND，2000000/10000000/12000000步均为CALC。",
+        "paper_comparison_split另列文献加载率LIT、本次工程速率与定义CAND；原文应变口径和既有模型制备匹配仍未伪装成已知文献事实。",
+        "原100ps主方案与已有合格参考可短路、论文2ns前置只是候选替代，均未被修复稿改变。"
+      ]
+    }
+  ],
+  "numeric_preservation": {
+    "targeted_holdout_patch": "只替换来源ID并补主张映射，没有输出替换后的数值参数或加载计划。",
+    "targeted_tension_patch": "三个case的parameter_values_changed均为false；修复对象为状态/容器/规则映射，没有新的正式dt、rate、strain、load_steps或total_steps替换值。主要数值仍对应原审计的T01/T02加载1000000步、T03加载10000000步及T03论文前置分支12000000总步数。",
+    "followup_arithmetic_checked": ["2000ps*1000fs/ps/1fs=2000000步", "0.10/(1e7s^-1*1e-15s)=10000000步", "2000000+10000000=12000000步"],
+    "scope_limit": "本轮未重读原始报告进行新一轮逐字节diff；原审计保存原报告SHA与完整数值证据，定向补充稿以覆盖层提供，不修改原件。"
+  },
+  "fresh_fast_route": {
+    "kind": "新的无历史首轮效率回归；不与两份targeted补充混为同一次盲测",
+    "read_efficiency": "三题合计5份唯一知识文件，N01/N02各用入口+参数表+NPT+UNEP四页；Pd任务增读自身决策包并记录触发原因。未展开旧专题、证据页和整份资产清单。原NPT回归为17份，新的最短路由按文件数有改善。",
+    "artifact_size_bytes": 29928,
+    "core_numeric_checks": [
+      "N01: 2000Cu+2000Ni=4000；两段100ps/100000步，首轮200000步，上限300000步。",
+      "N02: 100+100+8*(100+100)=1800ps/1800000步；加三个200ps节点及100ps延长后2500ps/2500000步。",
+      "N02新提4*14*15*12=10080原子，是明确的约万原子CAND模型方案；原报告9600也是候选，二者不同不构成修复数值意外漂移。",
+      "G01: 原子整数计数总13500；快速2200000步/最多3200000，慢级111100000步/最多112100000，冷速、端点与输出温差关系保持正确。"
+    ],
+    "remaining_provenance_issues_before_addendum": [
+      "common_controls.coupling整体CAND同时包含候选物理tau与CALC输入比值。",
+      "N01/N02预算仍用CAND/CALC，部分初态、阶段、输出容器尚未逐叶拆分。",
+      "parameter_status把CHECK_PENDING作为并列键；最终入口要求待执行检查状态另列，不混进参数来源枚举。"
+    ],
+    "metadata_acceptance": "PENDING post-fast-provenance.json；不能从正确算术推断逐叶来源已合规。",
+    "efficiency_claim_limit": "文件数量和回答文件体积不是API token或墙钟时间实测；这三个人为题目也不证明更广任务的相同效率或正确率。"
+  },
+  "remaining_capability_limits": {
+    "introduced_by_this_fix": [],
+    "preexisting_and_still_disclosed": ["z加载正式参考绑定需相应generator入口", "恒真应变路径缺完整helper", "温压窗口统计与置信区间未确认", "应力应变联合分析、Tg拟合和完整玻璃/局部塑性判据缺口"],
+    "effect": "这些边界不阻止接受本次来源/状态修复，也不因文档修复自动成为已实现功能。"
+  },
+  "conclusion": "已具备的holdout引用和拉伸逐叶状态定向修复通过验收，原审计及原报告失败证据保留。新首轮快路由证明本批案例读取更集中且主要方案可闭合；其完整元数据验收暂待fast补充。本审计没有把targeted称为新盲测，也没有进行或声称完整物理验证。"
+}

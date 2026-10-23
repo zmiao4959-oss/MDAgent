@@ -1,0 +1,19 @@
+{
+  "version": "0.2",
+  "purpose": "Leaf-level provenance contract for parameter handoffs",
+  "classification_rules": [
+    {"field":"potential_id, potential_file_label, potential_sha256","rule":"A selected existing potential's documented identity is FILE, with snapshot/source. The proposal to select it may be CAND, but the file's name/hash is not a new candidate material value."},
+    {"field":"user constraints","rule":"USER only for an explicit input constraint; preserve original prompt or file reference. A default or assumption is CAND, even if it seems conventional."},
+    {"field":"derived steps, durations, input ratios and increments","rule":"CALC with formula and input references; inherited numeric operands keep their own provenance."},
+    {"field":"unknown actual model/box/reference","rule":"RUNTIME until the named upstream asset is available. A proposed size or cell recipe is CAND. Do not replace a missing actual value by its candidate and label FILE."},
+    {"field":"mixed nested objects","rule":"Label each leaf separately, or split into multiple fields. Never assign a single LIT/FILE/USER status to a dictionary containing candidates or calculations."},
+    {"field":"paper_comparison","rule":"Reported paper loading rate and preparation time are LIT. Choosing that time for this run is CAND unless USER locked it. Derived run steps/totals are CALC. Do not mark the whole comparison LIT."},
+    {"field":"source_ids","rule":"Every ID must exist in reference-index.json. Free descriptive names are labels, not IDs."}
+  ],
+  "example": {
+    "potential_file_label":{"value":"PdCuNiP/nep4.txt","status":"FILE","basis":["P-01"]},
+    "paper_preload_ps":{"value":2000,"status":"LIT","basis":["P-03"]},
+    "proposed_preload_ps":{"value":2000,"status":"CAND","basis":["P-D04"]},
+    "proposed_preload_steps_at_1fs":{"value":2000000,"status":"CALC","formula":"2000 ps * 1000 fs/ps / 1 fs"}
+  }
+}

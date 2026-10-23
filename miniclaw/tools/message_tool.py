@@ -29,7 +29,6 @@ def unregister_send_callback(channel: str):
 
 @tool_registry.register(
     name="send_message",
-    description="Send a message to a specific channel or chat.",
     schema={
         "type": "function",
         "function": {

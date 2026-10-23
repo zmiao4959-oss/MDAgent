@@ -1,0 +1,12 @@
+# Stage 2: generated from final equilibrated restart.xyz; do not run placeholders.
+# Reference Lx = {LX0}, Ly = {LY0} Angstrom; engineering strains ex = ey = {STRAIN}.
+# Independent increments preserve equal strain even if NPT produced Lx != Ly.
+potential nep.txt
+time_step {TIME_STEP}
+
+ensemble npt_scr {TEMPERATURE} {TEMPERATURE} 100 0 0 0 100 100 100 1000
+deform {DX} {DY} 0 1 1 0
+dump_thermo {THERMO_INTERVAL}
+dump_exyz {TRAJECTORY_INTERVAL} 0
+dump_restart {STEPS}
+run {STEPS}
