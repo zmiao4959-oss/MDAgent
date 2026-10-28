@@ -56,6 +56,7 @@ gpumd:
 simulation:
   enabled: true
   submission_check_delay_sec: 10  # 提交后等待，再查询一次状态（0–60 秒）
+  local_gpumd_max_concurrent: 1  # 所有项目/智能体共享本地 GPU 队列，其余自动排队
   targets:
     local-lammps:
       enabled: true

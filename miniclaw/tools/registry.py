@@ -152,7 +152,8 @@ class ToolRegistry:
             return f"Error: Unknown tool '{name}'"
 
         args = dict(arguments or {})
-        args.setdefault("_context", dict(context or {}))
+        # Runtime policy cannot be replaced by model-supplied internal fields.
+        args["_context"] = dict(context or {})
 
         err = self._validate_arguments(tool, args)
         if err:

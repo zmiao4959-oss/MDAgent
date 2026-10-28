@@ -187,6 +187,9 @@ class ProjectRunService:
             ),
             metadata={
                 "workspace_dir": str(self.workspaces.resolve(project)),
+                "project_id": project.project_id,
+                "project_title": project.title,
+                "project_objective": project.objective,
                 "_plan_task_id": task.get("task_id", ""),
                 "_plan_project_id": project.project_id,
             },

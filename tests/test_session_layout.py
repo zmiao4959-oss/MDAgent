@@ -89,11 +89,17 @@ def test_global_folder_and_unsafe_ids_stay_inside_sessions(sessions):
     assert ".." not in path.relative_to(sessions.save_dir).parts
 
 
-def test_subagent_resolves_parent_chat_to_session_metadata(sessions, monkeypatch):
+def test_subagent_resolves_parent_chat_to_session_metadata(sessions, monkeypatch, tmp_path):
     parent = sessions.get_or_create("parent-chat", "webchat")
     parent.metadata.update(project_id="project-a", root_session_id=parent.session_id)
     template = Agent(object(), sessions)
-    manager = SubAgentManager(template, sessions, catalog=AgentCatalog())
+    profile = tmp_path / "profiles" / "general-worker"
+    profile.mkdir(parents=True)
+    (profile / "agent.yaml").write_text(
+        "name: general-worker\ndescription: isolated lineage test role\ntools: []\nskills: []\n",
+        encoding="utf-8",
+    )
+    manager = SubAgentManager(template, sessions, catalog=AgentCatalog([profile.parent]))
     seen = {}
 
     async def process(self, context, **kwargs):

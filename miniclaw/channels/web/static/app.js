@@ -1,6 +1,7 @@
 import * as THREE from '/static/three.module.js';
 import { createEvolutionPanel } from '/static/evolution.js';
 import { createResearchCapsulePanel } from '/static/capsules.js';
+import { createAgentGraphPanel } from '/static/agent-graph.js?v=4';
 
   const CHAT_STORAGE_KEY = "miniclaw_webchat_chat_id";
   const PROJECT_STORAGE_KEY = "miniclaw_webchat_project_id";
@@ -82,6 +83,17 @@ import { createResearchCapsulePanel } from '/static/capsules.js';
   let planMode = false;
   const projectsById = new Map();
   const runningProjectIds = new Set();
+  const agentGraphPanel = createAgentGraphPanel({
+    getChatId: () => currentChatId,
+    getProjectId: () => currentProjectId,
+    isRunning: () => Boolean(runningProjectIds.has(currentProjectId) || projectsById.get(currentProjectId)?.is_running),
+    onApplied: (enabled) => {
+      if (enabled) { planMode = false; planModeCheckbox.checked = false; }
+      planModeCheckbox.disabled = enabled;
+      updateInputPlaceholder();
+    },
+    onPause: () => projectAction('pause'),
+  });
   let mediaCount = 0;
   let structureCount = 0;
   let workspaceRoot = "";
@@ -625,6 +637,7 @@ import { createResearchCapsulePanel } from '/static/capsules.js';
     chatStatusText.textContent = text || (active ? "Agent 运行中…" : "就绪");
     sendBtn.disabled = active;
     sendBtn.textContent = active ? "运行中…" : "发送";
+    agentGraphPanel.updateRunning();
   }
 
   function setVizProgress(active, text) {
@@ -1593,6 +1606,7 @@ import { createResearchCapsulePanel } from '/static/capsules.js';
       sendBtn.disabled = false;
       sendBtn.textContent = "发送";
     }
+    agentGraphPanel.updateRunning();
   }
 
   function compactNumber(value) {
@@ -1758,6 +1772,9 @@ import { createResearchCapsulePanel } from '/static/capsules.js';
     updateCurrentChatLabel();
     await restoreVizState();
     await loadHistory();
+    await agentGraphPanel.refresh();
+    planModeCheckbox.disabled = agentGraphPanel.enabled;
+    if (agentGraphPanel.enabled) { planMode = false; planModeCheckbox.checked = false; updateInputPlaceholder(); }
     await refreshFileList();
     await refreshArtifacts();
     await capsulePanel.refresh();
@@ -1892,7 +1909,9 @@ import { createResearchCapsulePanel } from '/static/capsules.js';
         if (x.done) break;
         buffer += decoder.decode(x.value, { stream: true });
         buffer = parseSseBuffer(buffer, (payload) => {
-          if (payload.task_event) {
+          if (payload.graph_event) {
+            agentGraphPanel.handleEvent(payload.graph_event, chatId);
+          } else if (payload.task_event) {
             handleTaskEvent(payload.task_event);
           } else if (payload.progress) {
             const p = payload.progress;
@@ -1934,7 +1953,9 @@ import { createResearchCapsulePanel } from '/static/capsules.js';
       // 兜底：处理 buffer 剩余数据（复用同一解析函数，避免遗漏 done 事件）
       if (buffer.trim()) {
         parseSseBuffer(buffer + "\n", (payload) => {
-          if (payload.task_event) {
+          if (payload.graph_event) {
+            agentGraphPanel.handleEvent(payload.graph_event, chatId);
+          } else if (payload.task_event) {
             handleTaskEvent(payload.task_event);
           } else if (payload.progress) {
             const p = payload.progress;

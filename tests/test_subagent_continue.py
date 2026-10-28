@@ -40,7 +40,14 @@ def manager(tmp_path, monkeypatch):
     sessions = SessionManager(tmp_path / "sessions")
     sessions._store = store
     llm = RecordingLLM()
-    result = SubAgentManager(Agent(llm, sessions), sessions, catalog=AgentCatalog())
+    # Continuation tests must not depend on a packaged role that may be jailed.
+    profile = tmp_path / "profiles" / "general-worker"
+    profile.mkdir(parents=True)
+    (profile / "agent.yaml").write_text(
+        "name: general-worker\ndescription: isolated continuation test role\ntools: []\nskills: []\n",
+        encoding="utf-8",
+    )
+    result = SubAgentManager(Agent(llm, sessions), sessions, catalog=AgentCatalog([profile.parent]))
     monkeypatch.setattr(delegation_tool, "_manager", result)
     yield result, llm
     store.close()

@@ -31,12 +31,14 @@ class WebChatAdapter(BaseChannelAdapter):
         port: int = 8000,
         session_manager: Optional["SessionManager"] = None,
         source_patch_llm=None,
+        agent_graph_runtime=None,
     ) -> None:
         super().__init__("webchat")
         self.host = host
         self.port = port
         self.session_manager = session_manager
         self.source_patch_llm = source_patch_llm
+        self.agent_graph_runtime = agent_graph_runtime
         self._uvicorn_server = None
 
         project_path = (

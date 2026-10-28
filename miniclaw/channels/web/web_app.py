@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .capsule_routes import register_capsule_routes
+from .agent_graph_routes import register_agent_graph_routes
 from .chat_routes import register_chat_routes
 from .conversation_routes import register_conversation_routes
 from .evolution_routes import register_evolution_routes
@@ -29,6 +30,10 @@ def create_web_app(adapter: Any) -> FastAPI:
     async def security_headers(request: Request, call_next):
         response = await call_next(request)
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        if request.url.path == "/" or request.url.path.startswith("/static/"):
+            # Local edits must be revalidated, including ES module dependencies.
+            # Otherwise a new HTML button can coexist with a cached old app.js.
+            response.headers["Cache-Control"] = "no-cache"
         return response
 
     if WEB_DIR.is_dir():
@@ -49,5 +54,6 @@ def create_web_app(adapter: Any) -> FastAPI:
     register_project_routes(app, adapter)
     register_project_task_routes(app, adapter)
     register_conversation_routes(app, adapter)
+    register_agent_graph_routes(app, adapter)
     register_chat_routes(app, adapter)
     return app

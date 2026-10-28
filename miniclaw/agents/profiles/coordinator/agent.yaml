@@ -10,7 +10,6 @@ tools:
     - list
     - read
     - grep
-    - remember
     - send_message
     - list_agents
     - list_tasks

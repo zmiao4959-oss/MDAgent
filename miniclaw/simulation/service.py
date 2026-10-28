@@ -16,6 +16,8 @@ from ..settings import SimulationConfig
 from .backends import SimulationBackend, create_backend
 from .remote import RemoteError
 from .store import RunStore
+from .local_queue import LocalGpuQueue
+from .local import LocalLaunchError
 
 
 TERMINAL_STATES = {"SUCCEEDED", "FAILED", "CANCELLED"}
@@ -94,7 +96,8 @@ def _inputs(project: Path, names: list[str]) -> list[tuple[str, Path]]:
 def _public(record: dict[str, Any]) -> dict[str, Any]:
     keys = ("run_id", "status", "target", "engine", "scheduler", "project_dir", "remote_dir", "job_id",
             "created_at", "updated_at", "entry", "files", "expected_outputs",
-            "scheduler_state", "reason", "exit_code", "last_error", "log_tail")
+            "scheduler_state", "reason", "exit_code", "last_error", "log_tail",
+            "queue_position", "max_concurrent")
     result = {key: record[key] for key in keys if key in record}
     if record.get("scheduler") == "local":
         result["run_dir"] = result.pop("remote_dir")
@@ -109,6 +112,8 @@ class SimulationService:
         self.settings = settings
         self.home = Path(home)
         self.store = store or RunStore(self.home / "simulations" / "runs.sqlite3")
+        self.gpu_queue_path = self.home / "simulations" / "local-gpu-queue.sqlite3"
+        LocalGpuQueue(self.gpu_queue_path).configure(settings.local_gpumd_max_concurrent)
 
     def _target(self, name: str, raw: dict[str, Any] | None = None, *, run_home: Path | None = None) -> SimulationBackend:
         target_raw = raw if raw is not None else self.settings.targets.get(name)
@@ -116,7 +121,11 @@ class SimulationService:
             raise ValueError(f"simulation target '{name}' is not configured")
         if not target_raw.get("enabled", True):
             raise ValueError(f"simulation target '{name}' is disabled until its paths are configured")
-        return create_backend(name, target_raw, run_home if run_home is not None else self.home)
+        backend = create_backend(name, target_raw, run_home if run_home is not None else self.home)
+        if target_raw.get("scheduler") == "local" and target_raw.get("engine") == "gpumd":
+            backend.gpu_queue = {"database": str(self.gpu_queue_path),
+                                 "runs_database": str(self.store.path)}
+        return backend
 
     def prepare_local(self, input_file: str, target: str, *, workspace: Path) -> dict[str, Any]:
         """Prepare a local launcher; execute beside the original input without a manifest."""
@@ -251,7 +260,10 @@ class SimulationService:
         try:
             job_id = target.submit(record["remote_dir"])
         except RemoteError as exc:
-            self.store.update(run_id, {"last_error": str(exc)})
+            changes = {"last_error": str(exc)}
+            if isinstance(exc, LocalLaunchError):
+                changes.update({"status": "FAILED", "reason": str(exc)})
+            self.store.update(run_id, changes)
         else:
             # A returned ID alone does not prove that the scheduler accepted/started the job.
             self.store.update(run_id, {"status": "SUBMITTED", "job_id": job_id, "last_error": ""})
@@ -309,6 +321,11 @@ class SimulationService:
                 "exit_code": exit_code,
                 "last_error": "",
             }
+            for key in ("queue_position", "max_concurrent"):
+                if key in info:
+                    changes[key] = info[key]
+            if record["scheduler"] == "local" and record["engine"] == "gpumd" and status != "PENDING":
+                changes["queue_position"] = 0
             if status in TERMINAL_STATES:
                 try:
                     changes["log_tail"] = target.log_tail(record["remote_dir"], job_id)

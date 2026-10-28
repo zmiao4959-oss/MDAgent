@@ -45,7 +45,7 @@ def test_restored_researcher_and_skill_are_discoverable():
     loader = SkillLoader()
     selected = loader.get(NAME)
     assert selected is not None
-    assert set(profile.tools) == {"read", "read_skill", "execute"}
+    assert set(profile.tools) == {"read", "read_skill", "execute", "web_search", "web_fetch"}
     assert set(profile.skills) == {NAME}
     assert {s.name for s in PromptBuilder(profile=profile, skill_loader=loader).visible_skills()} == {NAME}
     coordinator = AgentCatalog(roots=[PROFILES]).require("coordinator")
@@ -98,7 +98,7 @@ def test_researcher_cannot_load_unrelated_skills(tmp_path):
     assert "not allowed" in result
 
 
-@pytest.mark.parametrize("name", ["browser_snapshot", "grep", "list", "search_gpumd_docs", "system_info", "web_search"])
+@pytest.mark.parametrize("name", ["browser_snapshot", "grep", "list", "search_gpumd_docs", "system_info"])
 def test_researcher_removed_tools_are_not_callable(tmp_path, name):
     with workspace_scope(tmp_path):
         result = call_tool(name, {}, researcher())

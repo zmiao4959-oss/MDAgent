@@ -73,13 +73,14 @@ def test_replay_regression_rolls_back_policy(tmp_path):
     assert service.experience_store.all()[0].status == "rejected"
 
 
-def test_replay_blocks_communication_tools(tmp_path):
+@pytest.mark.parametrize("tool_name", ["send_message", "web_search", "web_fetch"])
+def test_replay_blocks_external_tools(tmp_path, tool_name):
     service = EvolutionService(tmp_path)
     experience = _promote(service)
 
     async def executor(objective, prefix, workspace):
         trace = EvolutionTrace(chat_id="replay", objective=objective)
-        trace.add_tool("send_message", {}, "sent")
+        trace.add_tool(tool_name, {}, "sent")
         trace.finish(success=True, final_response="done")
         return trace
 

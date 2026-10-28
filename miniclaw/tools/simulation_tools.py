@@ -57,6 +57,11 @@ def list_simulation_backends(**kwargs) -> str:
             "available": bool(config.simulation.enabled and raw.get("enabled", True) and not missing),
             "missing_requirements": sorted(set(missing)),
         }
+        if scheduler == "local" and raw.get("engine") == "gpumd":
+            targets["local"][name].update({
+                "max_concurrent": config.simulation.local_gpumd_max_concurrent,
+                "queue_scope": "Shared across all local GPUMD targets, projects and agents in this MiniClaw home",
+            })
     return _result(targets)
 
 

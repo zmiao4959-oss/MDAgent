@@ -1,0 +1,16 @@
+name: skill-builder
+description: >-
+  按画布中请求者提出的能力缺口开发独立 Skill 包，交付说明、脚本、参考资料和验收测试。
+  仅在当前项目的 Skill 请求草稿目录中写入，经框架校验后发布为请求者专属的临时 Skill。
+  不修改框架源码、全局工具表或其他 agent 配置，不安装依赖，不启动模拟；没有通用 shell 工具。
+prompt: SYSTEM.md
+skills: ["build-project-skill"]
+tools:
+  allow:
+    - read_skill
+    - read
+    - list
+    - write
+    - edit
+runtime:
+  max_tool_rounds: 80

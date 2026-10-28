@@ -65,6 +65,14 @@ def test_simulation_startup_buffer_is_bounded(tmp_path):
         assert Config(path).simulation.submission_check_delay_sec == expected
 
 
+def test_local_gpumd_concurrency_default_and_config_override(tmp_path):
+    path = tmp_path / "config.yaml"
+    path.write_text("simulation: {}\n", encoding="utf-8")
+    assert Config(path).simulation.local_gpumd_max_concurrent == 1
+    path.write_text("simulation:\n  local_gpumd_max_concurrent: 2\n", encoding="utf-8")
+    assert Config(path).simulation.local_gpumd_max_concurrent == 2
+
+
 def test_app_paths_are_portable_and_environment_wins(tmp_path: Path):
     configured_home = tmp_path / "configured"
     env_home = tmp_path / "env-home"

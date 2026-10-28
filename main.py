@@ -11,6 +11,7 @@ from miniclaw.llm.router import LLMRouter
 from miniclaw.memory.session import SessionManager
 from miniclaw.agent import Agent
 from miniclaw.agents import AgentCatalog
+from miniclaw.agents.graph import AgentGraphRuntime
 from miniclaw.heartbeat import HeartbeatLoop
 from miniclaw.cron_scheduler import CronScheduler, CronJob
 from miniclaw.subagent import SubAgentManager
@@ -73,6 +74,7 @@ async def main():
     agent_catalog = AgentCatalog()
     coordinator_profile = agent_catalog.require(config.multi_agent.default_profile)
     agent = Agent(router, session_mgr, profile=coordinator_profile)
+    graph_runtime = AgentGraphRuntime(agent, agent_catalog)
     subagent_mgr = SubAgentManager(agent, session_mgr, catalog=agent_catalog)
     register_subagent_manager(subagent_mgr)
 
@@ -87,8 +89,9 @@ async def main():
             port=config.webchat.port,
             session_manager=session_mgr,
             source_patch_llm=router,
+            agent_graph_runtime=graph_runtime,
         )
-        webchat.set_message_handler(agent.process_message)
+        webchat.set_message_handler(graph_runtime.process_message)
         adapters.append(webchat)
         register_plan_project_manager(webchat.projects)
 

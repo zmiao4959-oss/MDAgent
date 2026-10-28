@@ -116,18 +116,19 @@ class PromptBuilder:
         return "\n".join(lines)
 
     def build_context_prompt(self) -> str:
-        parts: List[str] = []
-        for filename in ("AGENTS.md", "USER.md"):
-            path = self.workspace_dir / filename
-            if path.exists():
-                parts.append(path.read_text(encoding="utf-8"))
-        memory = self.workspace_dir / MEMORY_FILE
-        if memory.exists():
-            text = memory.read_text(encoding="utf-8")
-            if len(text) > 8000:
-                text = text[:8000] + "\n\n... [记忆文件过长，已截断]"
-            parts.append(f"## Long-term Memory\n{text}")
-        return "\n\n".join(parts)
+        # parts: List[str] = []
+        # for filename in ("AGENTS.md", "USER.md"):
+        #     path = self.workspace_dir / filename
+        #     if path.exists():
+        #         parts.append(path.read_text(encoding="utf-8"))
+        # memory = self.workspace_dir / MEMORY_FILE
+        # if memory.exists():
+        #     text = memory.read_text(encoding="utf-8")
+        #     if len(text) > 8000:
+        #         text = text[:8000] + "\n\n... [记忆文件过长，已截断]"
+        #     parts.append(f"## Long-term Memory\n{text}")
+        # return "\n\n".join(parts)
+        return ""
 
     def build_system_prompt(self) -> str:
         stable_key = self.stable_fingerprint()

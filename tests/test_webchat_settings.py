@@ -323,3 +323,23 @@ def test_subagent_task_events_are_wired_to_webchat_panel():
     assert '"task_event"' in events
     assert "handleTaskEvent(payload.task_event)" in app
     assert 'id="agent-tasks-panel"' in html
+
+
+def test_web_ui_assets_revalidate_when_files_change(tmp_path):
+    import httpx
+
+    adapter = WebChatAdapter(session_manager=SessionManager(tmp_path / "sessions"))
+    app = create_web_app(adapter)
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+            for path in ("/", "/static/app.js", "/static/agent-graph.js", "/static/agent-graph.css"):
+                response = await client.get(path)
+                assert response.status_code == 200
+                assert response.headers["cache-control"] == "no-cache"
+            response = await client.get("/static/app.js")
+            cached = await client.get("/static/app.js", headers={"If-None-Match": response.headers["etag"]})
+            assert cached.status_code == 304
+            assert cached.headers["cache-control"] == "no-cache"
+
+    asyncio.run(run())

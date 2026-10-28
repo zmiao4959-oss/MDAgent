@@ -29,6 +29,7 @@ class ChatRunService:
         self.events = events
         self.result: Dict[str, Any] = {"response": None}
         self.context.metadata["_on_task_event"] = self.events.publish_task
+        self.context.metadata["_on_graph_event"] = self.events.publish_graph
 
     async def run(self) -> None:
         project = self.project
@@ -56,7 +57,7 @@ class ChatRunService:
                     timeout=self.timeout,
                 )
         except asyncio.TimeoutError:
-            self.result["response"] = "[Agent 任务超时，请简化需求后重试]"
+            self.result["response"] = self._with_graph_results("[Agent 任务超时，请简化需求后重试]")
             logger.warning(
                 "Agent timed out for chat_id=%s after %.0fs",
                 self.context.chat_id,
@@ -66,12 +67,12 @@ class ChatRunService:
                 self.adapter.projects.update(project.project_id, status="failed")
         except asyncio.CancelledError:
             if project is not None and project.status == "paused":
-                self.result["response"] = "[Project paused]"
+                self.result["response"] = self._with_graph_results("[Project paused]")
             else:
-                self.result["response"] = "[Agent run cancelled]"
+                self.result["response"] = self._with_graph_results("[Agent run cancelled]")
         except Exception as error:
             logger.exception("Agent failed for chat_id=%s", self.context.chat_id)
-            self.result["response"] = f"[Agent error: {error}]"
+            self.result["response"] = self._with_graph_results(f"[Agent error: {error}]")
             if project is not None:
                 self.adapter.projects.update(project.project_id, status="failed")
         finally:
@@ -91,6 +92,10 @@ class ChatRunService:
                     self.adapter._project_runs.pop(project.project_id, None)
                 await self.adapter._release_run_slot()
             await self.events.close()
+
+    def _with_graph_results(self, status: str) -> str:
+        partial = self.context.metadata.get("_graph_result")
+        return f"{partial}\n\n{status}" if partial else status
 
     async def _finish_pending_visualizations(self) -> None:
         pending = self.context.metadata.get("viz_tasks") or []

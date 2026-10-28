@@ -68,7 +68,7 @@ class AgentLoop:
         context.metadata["viz_tasks"] = pending_viz
         auto_viz = (
             AutoVisualizer(session, on_viz_event, pending_viz)
-            if context.channel == "webchat" and on_viz_event
+            if context.channel in ("webchat", "agent_graph") and on_viz_event
             else None
         )
         session.metadata.setdefault("total_tokens", 0)
@@ -90,11 +90,11 @@ class AgentLoop:
                     LLMMessage(role="system", content=system_prompt),
                     *session.messages,
                 ]
-            # logger.info(
-            #     "\n\nRound %s:\n%s",
-            #     round_num,
-            #     pformat(messages, width=100)
-            # )
+            logger.info(
+                "\n\nRound %s:\n%s",
+                round_num,
+                pformat(messages, width=100)
+            )
             response = await self.call_llm(
                 messages,
                 tools,

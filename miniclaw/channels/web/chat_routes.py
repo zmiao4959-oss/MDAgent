@@ -5,7 +5,7 @@ import asyncio
 import json
 from typing import Any, Dict, Optional
 
-from fastapi import Request
+from fastapi import HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from ...agent import AgentContext
@@ -26,6 +26,7 @@ def register_chat_routes(app: Any, adapter: Any) -> None:
         project_id = body.get("project_id") or ""
         plan_mode = bool(body.get("plan_mode", False))
         project: Optional[Any] = None
+        graph_snapshot = None
         if project_id:
             project = adapter.projects.get(project_id)
             if project is None:
@@ -39,12 +40,29 @@ def register_chat_routes(app: Any, adapter: Any) -> None:
                     ),
                 }
             chat_id = project.chat_id
+            active = adapter._project_runs.get(project_id)
+            if active is not None and not active.done():
+                raise HTTPException(409, "当前项目已有正在运行的任务")
+        graph_runtime = getattr(adapter, "agent_graph_runtime", None)
+        if graph_runtime is not None and adapter.session_manager is not None:
+            session = await adapter.session_manager.resolve_session(chat_id)
+            raw_graph = session.metadata.get("agent_graph") if session else None
+            try:
+                parsed_graph = graph_runtime.validate(raw_graph)
+            except ValueError as exc:
+                raise HTTPException(400, str(exc)) from exc
+            if parsed_graph is not None and plan_mode:
+                raise HTTPException(400, "画布模式暂不支持计划模式，请先关闭计划模式")
+            graph_snapshot = parsed_graph.to_dict() if parsed_graph else None
+        if project is not None:
             adapter.projects.update(project_id, status="queued", last_run=True)
             adapter._project_event(project, "queued", "任务已加入运行队列")
         timeout = float(body.get("timeout", config.agent.task_timeout_sec))
 
         async def event_stream():
             metadata: Dict[str, Any] = {}
+            if graph_runtime is not None:
+                metadata["agent_graph"] = graph_snapshot
             if project is not None:
                 metadata.update(
                     workspace_dir=str(adapter._workspace_for_project(project)),

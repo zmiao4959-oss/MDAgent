@@ -44,9 +44,11 @@ def _run_local(engine: str, input_file: str) -> str:
         "function": {
             "name": "run_gpumd",
             "description": (
-                "Start GPUMD from run.in in the input script's directory using the configured WSL executable. "
+                "Queue GPUMD from run.in in the input script's directory using the configured WSL executable. "
                 "Return the run ID, directories and status after one startup check. "
-                "Each call starts a new simulation."
+                "Local GPU concurrency is enforced across projects and agents (default 1). "
+                "PENDING means queued and will start automatically; query the same run ID, do not resubmit. "
+                "Each call creates a new simulation."
             ),
             "parameters": _parameters(),
         },

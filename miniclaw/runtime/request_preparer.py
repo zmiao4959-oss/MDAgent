@@ -112,6 +112,28 @@ class RequestPreparer:
                 else config.agent.max_tool_rounds
             )
 
+        binding = context.metadata.get("_graph_binding")
+        if self.profile is not None:
+            from ..skills.project import project_store
+
+            store = project_store(context.metadata)
+            mounted = store.mounted(self.profile) if store is not None else {}
+            if mounted:
+                system_prompt += (
+                    "\n\n## Temporary project Skills (this role only)\n"
+                    "These validated, version-pinned packages extend your available Skills for this project. "
+                    "Load a matching package with read_skill. They do not grant tools or authorize business operations outside your role. "
+                    "Within your original role responsibilities, you may use these supplied scripts in addition to the initially packaged Skills. "
+                    "The prohibition on ad-hoc implementations and on explicitly forbidden business operations remains.\n"
+                    + self.prompt_builder.build_skill_summary(list(mounted.values()))
+                )
+        if binding is not None:
+            system_prompt += binding.prompt()
+            tools = [
+                tool for tool in (tools or [])
+                if not binding.blocks(tool["function"]["name"], tool_registry)
+            ] + binding.tool_definitions()
+
         return PreparedRequest(
             session=session,
             run_state=run_state,

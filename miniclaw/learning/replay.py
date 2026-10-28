@@ -21,7 +21,7 @@ class ReplayCase:
     objective: str
     case_id: str = field(default_factory=lambda: uuid.uuid4().hex)
     forbidden_tools: List[str] = field(
-        default_factory=lambda: ["send_message", "browse", "web_search"]
+        default_factory=lambda: ["send_message", "browse", "web_search", "web_fetch"]
     )
 
 

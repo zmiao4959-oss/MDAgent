@@ -15,6 +15,7 @@ from ..logger import get_logger
 from ..stats import RunStats
 from ..tools.registry import ToolRegistry, tool_registry
 from ..tools.lammps_execution import find_lammps_input
+from ..skills.project import BUILDER, project_store
 
 logger = get_logger(__name__)
 
@@ -36,6 +37,9 @@ class ToolExecutor:
                 tool_call_id=tool_call["id"],
                 content=f"Error: Invalid JSON arguments: {tool_call['function']['arguments']}",
             )
+        if not isinstance(arguments, dict):
+            return LLMMessage(role="tool", tool_call_id=tool_call["id"], name=func_name,
+                              content="Error: Tool arguments must be a JSON object")
 
         idem_keys = context.metadata.setdefault("_tool_idem_keys", set())
         fingerprint = (
@@ -69,7 +73,16 @@ class ToolExecutor:
         self._inject_progress_callback(func_name, arguments, context)
         execution_context = self._execution_context(context)
         logger.info("Executing tool: %s(%s)", func_name, arguments)
-        result = await self.registry.execute(func_name, arguments, execution_context)
+        binding = context.metadata.get("_graph_binding")
+        if self.profile is not None and self.profile.name == BUILDER and func_name in ("write", "edit") and not self._builder_can_write(arguments, context):
+            result = "Error: skill-builder may write only inside an open Skill request's draft_dir; profiles, framework code and releases are not writable"
+        elif binding is not None and binding.handles(func_name):
+            result = await binding.execute_tool(func_name, arguments)
+            result = self.registry._truncate_result(result)
+        elif binding is not None and binding.blocks(func_name, self.registry):
+            result = f"Error: Tool '{func_name}' is disabled in graph mode; use message_agent along permitted edges"
+        else:
+            result = await self.registry.execute(func_name, arguments, execution_context)
         self._record_result(func_name, arguments, result, context)
 
         await hook_system.fire(
@@ -97,7 +110,11 @@ class ToolExecutor:
         )
 
     def _execution_context(self, context: Any) -> Dict[str, Any]:
+        store = project_store(context.metadata) if self.profile is not None else None
+        mounted = store.mounted(self.profile) if store is not None else {}
         return {
+            "agent_name": self.profile.name if self.profile is not None else "",
+            "python_no_bytecode": bool(mounted),
             "chat_id": context.chat_id,
             "channel": context.channel,
             "account_id": context.account_id,
@@ -110,10 +127,15 @@ class ToolExecutor:
                 None if self.profile is None else list(self.profile.tools)
             ),
             "allowed_skills": (
-                None if self.profile is None else list(self.profile.skills)
+                None if self.profile is None else list(dict.fromkeys([*self.profile.skills, *mounted]))
             ),
             "task_event_callback": context.metadata.get("_on_task_event"),
         }
+
+    @staticmethod
+    def _builder_can_write(arguments: dict, context: Any) -> bool:
+        store = project_store(context.metadata)
+        return store is not None and store.can_write_draft(arguments.get("path"))
 
     @staticmethod
     def _record_result(

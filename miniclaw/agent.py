@@ -121,18 +121,19 @@ class Agent:
         )
 
     def _memory_prefix(self, user_message: str) -> str:
-        if not user_message:
-            return ""
-        search_results = keyword_search(user_message, max_results=3)
-        if not search_results:
-            return ""
-        lines = ["[Memory Search Results]"]
-        for path, score, snippet in search_results:
-            lines.append(f"Source: {path}# (score: {score:.2f})")
-            lines.append(snippet)
-            lines.append("")
-        logger.debug("Found %s memory matches", len(search_results))
-        return "\n".join(lines).rstrip() + "\n\n"
+        return ""  # 暂时不启用 memory 搜索注入
+        # if not user_message:
+        #     return ""
+        # search_results = keyword_search(user_message, max_results=3)
+        # if not search_results:
+        #     return ""
+        # lines = ["[Memory Search Results]"]
+        # for path, score, snippet in search_results:
+        #     lines.append(f"Source: {path}# (score: {score:.2f})")
+        #     lines.append(snippet)
+        #     lines.append("")
+        # logger.debug("Found %s memory matches", len(search_results))
+        # return "\n".join(lines).rstrip() + "\n\n"
 
     def _experience_prefix(
         self,

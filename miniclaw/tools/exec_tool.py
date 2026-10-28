@@ -528,7 +528,8 @@ def _format_run_result(
                     "working_dir": {
                         "type": "string",
                         "description": (
-                            "Directory relative to workspace root, or absolute path "
+                            "Directory relative to workspace(the current project's"
+                            " directory when a project is active), or absolute path "
                             "that still lies under the workspace."
                         ),
                     },
@@ -556,7 +557,7 @@ def execute_tool(
 ) -> str:
     on_line: Optional[Callable[[str], None]] = kwargs.pop("_on_line", None)
     # 注册表传递上下文，runtime 注入进度回调；二者不是工具业务参数。
-    kwargs.pop("_context", None)
+    execution_context = kwargs.pop("_context", None) or {}
     if kwargs:
         return "Error: Unexpected execute argument(s): " + ", ".join(sorted(kwargs))
     if on_line is not None and not callable(on_line):
@@ -601,6 +602,8 @@ def execute_tool(
     try:
         log_path = find_lammps_log(command) if on_line else None
         run_env = os.environ.copy()
+        if execution_context.get("python_no_bytecode"):
+            run_env["PYTHONDONTWRITEBYTECODE"] = "1"
         # 子进程内 Python 写管道时默认用系统编码（如 GBK），含 ® 等字符会 UnicodeEncodeError；
         # 父进程 subprocess 的 encoding= 只影响「读」字节，不能修复子进程写 stdout 时的编码。
         if os.name == "nt":

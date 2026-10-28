@@ -23,8 +23,9 @@ class SkillInfo:
 
 
 class SkillLoader:
-    def __init__(self, skills_dir: Optional[Path] = None):
+    def __init__(self, skills_dir: Optional[Path] = None, *, mounted_skills: Optional[Dict[str, SkillInfo]] = None):
         self.skills_dir = skills_dir or WORKSPACE_DIR / "skills"
+        self.mounted_skills = dict(mounted_skills or {})
         self._cache: Dict[str, SkillInfo] = {}
         self._refresh()
 
@@ -56,6 +57,9 @@ class SkillLoader:
                     location=skill_file,
                     skill_dir=skill_dir,
                 )
+        for name, skill in self.mounted_skills.items():
+            if name not in self._cache:
+                self._cache[name] = skill
         logger.debug("Loaded %s skills", len(self._cache))
 
     @staticmethod

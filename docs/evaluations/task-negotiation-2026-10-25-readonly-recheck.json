@@ -1,0 +1,74 @@
+{
+  "at": "2026-10-25T13:10:14.398235+00:00",
+  "model": "deepseek-flash",
+  "method": "Live configured model, current role prompts/tool schemas, fixture tool results; no tools dispatched",
+  "limit": "Small prompt-behavior sample, not production integration or enforcement proof; semantic review required",
+  "results": [
+    {
+      "id": "confirmed-trial-starts-without-renegotiation",
+      "role": "gpumd-generator",
+      "graph": false,
+      "trace": [
+        {
+          "content": "",
+          "tool_calls": [
+            {
+              "id": "call_00_o0TFebINQbBHDqJUzEtK9913",
+              "type": "function",
+              "function": {
+                "name": "run_gpumd",
+                "arguments": "{\"input_file\": \"trial/run.in\"}"
+              }
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 3232,
+            "completion_tokens": 305
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "business_attempts": [
+        "run_gpumd"
+      ],
+      "checks_passed": true
+    },
+    {
+      "id": "graph-generator-replies",
+      "role": "gpumd-generator",
+      "graph": true,
+      "trace": [
+        {
+          "content": "",
+          "tool_calls": [
+            {
+              "id": "call_00_oZRGY4dVK3Io91QdE45M9181",
+              "type": "function",
+              "function": {
+                "name": "read_skill",
+                "arguments": "{\"name\": \"gpumd-script\"}"
+              }
+            },
+            {
+              "id": "call_01_ceveMKggSJVsST5bAljG9206",
+              "type": "function",
+              "function": {
+                "name": "execute",
+                "arguments": "{\"command\": \"ls -la /evaluation/Ti 2>&1 | head -50\"}"
+              }
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 3814,
+            "completion_tokens": 345
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "business_attempts": [
+        "execute"
+      ],
+      "checks_passed": false
+    }
+  ]
+}

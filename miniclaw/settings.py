@@ -227,7 +227,13 @@ class SimulationConfig:
     """Simulation submission with one bounded startup check."""
     enabled: bool = False
     submission_check_delay_sec: int = 10
+    local_gpumd_max_concurrent: int = 1
     targets: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+
+    def __post_init__(self):
+        value = self.local_gpumd_max_concurrent
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            raise ValueError("simulation.local_gpumd_max_concurrent must be a positive integer")
 
 
 @dataclass
@@ -380,6 +386,7 @@ class Config:
         self.simulation = SimulationConfig(
             enabled=bool(simulation_raw.get("enabled", False)),
             submission_check_delay_sec=max(0, min(60, int(simulation_raw.get("submission_check_delay_sec", 10)))),
+            local_gpumd_max_concurrent=simulation_raw.get("local_gpumd_max_concurrent", 1),
             targets=simulation_targets,
         )
         webchat_raw = raw.get("webchat", {})

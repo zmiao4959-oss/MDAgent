@@ -24,10 +24,10 @@ TOOLSETS: Dict[str, FrozenSet[str]] = {
     }),
     "coding": frozenset({
         "read", "write", "list", "grep", "execute",
-        "web_search", "remember", "recall",
+        "web_search", "web_fetch", "remember", "recall",
     }),
     "research": frozenset({
-        "read", "list", "grep", "web_search",
+        "read", "list", "grep", "web_search", "web_fetch",
         "browse", "remember", "recall",
     }),
     "system": frozenset({
@@ -38,7 +38,7 @@ TOOLSETS: Dict[str, FrozenSet[str]] = {
         "read", "write", "list", "grep",
     }),
     "browser": frozenset({
-        "browse", "read", "web_search",
+        "browse", "read", "web_search", "web_fetch",
     }),
 }
 

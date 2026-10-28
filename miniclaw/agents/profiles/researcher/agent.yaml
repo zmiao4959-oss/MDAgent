@@ -1,8 +1,8 @@
 name: researcher
 description: >-
-  基于已维护本地知识的模拟前研究设计角色，区分文件事实、文献依据、候选和计算结果。
+  基于已维护本地知识和联网检索的模拟前研究设计角色，区分文件事实、文献依据、候选和计算结果。
   对UNEP-v1及Pd–Cu–Ni–P的NPT、温度路径和拉伸参数设计，使用phase-transition-design Skill给出完整参数包、依据、预算及依赖。
-  读取明确交接的文件；资产定位和外部资料核实交回协调者安排。execute仅用于该Skill已提供的只读参数计算脚本，不现场编程、不修改模拟资产、不提交MD或承担后处理。
+  读取明确交接的文件，使用web_search检索论文和官方资料，使用web_fetch将网页正文缓存到项目，按索引用read分段读取；资产定位和无法抓取的原文获取交回协调者安排。execute仅用于该Skill已提供的只读参数计算脚本，不现场编程、不修改模拟资产、不提交MD或承担后处理。
 prompt: SYSTEM.md
 skills: ["phase-transition-design"]
 tools:
@@ -10,5 +10,7 @@ tools:
     - execute
     - read
     - read_skill
+    - web_search
+    - web_fetch
 runtime:
   max_tool_rounds: 200

@@ -1,0 +1,375 @@
+{
+  "date": "2026-10-24",
+  "status": "PROPOSAL_ONLY_NO_MD_RUNS",
+  "library": "C:\\Users\\35059\\Desktop\\MDAgent\\机器学习势\\NEP",
+  "files": 15,
+  "unique_weights": 13,
+  "duplicates": {
+    "8f97c30cc366c30e687a8672bd8d76e624a16caf4337b1277a44aa166c5bceb4": [
+      "16元\\ensemble-nep-models\\ensemble-nep-models\\nep-44-80.txt",
+      "16元\\UNEP-v1-main.txt"
+    ],
+    "aec2bc972783f58e523c90574a96ebaad6b37a29bc3853e16099d4d43af96ad8": [
+      "PdCuNiP\\nep4.txt",
+      "PdCuNiP\\PdCuNiP_NEP-main\\PdCuNiP_NEP\\PdCuNiP_NEP\\nep.population160.generation1013200.txt"
+    ]
+  },
+  "assets": [
+    {
+      "path": "C:\\Users\\35059\\Desktop\\MDAgent\\机器学习势\\NEP\\16元\\ensemble-nep-models\\ensemble-nep-models\\nep-44-30.txt",
+      "relative_path": "16元\\ensemble-nep-models\\ensemble-nep-models\\nep-44-30.txt",
+      "bytes": 653508,
+      "sha256": "61756bd878895bff39afbd12f1c138f0a11e31567d900fbfae0ee4e631c2fa3a",
+      "header": [
+        "nep4_zbl 16 Ag Al Au Cr Cu Mg Mo Ni Pb Pd Pt Ta Ti V W Zr",
+        "zbl 1 2",
+        "cutoff 6 5 200 134",
+        "n_max 4 4",
+        "basis_size 8 8",
+        "l_max 4 2 1",
+        "ANN 30 0"
+      ],
+      "provenance": {
+        "status": "local_inventory_only",
+        "limits": "Header/identity alone do not establish phase-transformation suitability"
+      }
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\MDAgent\\机器学习势\\NEP\\16元\\ensemble-nep-models\\ensemble-nep-models\\nep-44-50.txt",
+      "relative_path": "16元\\ensemble-nep-models\\ensemble-nep-models\\nep-44-50.txt",
+      "bytes": 842948,
+      "sha256": "3719c38467724ea6edb2764f23215d20ce7208bd884688cd717e8da26cb321ce",
+      "header": [
+        "nep4_zbl 16 Ag Al Au Cr Cu Mg Mo Ni Pb Pd Pt Ta Ti V W Zr",
+        "zbl 1 2",
+        "cutoff 6 5 200 134",
+        "n_max 4 4",
+        "basis_size 8 8",
+        "l_max 4 2 1",
+        "ANN 50 0"
+      ],
+      "provenance": {
+        "status": "local_inventory_only",
+        "limits": "Header/identity alone do not establish phase-transformation suitability"
+      }
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\MDAgent\\机器学习势\\NEP\\16元\\ensemble-nep-models\\ensemble-nep-models\\nep-44-80.txt",
+      "relative_path": "16元\\ensemble-nep-models\\ensemble-nep-models\\nep-44-80.txt",
+      "bytes": 1127108,
+      "sha256": "8f97c30cc366c30e687a8672bd8d76e624a16caf4337b1277a44aa166c5bceb4",
+      "header": [
+        "nep4_zbl 16 Ag Al Au Cr Cu Mg Mo Ni Pb Pd Pt Ta Ti V W Zr",
+        "zbl 1 2",
+        "cutoff 6 5 200 134",
+        "n_max 4 4",
+        "basis_size 8 8",
+        "l_max 4 2 1",
+        "ANN 80 0"
+      ],
+      "provenance": {
+        "status": "exact_weight_identity_verified",
+        "zenodo_model": "https://zenodo.org/records/11533864",
+        "tutorial_dataset": "https://zenodo.org/records/22810600",
+        "archive_member": "free_energy_calculations/nep-unep-v1.txt",
+        "official_md5": "337669f3a94bd42ebb765e773deaf05e",
+        "evidence": "Local SHA256 equals tutorial archive model; official model MD5 also matches",
+        "limits": "Same-model Ti bulk free-energy example, not same-model interface-migration validation"
+      }
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\MDAgent\\机器学习势\\NEP\\16元\\ensemble-nep-models\\ensemble-nep-models\\nep-64-50.txt",
+      "relative_path": "16元\\ensemble-nep-models\\ensemble-nep-models\\nep-64-50.txt",
+      "bytes": 942308,
+      "sha256": "13e0d1f4bac392bb9ff93a5ce2787a3037f572a6627c50a24b9915dd13bdaaef",
+      "header": [
+        "nep4_zbl 16 Ag Al Au Cr Cu Mg Mo Ni Pb Pd Pt Ta Ti V W Zr",
+        "zbl 1 2",
+        "cutoff 6 5 200 134",
+        "n_max 6 4",
+        "basis_size 8 8",
+        "l_max 4 2 1",
+        "ANN 50 0"
+      ],
+      "provenance": {
+        "status": "local_inventory_only",
+        "limits": "Header/identity alone do not establish phase-transformation suitability"
+      }
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\MDAgent\\机器学习势\\NEP\\16元\\ensemble-nep-models\\ensemble-nep-models\\nep-64-80.txt",
+      "relative_path": "16元\\ensemble-nep-models\\ensemble-nep-models\\nep-64-80.txt",
+      "bytes": 1241828,
+      "sha256": "38305a927be809b5ae8d88aa194235734441c7191e87ed0cb974a9d7a1cdbe20",
+      "header": [
+        "nep4_zbl 16 Ag Al Au Cr Cu Mg Mo Ni Pb Pd Pt Ta Ti V W Zr",
+        "zbl 1 2",
+        "cutoff 6 5 200 134",
+        "n_max 6 4",
+        "basis_size 8 8",
+        "l_max 4 2 1",
+        "ANN 80 0"
+      ],
+      "provenance": {
+        "status": "local_inventory_only",
+        "limits": "Header/identity alone do not establish phase-transformation suitability"
+      }
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\MDAgent\\机器学习势\\NEP\\16元\\ensemble-nep-models\\ensemble-nep-models\\nep-66-30.txt",
+      "relative_path": "16元\\ensemble-nep-models\\ensemble-nep-models\\nep-66-30.txt",
+      "bytes": 908708,
+      "sha256": "dfd0cc1f16f71db816d3863ac8a55962b3503393ec03af3a6e2499869caf991a",
+      "header": [
+        "nep4_zbl 16 Ag Al Au Cr Cu Mg Mo Ni Pb Pd Pt Ta Ti V W Zr",
+        "zbl 1 2",
+        "cutoff 6 5 200 134",
+        "n_max 6 6",
+        "basis_size 8 8",
+        "l_max 4 2 1",
+        "ANN 30 0"
+      ],
+      "provenance": {
+        "status": "local_inventory_only",
+        "limits": "Header/identity alone do not establish phase-transformation suitability"
+      }
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\MDAgent\\机器学习势\\NEP\\16元\\ensemble-nep-models\\ensemble-nep-models\\nep-66-50.txt",
+      "relative_path": "16元\\ensemble-nep-models\\ensemble-nep-models\\nep-66-50.txt",
+      "bytes": 1169828,
+      "sha256": "5b1607c093c5d3b7d7a672af33c4fa40878eadfe5ca8310f2e57f93a9cbe0c7f",
+      "header": [
+        "nep4_zbl 16 Ag Al Au Cr Cu Mg Mo Ni Pb Pd Pt Ta Ti V W Zr",
+        "zbl 1 2",
+        "cutoff 6 5 200 134",
+        "n_max 6 6",
+        "basis_size 8 8",
+        "l_max 4 2 1",
+        "ANN 50 0"
+      ],
+      "provenance": {
+        "status": "local_inventory_only",
+        "limits": "Header/identity alone do not establish phase-transformation suitability"
+      }
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\MDAgent\\机器学习势\\NEP\\16元\\ensemble-nep-models\\ensemble-nep-models\\nep-66-80.txt",
+      "relative_path": "16元\\ensemble-nep-models\\ensemble-nep-models\\nep-66-80.txt",
+      "bytes": 1561508,
+      "sha256": "cf5a5f96f1741b9223e8855f06d63278cc737159028a00db5e4d9edc0fc38ac4",
+      "header": [
+        "nep4_zbl 16 Ag Al Au Cr Cu Mg Mo Ni Pb Pd Pt Ta Ti V W Zr",
+        "zbl 1 2",
+        "cutoff 6 5 200 134",
+        "n_max 6 6",
+        "basis_size 8 8",
+        "l_max 4 2 1",
+        "ANN 80 0"
+      ],
+      "provenance": {
+        "status": "local_inventory_only",
+        "limits": "Header/identity alone do not establish phase-transformation suitability"
+      }
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\MDAgent\\机器学习势\\NEP\\16元\\UNEP-v1-main.txt",
+      "relative_path": "16元\\UNEP-v1-main.txt",
+      "bytes": 1127108,
+      "sha256": "8f97c30cc366c30e687a8672bd8d76e624a16caf4337b1277a44aa166c5bceb4",
+      "header": [
+        "nep4_zbl 16 Ag Al Au Cr Cu Mg Mo Ni Pb Pd Pt Ta Ti V W Zr",
+        "zbl 1 2",
+        "cutoff 6 5 200 134",
+        "n_max 4 4",
+        "basis_size 8 8",
+        "l_max 4 2 1",
+        "ANN 80 0"
+      ],
+      "provenance": {
+        "status": "exact_weight_identity_verified",
+        "zenodo_model": "https://zenodo.org/records/11533864",
+        "tutorial_dataset": "https://zenodo.org/records/22810600",
+        "archive_member": "free_energy_calculations/nep-unep-v1.txt",
+        "official_md5": "337669f3a94bd42ebb765e773deaf05e",
+        "evidence": "Local SHA256 equals tutorial archive model; official model MD5 also matches",
+        "limits": "Same-model Ti bulk free-energy example, not same-model interface-migration validation"
+      }
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\MDAgent\\机器学习势\\NEP\\89元\\nep89_20250409.txt",
+      "relative_path": "89元\\nep89_20250409.txt",
+      "bytes": 15622195,
+      "sha256": "75168ece02e840e4a32644f982b78d43cba697f5b64b4c8134ab66c7a8c28be1",
+      "header": [
+        "nep4_zbl 89 H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Ac Th Pa U Np Pu",
+        "zbl 1 2",
+        "cutoff 6 5 274 158",
+        "n_max 4 4",
+        "basis_size 8 8",
+        "l_max 4 2 1",
+        "ANN 80 0"
+      ],
+      "provenance": {
+        "status": "exact_weight_identity_verified",
+        "url": "https://github.com/brucefan1983/GPUMD/blob/v5.0/potentials/nep/nep89_20250409/nep89_20250409.txt",
+        "limits": "Element support and release identity do not validate Fe FCC/BCC finite-temperature interface kinetics"
+      }
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\MDAgent\\机器学习势\\NEP\\PdCuNiP\\nep4.txt",
+      "relative_path": "PdCuNiP\\nep4.txt",
+      "bytes": 221651,
+      "sha256": "aec2bc972783f58e523c90574a96ebaad6b37a29bc3853e16099d4d43af96ad8",
+      "header": [
+        "nep4_zbl 4 Pd Cu Ni P",
+        "zbl 0.9 1.8",
+        "cutoff 6 4 127 42",
+        "n_max 8 8",
+        "basis_size 8 8",
+        "l_max 4 2 0",
+        "ANN 50 0"
+      ],
+      "provenance": {
+        "status": "local_inventory_only",
+        "limits": "Header/identity alone do not establish phase-transformation suitability"
+      }
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\MDAgent\\机器学习势\\NEP\\PdCuNiP\\PdCuNiP_NEP-main\\PdCuNiP_NEP\\PdCuNiP_NEP\\nep.population160.generation1013200.txt",
+      "relative_path": "PdCuNiP\\PdCuNiP_NEP-main\\PdCuNiP_NEP\\PdCuNiP_NEP\\nep.population160.generation1013200.txt",
+      "bytes": 221651,
+      "sha256": "aec2bc972783f58e523c90574a96ebaad6b37a29bc3853e16099d4d43af96ad8",
+      "header": [
+        "nep4_zbl 4 Pd Cu Ni P",
+        "zbl 0.9 1.8",
+        "cutoff 6 4 127 42",
+        "n_max 8 8",
+        "basis_size 8 8",
+        "l_max 4 2 0",
+        "ANN 50 0"
+      ],
+      "provenance": {
+        "status": "local_inventory_only",
+        "limits": "Header/identity alone do not establish phase-transformation suitability"
+      }
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\MDAgent\\机器学习势\\NEP\\TePb\\nep.txt",
+      "relative_path": "TePb\\nep.txt",
+      "bytes": 37053,
+      "sha256": "c772e70b32e5a085936f04e5f5382c7af88a03cb68765510ac82f71ae97eab2c",
+      "header": [
+        "nep4 2 Te Pb",
+        "cutoff 8 4 74 10",
+        "n_max 4 4",
+        "basis_size 8 8",
+        "l_max 4 2 0",
+        "ANN 30 0",
+        "-6.6025954e-01"
+      ],
+      "provenance": {
+        "status": "exact_weight_identity_verified",
+        "url": "https://github.com/brucefan1983/GPUMD/blob/v5.0/examples/nep_prediction/nep.txt",
+        "limits": "Matches historical PbTe prediction example; high-pressure multiphase validation not established"
+      }
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\MDAgent\\机器学习势\\NEP\\W\\nep.txt",
+      "relative_path": "W\\nep.txt",
+      "bytes": 71342,
+      "sha256": "63abdd9db56c37c41bb86376fa9967a659778312ae0c730937496fc5ec04d889",
+      "header": [
+        "nep3_zbl 1 W",
+        "zbl 0 0",
+        "cutoff 5 5 46 46",
+        "n_max 9 7",
+        "basis_size 12 12",
+        "l_max 4 2 0",
+        "ANN 80 0"
+      ],
+      "provenance": {
+        "status": "local_inventory_only",
+        "limits": "Header/identity alone do not establish phase-transformation suitability"
+      }
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\MDAgent\\机器学习势\\NEP\\W\\nep1.txt",
+      "relative_path": "W\\nep1.txt",
+      "bytes": 100378,
+      "sha256": "54be6bee155aec12f1741948901f85a95d67de28c753573b6dce2af9f17509a2",
+      "header": [
+        "nep_zbl 1 W",
+        "zbl 0 0",
+        "cutoff 6 4",
+        "n_max 15 10",
+        "l_max 4",
+        "ANN 100 0",
+        "1.5783899e-01"
+      ],
+      "provenance": {
+        "status": "local_inventory_only",
+        "limits": "Header/identity alone do not establish phase-transformation suitability"
+      }
+    }
+  ],
+  "repo_head": "2950794ee2939a9d5e0ab57fd36122b4561fe590",
+  "existing_profile_snapshots": [
+    {
+      "path": "C:\\Users\\35059\\Desktop\\个人计划\\openclaw-study\\miniclaw\\agents\\profiles\\coordinator\\agent.yaml",
+      "sha256": "2b965f41e630852e28f70e852681d610078fa8289661990c40d6b723b5545de8"
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\个人计划\\openclaw-study\\miniclaw\\agents\\profiles\\coordinator\\SYSTEM.md",
+      "sha256": "2acbe08d8c0b1dd7cd64b1bae2b03c2c3e7668d37824aac9a484939f580aa367"
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\个人计划\\openclaw-study\\miniclaw\\agents\\profiles\\gpumd-generator\\agent.yaml",
+      "sha256": "b2bf0a803109a07acc94dfaeb2dbdce9827bd0b63d0e9c70fdd1eeafe62c5fb0"
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\个人计划\\openclaw-study\\miniclaw\\agents\\profiles\\gpumd-generator\\SYSTEM.md",
+      "sha256": "87d825f4072aa3c20414d2cfccd8a099300ff7ba8c8e3f635bf36d980251b6e9"
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\个人计划\\openclaw-study\\miniclaw\\agents\\profiles\\model-worker\\agent.yaml",
+      "sha256": "6b0923ad3dacf132468ce6afec7a06d6c1c2bba27bbcea94d756fbf0d48e1094"
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\个人计划\\openclaw-study\\miniclaw\\agents\\profiles\\model-worker\\SYSTEM.md",
+      "sha256": "fc7fda51af702f80d2fe01a32824a9c68481685bc9ebd3bde4c66bb060c9761e"
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\个人计划\\openclaw-study\\miniclaw\\agents\\profiles\\postprocessor\\agent.yaml",
+      "sha256": "43a8530e36ab1d73a9e2b8adbbec0df19c365ff59c29e23ca6d5491a164d6508"
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\个人计划\\openclaw-study\\miniclaw\\agents\\profiles\\postprocessor\\SYSTEM.md",
+      "sha256": "5135c417a982409426ab2cc3145d5d6097f0694aa36c2ae76574e6c96b069ade"
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\个人计划\\openclaw-study\\miniclaw\\agents\\profiles\\researcher\\agent.yaml",
+      "sha256": "06f14e7f4f6036cfc2cf3d54effc7fa2d5e7a704229e02d0aed48fecf6a63bf5"
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\个人计划\\openclaw-study\\miniclaw\\agents\\profiles\\researcher\\SYSTEM.md",
+      "sha256": "9c578715dad763a766e1e419108a8531efefb02a3a3b7538578b5f8c2ceac480"
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\个人计划\\openclaw-study\\miniclaw\\agents\\profiles\\simulation-runner\\agent.yaml",
+      "sha256": "c72cc79f32d6508497345b76d264826efe5a5038712925a02e235aa51f80c1f0"
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\个人计划\\openclaw-study\\miniclaw\\agents\\profiles\\simulation-runner\\SYSTEM.md",
+      "sha256": "fe9188da0714bee82fe9475e03bec927016acaa33a2955617c152953512f8958"
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\个人计划\\openclaw-study\\miniclaw\\agents\\profiles\\skill-builder\\agent.yaml",
+      "sha256": "2aad74e94543152a7c8984dd61045c7c571c7df5e051b5b78722f2f3248cd59b"
+    },
+    {
+      "path": "C:\\Users\\35059\\Desktop\\个人计划\\openclaw-study\\miniclaw\\agents\\profiles\\skill-builder\\SYSTEM.md",
+      "sha256": "137ade33f4f4311c563681c93bdd75f88030d8d1950da67a7d5be2da60caaf95"
+    }
+  ]
+}
