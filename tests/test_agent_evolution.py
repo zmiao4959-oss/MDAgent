@@ -79,6 +79,8 @@ def test_agent_records_applied_experience_ids_in_trace(tmp_path, monkeypatch):
     service = EvolutionService(workspace)
     experience_id = _promote_read_experience(service)
     monkeypatch.setattr(agent_module, "active_workspace_dir", lambda: workspace)
+    monkeypatch.setattr(config.evolution, "enabled", True)
+    monkeypatch.setattr(config.evolution, "inject_verified", True)
 
     agent = Agent(_FakeLLM(), SessionManager(tmp_path / "sessions"))
     trace = EvolutionTrace(chat_id="c", objective="read the file")

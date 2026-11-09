@@ -6,6 +6,7 @@
   <title>MiniClaw</title>
   <link rel="stylesheet" href="/static/style.css" />
   <link rel="stylesheet" href="/static/agent-graph.css?v=4" />
+  <link rel="stylesheet" href="/static/collaboration.css" />
   <script src="/static/marked.min.js"></script>
   <link rel="stylesheet" href="/static/highlight.css" />
   <script src="/static/highlight.min.js"></script>
@@ -53,6 +54,7 @@
             <span id="runtime-summary">系统就绪，等待任务</span>
           </div>
           <div class="chat-actions">
+            <button type="button" id="btn-collaboration" class="ghost-btn">协作方式</button>
             <button type="button" id="btn-agent-graph" class="ghost-btn">◇ 智能体画布</button>
             <button type="button" id="btn-settings" class="ghost-btn" title="WebChat 设置">⚙ 设置</button>
             <button type="button" id="btn-fork" class="ghost-btn" title="暂停或恢复项目">Ⅱ 暂停</button>
@@ -379,6 +381,34 @@
       <footer class="graph-footer"><p id="agent-graph-message" role="status">单向箭头仅允许沿箭头发送；双向通信需要两个方向的连线。</p><button id="agent-graph-pause" class="ghost-btn" type="button">暂停任务</button><button id="agent-graph-save" class="primary-btn" type="button">保存并应用</button></footer>
     </section>
   </div>
-  <script type="module" src="/static/app.js?v=agent-canvas-4"></script>
+  <div id="collaboration-dialog" class="graph-overlay" hidden>
+    <section class="graph-dialog room-dialog" role="dialog" aria-modal="true" aria-labelledby="collaboration-title">
+      <header class="graph-heading">
+        <div><h2 id="collaboration-title">项目协作方式</h2><p>默认委派、按画布协作，或在公共频道自由交流。</p></div>
+        <button id="collaboration-close" class="icon-btn" type="button" aria-label="关闭协作设置">×</button>
+      </header>
+      <div class="room-body">
+        <section class="room-settings">
+          <label>协作方式 <select id="collaboration-mode" data-room-config><option value="default">默认委派</option><option value="graph">智能体画布</option><option value="room">公共频道</option></select></label>
+          <div id="collaboration-graph-note" hidden><p>使用已保存的画布连线和起点。</p><button id="collaboration-edit-graph" class="ghost-btn" type="button">打开画布配置</button></div>
+          <div id="collaboration-room-fields" hidden>
+            <p>公开发言会送达所有其他成员。成员各自决定是否核验、回应或保持安静。</p>
+            <h3>频道成员与调度顺序</h3>
+            <p>勾选成员，用 ↑ ↓ 调整顺序。已选成员按编号轮流获得空闲工作名额，保存后下一条消息生效。</p>
+            <div id="collaboration-members" class="room-members"></div>
+            <div class="room-limits">
+              <label>同时工作人数 <input id="collaboration-concurrency" data-room-config type="number" min="1" max="16" value="4" /></label>
+              <label>本轮公开发言上限 <input id="collaboration-messages" data-room-config type="number" min="1" max="2000" value="24" /></label>
+              <label>成员工作轮次上限 <input id="collaboration-activations" data-room-config type="number" min="1" max="4000" value="100" /></label>
+              <label>本轮时间上限（秒） <input id="collaboration-timeout" data-room-config type="number" min="1" max="86400" value="600" /></label>
+            </div>
+          </div>
+        </section>
+        <section class="room-transcript"><h3>公开频道记录</h3><p id="collaboration-status" role="status">尚未开始</p><div id="collaboration-log" class="room-log" role="log" aria-live="polite"></div></section>
+      </div>
+      <footer class="graph-footer"><p id="collaboration-message" role="status"></p><button id="collaboration-pause" class="ghost-btn" type="button">暂停任务</button><button id="collaboration-save" class="primary-btn" type="button">保存并应用</button></footer>
+    </section>
+  </div>
+  <script type="module" src="/static/app.js?v=public-room-1"></script>
 </body>
 </html>

@@ -29,6 +29,9 @@ class ChatEventStream:
     async def publish_graph(self, data: Dict[str, Any]) -> None:
         await self._publish({"kind": "graph_event", "data": dict(data)})
 
+    async def publish_room(self, data: Dict[str, Any]) -> None:
+        await self._publish({"kind": "room_event", "data": dict(data)})
+
     async def _publish(self, event: Dict[str, Any]) -> None:
         if self.subscribed:
             await self._queue.put(event)
@@ -49,7 +52,7 @@ class ChatEventStream:
             return {"delta": event["text"]}
         if kind == "progress":
             return {"progress": event["data"]}
-        if kind in ("task_event", "graph_event"):
+        if kind in ("task_event", "graph_event", "room_event"):
             return {kind: event["data"]}
         if kind == "visualization":
             payload = dict(event)

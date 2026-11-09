@@ -30,6 +30,7 @@ class ChatRunService:
         self.result: Dict[str, Any] = {"response": None}
         self.context.metadata["_on_task_event"] = self.events.publish_task
         self.context.metadata["_on_graph_event"] = self.events.publish_graph
+        self.context.metadata["_on_room_event"] = self.events.publish_room
 
     async def run(self) -> None:
         project = self.project
@@ -82,7 +83,7 @@ class ChatRunService:
                 if latest is not None and latest.status == "running":
                     self.adapter.projects.update(project.project_id, status="active")
                     self.adapter._project_event(
-                        project, "done", "本轮任务已完成，等待下一步"
+                        project, "done", "频道本轮已结束，等待下一步" if self.context.metadata.get("collaboration_mode") == "room" else "本轮任务已完成，等待下一步"
                     )
                     self.adapter._refresh_project_summary(
                         project,
@@ -94,7 +95,7 @@ class ChatRunService:
             await self.events.close()
 
     def _with_graph_results(self, status: str) -> str:
-        partial = self.context.metadata.get("_graph_result")
+        partial = self.context.metadata.get("_room_result") or self.context.metadata.get("_graph_result")
         return f"{partial}\n\n{status}" if partial else status
 
     async def _finish_pending_visualizations(self) -> None:

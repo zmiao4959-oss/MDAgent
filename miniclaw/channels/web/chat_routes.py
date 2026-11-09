@@ -27,6 +27,8 @@ def register_chat_routes(app: Any, adapter: Any) -> None:
         plan_mode = bool(body.get("plan_mode", False))
         project: Optional[Any] = None
         graph_snapshot = None
+        collaboration_snapshot = None
+        collaboration = getattr(adapter, "collaboration_runtime", None)
         if project_id:
             project = adapter.projects.get(project_id)
             if project is None:
@@ -44,7 +46,16 @@ def register_chat_routes(app: Any, adapter: Any) -> None:
             if active is not None and not active.done():
                 raise HTTPException(409, "当前项目已有正在运行的任务")
         graph_runtime = getattr(adapter, "agent_graph_runtime", None)
-        if graph_runtime is not None and adapter.session_manager is not None:
+        if collaboration is not None:
+            if collaboration.is_running(chat_id):
+                raise HTTPException(409, "当前会话已有正在运行的任务")
+            try:
+                collaboration_snapshot = await collaboration.snapshot_for_chat(chat_id)
+            except ValueError as exc:
+                raise HTTPException(400, str(exc)) from exc
+            if collaboration_snapshot["collaboration_mode"] != "default" and plan_mode:
+                raise HTTPException(400, "画布与公共频道暂不支持计划模式")
+        elif graph_runtime is not None and adapter.session_manager is not None:
             session = await adapter.session_manager.resolve_session(chat_id)
             raw_graph = session.metadata.get("agent_graph") if session else None
             try:
@@ -61,7 +72,9 @@ def register_chat_routes(app: Any, adapter: Any) -> None:
 
         async def event_stream():
             metadata: Dict[str, Any] = {}
-            if graph_runtime is not None:
+            if collaboration_snapshot is not None:
+                metadata.update(collaboration_snapshot)
+            elif graph_runtime is not None:
                 metadata["agent_graph"] = graph_snapshot
             if project is not None:
                 metadata.update(

@@ -16,6 +16,7 @@ from ..stats import RunStats
 from ..tools.registry import ToolRegistry, tool_registry
 from ..tools.lammps_execution import find_lammps_input
 from ..skills.project import BUILDER, project_store
+from .room_context import blocks_room_tool, room_allowed_tools, room_publisher
 
 logger = get_logger(__name__)
 
@@ -74,7 +75,9 @@ class ToolExecutor:
         execution_context = self._execution_context(context)
         logger.info("Executing tool: %s(%s)", func_name, arguments)
         binding = context.metadata.get("_graph_binding")
-        if self.profile is not None and self.profile.name == BUILDER and func_name in ("write", "edit") and not self._builder_can_write(arguments, context):
+        if blocks_room_tool(func_name, context, self.registry):
+            result = f"Error: Tool '{func_name}' is unavailable in this communication mode"
+        elif self.profile is not None and self.profile.name == BUILDER and func_name in ("write", "edit") and not self._builder_can_write(arguments, context):
             result = "Error: skill-builder may write only inside an open Skill request's draft_dir; profiles, framework code and releases are not writable"
         elif binding is not None and binding.handles(func_name):
             result = await binding.execute_tool(func_name, arguments)
@@ -123,13 +126,12 @@ class ToolExecutor:
             "project_title": context.metadata.get("project_title", ""),
             "project_objective": context.metadata.get("project_objective", ""),
             "workspace_dir": context.metadata.get("workspace_dir", ""),
-            "allowed_tools": (
-                None if self.profile is None else list(self.profile.tools)
-            ),
+            "allowed_tools": room_allowed_tools(self.profile, context, self.registry),
             "allowed_skills": (
                 None if self.profile is None else list(dict.fromkeys([*self.profile.skills, *mounted]))
             ),
             "task_event_callback": context.metadata.get("_on_task_event"),
+            "room_publish": room_publisher(context),
         }
 
     @staticmethod

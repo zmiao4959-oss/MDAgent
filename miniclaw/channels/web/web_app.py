@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from .capsule_routes import register_capsule_routes
 from .agent_graph_routes import register_agent_graph_routes
 from .chat_routes import register_chat_routes
+from .collaboration_routes import register_collaboration_routes
 from .conversation_routes import register_conversation_routes
 from .evolution_routes import register_evolution_routes
 from .file_routes import register_file_routes
@@ -55,5 +56,6 @@ def create_web_app(adapter: Any) -> FastAPI:
     register_project_task_routes(app, adapter)
     register_conversation_routes(app, adapter)
     register_agent_graph_routes(app, adapter)
+    register_collaboration_routes(app, adapter)
     register_chat_routes(app, adapter)
     return app

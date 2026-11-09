@@ -10,6 +10,7 @@ export function createAgentGraphPanel({ getChatId, getProjectId, isRunning, onAp
   let loadedChat = null;
   let loadSequence = 0;
   let savedGraph = null;
+  let activeMode = 'default';
   let lastRun = null;
   let projectSkills = { bindings: {}, requests: [] };
   let scriptPromise;
@@ -187,8 +188,9 @@ export function createAgentGraphPanel({ getChatId, getProjectId, isRunning, onAp
       const data = await json(`/api/conversations/${encodeURIComponent(chatId)}/agent-graph`);
       if (sequence !== loadSequence || chatId !== getChatId()) return;
       savedGraph = data.graph; lastRun = data.last_run; loadedChat = chatId;
+      activeMode = data.mode || (savedGraph ? 'graph' : 'default');
       projectSkills = data.project_skills || { bindings: {}, requests: [] };
-      launcher.textContent = savedGraph ? `◇ 团队 · ${savedGraph.nodes.length} 个智能体` : '◇ 智能体画布';
+      launcher.textContent = activeMode === 'graph' && savedGraph ? `◇ 团队 · ${savedGraph.nodes.length} 个智能体` : '◇ 智能体画布';
       renderEvents();
       renderProjectSkills();
     } catch (error) { message(error.message, true); }
@@ -220,7 +222,7 @@ export function createAgentGraphPanel({ getChatId, getProjectId, isRunning, onAp
         for (const edge of config.edges) addEdge(edge.source, edge.target);
       } finally { loading = false; }
       el('entry').value = config.entry; el('limit').value = config.max_messages;
-      el('mode').value = savedGraph ? 'graph' : 'default';
+      el('mode').value = activeMode === 'graph' ? 'graph' : 'default';
       paintEntry(); updateLock();
       graph.resize(canvas.clientWidth, canvas.clientHeight);
       graph.zoomToFit({ padding: 55, maxScale: 1 });
@@ -282,8 +284,9 @@ export function createAgentGraphPanel({ getChatId, getProjectId, isRunning, onAp
       const data = await json(`/api/conversations/${encodeURIComponent(chatId)}/agent-graph`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ graph: config }) });
       if (chatId !== getChatId()) return;
       savedGraph = data.graph;
+      activeMode = data.mode || (savedGraph ? 'graph' : 'default');
       launcher.textContent = savedGraph ? `◇ 团队 · ${savedGraph.nodes.length} 个智能体` : '◇ 智能体画布';
-      onApplied(Boolean(savedGraph));
+      onApplied(activeMode !== 'default', activeMode);
       message(savedGraph ? '已保存。下一条消息会从指定起点开始运行。' : '已恢复默认智能体模式。');
     } catch (error) { message(error.message, true); }
     finally { saving = false; updateLock(); }
@@ -303,6 +306,6 @@ export function createAgentGraphPanel({ getChatId, getProjectId, isRunning, onAp
       }
       renderEvents(); updateLock();
     },
-    get enabled() { return Boolean(savedGraph); },
+    get enabled() { return activeMode === 'graph'; },
   };
 }

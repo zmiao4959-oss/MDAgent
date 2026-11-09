@@ -1,0 +1,23 @@
+.room-dialog { display: grid; width: min(1000px, 96vw); height: min(820px, 90vh); grid-template-rows: auto minmax(0, 1fr) auto; }
+.room-body { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr); min-height: 0; overflow: auto; }
+.room-settings, .room-transcript { padding: 20px; min-width: 0; overflow: auto; }
+.room-settings { border-right: 1px solid var(--border); }
+.room-settings p, #collaboration-status, .room-member small { color: var(--muted); line-height: 1.6; }
+.room-settings > label, .room-limits label { display: grid; gap: 8px; }
+.room-settings select, .room-limits input { width: 100%; color: var(--text); background: var(--panel); border: 1px solid var(--border); padding: 9px; border-radius: 6px; }
+.room-limits { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+.room-members { display: grid; gap: 12px; }
+.room-member { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 10px; }
+.room-member-select { display: flex; align-items: start; gap: 10px; cursor: pointer; }
+.room-member-order { flex: 0 0 1.5em; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
+.room-member-actions { display: flex; gap: 4px; }
+.room-member-actions button { min-width: 32px; min-height: 32px; padding: 4px 8px; }
+.room-member-actions button:disabled { opacity: .4; cursor: default; }
+.room-member input { margin-top: 5px; }
+.room-member span { min-width: 0; }
+.room-member strong, .room-member small { display: block; overflow-wrap: anywhere; }
+.room-member small { font-size: .85rem; }
+.room-log article { padding: 14px 0; border-bottom: 1px solid var(--border); }
+.room-log p { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; margin: 8px 0 0; }
+#collaboration-message[data-error="true"] { color: var(--error); }
+@media (max-width: 720px) { .room-body { grid-template-columns: 1fr; } .room-settings { border-right: 0; border-bottom: 1px solid var(--border); } .room-transcript { min-height: 240px; } }

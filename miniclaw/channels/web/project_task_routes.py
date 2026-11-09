@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from typing import Any
-from fastapi import Request
+from fastapi import HTTPException, Request
 
 
 def register_project_task_routes(app: Any, adapter: Any) -> None:
@@ -51,5 +51,13 @@ def register_project_task_routes(app: Any, adapter: Any) -> None:
         task = next((item for item in project.tasks if not item.get("done")), None)
         if task is None:
             return {"ok": False, "error": "no unfinished task"}
-        adapter._run_next_task(project, task)
+        collaboration = getattr(adapter, "collaboration_runtime", None)
+        if collaboration is not None:
+            try:
+                snapshot = await collaboration.snapshot_for_chat(project.chat_id)
+            except ValueError as exc:
+                raise HTTPException(400, str(exc)) from exc
+            adapter._run_next_task(project, task, snapshot)
+        else:
+            adapter._run_next_task(project, task)
         return {"ok": True, "task": task}

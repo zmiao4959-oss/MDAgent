@@ -26,7 +26,8 @@ def register_agent_graph_routes(app, adapter):
 
     def check_idle(chat_id, project):
         task = adapter._project_runs.get(project.project_id) if project else None
-        if runtime().is_running(chat_id) or (task is not None and not task.done()):
+        owner = getattr(adapter, "collaboration_runtime", None) or runtime()
+        if owner.is_running(chat_id) or (task is not None and not task.done()):
             raise HTTPException(409, "请先暂停当前任务，再修改智能体画布或临时 Skill")
 
     def skill_payload(project):
@@ -65,7 +66,8 @@ def register_agent_graph_routes(app, adapter):
             record["ended_at"] = time.time()
             record.setdefault("events", []).append({"run_id": record["run_id"], "kind": "interrupted", "time": record["ended_at"]})
             await adapter.session_manager.save(session)
-        return {"graph": session.metadata.get("agent_graph"), "last_run": session.metadata.get("last_graph_run"), "project_skills": skill_payload(project_for(chat_id))}
+        mode = session.metadata.get("collaboration_mode", "graph" if session.metadata.get("agent_graph") else "default")
+        return {"graph": session.metadata.get("agent_graph"), "mode": mode, "last_run": session.metadata.get("last_graph_run"), "project_skills": skill_payload(project_for(chat_id))}
 
     @app.put("/api/conversations/{chat_id}/agent-graph")
     async def save_graph(chat_id: str, request: Request):
@@ -81,8 +83,9 @@ def register_agent_graph_routes(app, adapter):
         except (ValueError, TypeError) as exc:
             raise HTTPException(400, str(exc)) from exc
         session.metadata["agent_graph"] = graph.to_dict() if graph else None
+        session.metadata["collaboration_mode"] = "graph" if graph else "default"
         await adapter.session_manager.save(session)
-        return {"ok": True, "graph": session.metadata["agent_graph"]}
+        return {"ok": True, "graph": session.metadata["agent_graph"], "mode": session.metadata["collaboration_mode"]}
 
     @app.delete("/api/conversations/{chat_id}/project-skills/{agent}/{name}")
     async def revoke_project_skill(chat_id: str, agent: str, name: str):

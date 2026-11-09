@@ -1,89 +1,66 @@
-from dataclasses import dataclass,field
+"""Public channel members over the existing Agent and registered tools."""
+from __future__ import annotations
 
-from distro import name
-from miniclaw.settings import config
-from ..memory.session import Session,SessionManager
-from ..agent import Agent,AgentContext
+from dataclasses import dataclass, field
+from functools import partial
+
+from ..agent import Agent, AgentContext
 from ..llm.router import LLMRouter
-from ..agents.profile import AgentProfile
-from miniclaw.agents import AgentCatalog
-import asyncio
-@dataclass
-class Member:
-    single_agent:Agent
-    chat_id:str
-    inbox:list=field(default_factory=list)
-    is_running:bool=False 
-    loop_times:int=0
-    
-class RoomBinding:
-    def __init__(self,room,member:Member):
-        self.room = room
-        self.member = member
-    async def execute_tool(self,name:str,params:dict)->str:
-        if name == "publish_message":
-            if not isinstance(params,dict):
-                return "Error: Params must be a dictionary"
-            if set(params)!={"message"}:
-                return "Error: Params must contain only 'message' key"   
-            message = params.get("message")
-            if not isinstance(message,str) or not message.strip():
-                return "Error: 'message' must be a non-empty string"
-            try:
-                self.room.publish_message(self.member,message)
-                return f"Message published: {message}"
-            except Exception as e:
-                return f"Error occurred while publishing message: {e}"
-        else:return "Error: Unknown tool name"
+from ..memory.session import SessionManager
+from ..runtime.room_context import MAX_PUBLIC_MESSAGE_CHARS, PUBLISH_CONTEXT_KEY
+from ..settings import config
+from .catalog import AgentCatalog
 
-class room:
-    def __init__(self,
-                 profiles:list[str],
-                 room_id:str,
-        ):
-        
-        router = LLMRouter(config.llm, config.llm.fallback_providers)
-        session_mgr = SessionManager(config.paths.sessions)
-        agent_catalog = AgentCatalog()
-        profiles = [agent_catalog.require(profile) for profile in profiles]
-        self.members = [Member(single_agent=Agent(router,session_mgr,profile),chat_id=f"room:{room_id}:{profile.name}") for profile in profiles]
-        self.public_message = list()
-    def broadcast(self,member,message):
-        for mem in self.members:
-            if mem == member:continue
-            mem.inbox.append(message)
-    def publish_message(self,mem:Member,message:str):
+
+@dataclass(eq=False)
+class Member:
+    single_agent: Agent
+    chat_id: str
+    inbox: list[str] = field(default_factory=list)
+    is_running: bool = False
+    loop_times: int = 0
+
+
+class Room:
+    def __init__(self, profiles: list[str], room_id: str, *, llm=None, sessions=None, catalog=None, workspace_dir=None):
+        if not room_id or not profiles or len(set(profiles)) != len(profiles):
+            raise ValueError("A room needs an ID and unique members")
+        router = llm if llm is not None else LLMRouter(config.llm, config.llm.fallback_providers)
+        self.sessions = sessions if sessions is not None else SessionManager(config.paths.sessions)
+        catalog = catalog if catalog is not None else AgentCatalog()
+        self.members = [Member(Agent(router, self.sessions, catalog.require(name)), f"room:{room_id}:{name}") for name in profiles]
+        self.public_message: list[str] = []
+        self.workspace_dir = workspace_dir
+
+    def broadcast(self, member: Member, message: str):
+        for recipient in self.members:
+            if recipient is not member:
+                recipient.inbox.append(message)
+
+    def publish_message(self, member: Member, message: str):
+        if member not in self.members:
+            raise ValueError("Sender is not a room member")
+        if not isinstance(message, str) or not message.strip() or len(message) > MAX_PUBLIC_MESSAGE_CHARS:
+            raise ValueError("Message must be a non-blank string of at most 32000 characters")
         self.public_message.append(message)
-        self.broadcast(mem,message)
+        self.broadcast(member, message)
+        return {"status": "published"}
 
     async def member_loop(self):
-        for mem in self.members:
-            if mem.is_running or not mem.inbox:continue
-            message = "\n".join(mem.inbox)
-            mem.inbox = []
-            chat_id = mem.chat_id
-            channel = "agent_room"
-            account_id = "system"
-            user_message = message
-            mem.is_running = True
+        for member in self.members:
+            if member.is_running or not member.inbox:
+                continue
+            message = "\n".join(member.inbox)
+            member.inbox.clear()
+            member.is_running = True
             try:
-                binding = RoomBinding(self,mem)
-                res = await mem.single_agent.process_message(
-                    AgentContext(
-                        chat_id,
-                        channel,
-                        account_id,
-                        user_message,
-                        metadata={"_graph_binding":binding}))
+                await member.single_agent.process_message(AgentContext(
+                    chat_id=member.chat_id, channel="agent_room", account_id="system", user_message=message,
+                    metadata={PUBLISH_CONTEXT_KEY: partial(self.publish_message, member), "workspace_dir": self.workspace_dir},
+                ))
+                member.loop_times += 1
             finally:
-                mem.is_running = False
-
-            
-    
+                member.is_running = False
 
 
-
-            
-
-
-
+room = Room

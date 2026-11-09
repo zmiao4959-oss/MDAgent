@@ -2,6 +2,7 @@ import * as THREE from '/static/three.module.js';
 import { createEvolutionPanel } from '/static/evolution.js';
 import { createResearchCapsulePanel } from '/static/capsules.js';
 import { createAgentGraphPanel } from '/static/agent-graph.js?v=4';
+import { createCollaborationPanel } from '/static/collaboration.js';
 
   const CHAT_STORAGE_KEY = "miniclaw_webchat_chat_id";
   const PROJECT_STORAGE_KEY = "miniclaw_webchat_project_id";
@@ -91,7 +92,21 @@ import { createAgentGraphPanel } from '/static/agent-graph.js?v=4';
       if (enabled) { planMode = false; planModeCheckbox.checked = false; }
       planModeCheckbox.disabled = enabled;
       updateInputPlaceholder();
+      collaborationPanel.refresh();
     },
+    onPause: () => projectAction('pause'),
+  });
+  const collaborationPanel = createCollaborationPanel({
+    getChatId: () => currentChatId,
+    getProjectId: () => currentProjectId,
+    isRunning: () => Boolean(chatRunning || runningProjectIds.has(currentProjectId) || projectsById.get(currentProjectId)?.is_running),
+    onApplied: mode => {
+      const enabled = mode !== 'default';
+      if (enabled) { planMode = false; planModeCheckbox.checked = false; }
+      planModeCheckbox.disabled = enabled;
+      updateInputPlaceholder();
+    },
+    onSaved: () => agentGraphPanel.refresh(),
     onPause: () => projectAction('pause'),
   });
   let mediaCount = 0;
@@ -638,6 +653,7 @@ import { createAgentGraphPanel } from '/static/agent-graph.js?v=4';
     sendBtn.disabled = active;
     sendBtn.textContent = active ? "运行中…" : "发送";
     agentGraphPanel.updateRunning();
+    collaborationPanel.updateRunning();
   }
 
   function setVizProgress(active, text) {
@@ -1773,8 +1789,9 @@ import { createAgentGraphPanel } from '/static/agent-graph.js?v=4';
     await restoreVizState();
     await loadHistory();
     await agentGraphPanel.refresh();
-    planModeCheckbox.disabled = agentGraphPanel.enabled;
-    if (agentGraphPanel.enabled) { planMode = false; planModeCheckbox.checked = false; updateInputPlaceholder(); }
+    await collaborationPanel.refresh();
+    planModeCheckbox.disabled = collaborationPanel.mode !== 'default';
+    if (collaborationPanel.mode !== 'default') { planMode = false; planModeCheckbox.checked = false; updateInputPlaceholder(); }
     await refreshFileList();
     await refreshArtifacts();
     await capsulePanel.refresh();
@@ -1909,7 +1926,9 @@ import { createAgentGraphPanel } from '/static/agent-graph.js?v=4';
         if (x.done) break;
         buffer += decoder.decode(x.value, { stream: true });
         buffer = parseSseBuffer(buffer, (payload) => {
-          if (payload.graph_event) {
+          if (payload.room_event) {
+            collaborationPanel.handleEvent(payload.room_event, chatId);
+          } else if (payload.graph_event) {
             agentGraphPanel.handleEvent(payload.graph_event, chatId);
           } else if (payload.task_event) {
             handleTaskEvent(payload.task_event);
@@ -1953,7 +1972,9 @@ import { createAgentGraphPanel } from '/static/agent-graph.js?v=4';
       // 兜底：处理 buffer 剩余数据（复用同一解析函数，避免遗漏 done 事件）
       if (buffer.trim()) {
         parseSseBuffer(buffer + "\n", (payload) => {
-          if (payload.graph_event) {
+          if (payload.room_event) {
+            collaborationPanel.handleEvent(payload.room_event, chatId);
+          } else if (payload.graph_event) {
             agentGraphPanel.handleEvent(payload.graph_event, chatId);
           } else if (payload.task_event) {
             handleTaskEvent(payload.task_event);
@@ -2027,6 +2048,7 @@ import { createAgentGraphPanel } from '/static/agent-graph.js?v=4';
     await capsulePanel.refresh();
     await refreshTimeline();
     await refreshPlan();
+    await collaborationPanel.refresh();
   }
 
   document.getElementById("new-chat").addEventListener("click", createNewChat);

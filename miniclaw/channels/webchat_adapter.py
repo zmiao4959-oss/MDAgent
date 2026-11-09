@@ -32,6 +32,7 @@ class WebChatAdapter(BaseChannelAdapter):
         session_manager: Optional["SessionManager"] = None,
         source_patch_llm=None,
         agent_graph_runtime=None,
+        collaboration_runtime=None,
     ) -> None:
         super().__init__("webchat")
         self.host = host
@@ -39,6 +40,7 @@ class WebChatAdapter(BaseChannelAdapter):
         self.session_manager = session_manager
         self.source_patch_llm = source_patch_llm
         self.agent_graph_runtime = agent_graph_runtime
+        self.collaboration_runtime = collaboration_runtime
         self._uvicorn_server = None
 
         project_path = (
@@ -147,8 +149,8 @@ class WebChatAdapter(BaseChannelAdapter):
     def _refresh_project_summary(self, project: Project, response: str) -> None:
         self.project_runner.refresh_summary(project, response)
 
-    def _run_next_task(self, project: Project, task: Dict[str, Any]) -> None:
-        self.project_runner.queue(project, task)
+    def _run_next_task(self, project: Project, task: Dict[str, Any], collaboration_snapshot=None) -> None:
+        self.project_runner.queue(project, task, collaboration_snapshot)
 
     def _workspace_for_project(self, project: Project) -> Path:
         return self.project_workspaces.resolve(project)

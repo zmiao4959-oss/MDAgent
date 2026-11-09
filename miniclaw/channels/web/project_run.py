@@ -131,29 +131,27 @@ class ProjectRunService:
             f"任务进度：{done}/{total} 已完成。\n\n{result}",
         )
 
-    def queue(self, project: Project, task: Dict[str, Any]) -> None:
+    def queue(self, project: Project, task: Dict[str, Any], collaboration_snapshot=None) -> None:
         """Queue one planned task independently from the browser request."""
         self.projects.update(project.project_id, status="queued", last_run=True)
         self.add_event(project, "queued", f"计划任务已排队：{task['title']}")
         self.runs[project.project_id] = asyncio.create_task(
-            self._run(project, task)
+            self._run(project, task, collaboration_snapshot)
         )
 
-    async def _run(self, project: Project, task: Dict[str, Any]) -> None:
+    async def _run(self, project: Project, task: Dict[str, Any], collaboration_snapshot=None) -> None:
         acquired = False
         try:
             await self.acquire_slot()
             acquired = True
             self.projects.update(project.project_id, status="running", last_run=True)
             self.add_event(project, "running", f"开始执行计划：{task['title']}")
-            response = await self._invoke_with_retries(project, task)
-            self.projects.update_task(
-                project.project_id,
-                task["task_id"],
-                done=True,
-            )
+            response = await self._invoke_with_retries(project, task, collaboration_snapshot)
+            is_room = (collaboration_snapshot or {}).get("collaboration_mode") == "room"
+            if not is_room:
+                self.projects.update_task(project.project_id, task["task_id"], done=True)
             self.projects.update(project.project_id, status="active")
-            self.add_event(project, "done", "计划任务执行完成，等待确认")
+            self.add_event(project, "done", "频道本轮已结束，请根据实际产物确认任务状态" if is_room else "计划任务执行完成，等待确认")
             self.refresh_summary(project, response)
         except asyncio.CancelledError:
             if project.status != "paused":
@@ -173,6 +171,7 @@ class ProjectRunService:
         self,
         project: Project,
         task: Dict[str, Any],
+        collaboration_snapshot=None,
     ) -> str:
         handler = self._handler_provider()
         if handler is None:
@@ -195,13 +194,14 @@ class ProjectRunService:
             },
         )
         retry_count = self.behavior["retry_count"]
+        context.metadata.update(collaboration_snapshot or {})
         for attempt in range(retry_count + 1):
             try:
                 return await handler(context)
             except asyncio.CancelledError:
                 raise
             except Exception:
-                if attempt >= retry_count:
+                if context.metadata.get("collaboration_mode") == "room" or attempt >= retry_count:
                     raise
                 self.add_event(
                     project,
