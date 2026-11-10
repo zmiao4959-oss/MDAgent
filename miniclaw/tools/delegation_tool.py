@@ -1,4 +1,4 @@
-"""Coordinator tools for discovering and controlling delegated Agent tasks."""
+"""Coordinator tools for discovering, messaging, and controlling delegated tasks."""
 from __future__ import annotations
 
 from typing import Any, Optional, TYPE_CHECKING
@@ -139,32 +139,41 @@ def list_tasks_tool(
         "function": {
             "name": "delegate_task",
             "description": (
-                "Delegate a concrete objective to an Agent profile. Independent tasks "
-                "may be delegated before waiting for any one of them. Returns a "
-                "structured receipt containing the opaque task_id. Equivalent repeated "
-                "requests reuse the original task unless force_new is true."
+                "Use agent and objective to open a task or consultation. Use task_id and "
+                "message to send a question, confirmation, or update to an existing task in this conversation. "
+                "The receiver reads it at the next model decision or continues the same "
+                "conversation in a follow-up turn. Send directly and use inspect_task or "
+                "wait_task when you need the reply. Repeated equivalent delegations reuse "
+                "the original task unless force_new is true."
             ),
             "parameters": {
                 "type": "object",
-                "required": ["agent", "objective"],
                 "properties": {
                     "agent": {
                         "type": "string",
-                        "description": "Exact Agent profile name from list_agents.",
+                        "description": "For a new task, the exact Agent profile name from list_agents.",
                     },
                     "objective": {
                         "type": "string",
-                        "description": "Concrete objective, context, constraints, and expected output.",
+                        "description": "For a new task, the objective or question with context and constraints.",
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "description": _TASK_ID_DESCRIPTION,
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "Question, confirmation, or update for an existing task_id.",
                     },
                     "sandbox": {
                         "type": "boolean",
-                        "description": "Run in an isolated temporary workspace. Default false.",
+                        "description": "For a new task, use an isolated temporary workspace. Default false.",
                     },
                     "idempotency_key": {
                         "type": "string",
                         "description": (
-                            "Optional stable key for this logical delegation. Reusing it "
-                            "in the same parent conversation returns the original task."
+                            "Optional stable key for retrying this delegation or message. "
+                            "Use a distinct key for each new message to the same task."
                         ),
                     },
                     "force_new": {
@@ -181,15 +190,42 @@ def list_tasks_tool(
     tags=["coordination"],
 )
 async def delegate_task_tool(
-    agent: str,
-    objective: str,
+    agent: str = "",
+    objective: str = "",
     sandbox: bool = False,
     idempotency_key: str = "",
     force_new: bool = False,
     _context=None,
+    *,
+    task_id: Optional[str] = None,
+    message: Optional[str] = None,
     **kwargs: Any,
 ) -> dict:
     context = _context or {}
+    if task_id is not None or message is not None:
+        if agent or objective or sandbox or force_new:
+            return {
+                "status": "error",
+                "error": "Use task_id and message for an existing task, or agent and objective for a new task.",
+            }
+        if not context.get("chat_id"):
+            return {"status": "error", "error": "Current parent conversation is unavailable"}
+        if not isinstance(idempotency_key, str):
+            return {"status": "error", "error": "idempotency_key must be a string"}
+        try:
+            return await _require_manager().send_task_message(
+                task_id, message, parent_session_id=context["chat_id"],
+                event_callback=context.get("task_event_callback"),
+                idempotency_key=idempotency_key,
+            )
+        except (ValueError, RuntimeError) as exc:
+            return {"status": "error", "task_id": task_id, "error": str(exc)}
+
+    if not isinstance(agent, str) or not agent.strip() or not isinstance(objective, str) or not objective.strip():
+        return {
+            "status": "error",
+            "error": "Provide agent and objective for a new task, or task_id and message for an existing task.",
+        }
     return await _require_manager().delegate(
         objective,
         parent_session_id=context.get("chat_id"),
@@ -209,11 +245,9 @@ async def delegate_task_tool(
         "function": {
             "name": "continue_task",
             "description": (
-                "Continue a finished task with a follow-up instruction, preserving its "
-                "Agent, conversation history and workspace. Returns immediately; inspect "
-                "or wait using the same task_id. Active tasks cannot be continued. "
-                "Tasks must still be tracked by the current process. "
-                "If the result is uncertain, inspect the task before retrying."
+                "Start a follow-up turn on a finished task, keeping its history and workspace. "
+                "To send a message to an existing task at any stage, use delegate_task "
+                "with task_id and message. Use the same task_id to retrieve the reply."
             ),
             "parameters": {
                 "type": "object",

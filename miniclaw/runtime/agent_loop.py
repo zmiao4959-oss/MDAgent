@@ -63,6 +63,7 @@ class AgentLoop:
         on_viz_event=None,
     ) -> LoopResult:
         messages = [LLMMessage(role="system", content=system_prompt), *session.messages]
+        steering = context.steering
         final_response = ""
         pending_viz: List[asyncio.Task] = []
         context.metadata["viz_tasks"] = pending_viz
@@ -72,6 +73,12 @@ class AgentLoop:
             else None
         )
         session.metadata.setdefault("total_tokens", 0)
+
+        if steering is not None:
+            steering.started = True
+            on_steering_ready = context.metadata.get("_on_steering_ready")
+            if on_steering_ready is not None:
+                await on_steering_ready(steering.run_id)
 
         for round_num in range(1, max_rounds + 1):
             if session.should_compact():
@@ -90,6 +97,10 @@ class AgentLoop:
                     LLMMessage(role="system", content=system_prompt),
                     *session.messages,
                 ]
+            if steering is not None:
+                for message in steering.drain():
+                    session.add_message(message)
+                    messages.append(message)
             logger.info(
                 "\n\nRound %s:\n%s",
                 round_num,
@@ -114,14 +125,17 @@ class AgentLoop:
                         f"(finish_reason={response.finish_reason}, "
                         f"reasoning_chars={len(response.reasoning_content or '')}, usage={response.usage})"
                     )
-                if response.content:
-                    session.add_message(
-                        LLMMessage(
-                            role="assistant",
-                            content=response.content,
-                            reasoning_content=response.reasoning_content,
-                        )
-                    )
+                assistant = LLMMessage(
+                    role="assistant",
+                    content=response.content,
+                    reasoning_content=response.reasoning_content,
+                )
+                session.add_message(assistant)
+                messages.append(assistant)
+                if steering is not None:
+                    if steering.has_pending:
+                        continue
+                    steering.close()
                 return LoopResult(final_response, round_num, False)
 
             assistant = LLMMessage(
@@ -130,12 +144,12 @@ class AgentLoop:
                 tool_calls=response.tool_calls,
                 reasoning_content=response.reasoning_content,
             )
-            session.add_message(assistant)
-            messages.append(assistant)
-
             before = snapshot_workspace() if auto_viz else {}
             context.metadata["_tool_idem_keys"] = set()
             results = await self.execute_tools(response.tool_calls, context)
+            # Commit the call and its results together so cancellation leaves a valid transcript.
+            session.add_message(assistant)
+            messages.append(assistant)
             for result in results:
                 session.add_message(result)
                 messages.append(result)
@@ -149,9 +163,14 @@ class AgentLoop:
                 round_tokens,
             )
 
-        recovery = await self.finalize_after_max_rounds(
-            session,
-            system_prompt,
-            on_stream_chunk,
-        )
+        needs_final_reply = max_rounds > 0 or bool(session.messages and session.messages[-1].role == "tool")
+        if steering is not None:
+            steering.close()
+            pending = steering.drain()
+            for message in pending:
+                session.add_message(message)
+            needs_final_reply = needs_final_reply or bool(pending)
+        recovery = ""
+        if needs_final_reply:
+            recovery = await self.finalize_after_max_rounds(session, system_prompt, on_stream_chunk)
         return LoopResult(recovery or final_response, max_rounds, True)

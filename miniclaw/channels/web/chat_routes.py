@@ -1,4 +1,4 @@
-"""HTTP route for streaming one WebChat Agent request."""
+"""HTTP endpoints for streamed WebChat runs and supplemental input."""
 from __future__ import annotations
 
 import asyncio
@@ -10,6 +10,7 @@ from fastapi.responses import StreamingResponse
 
 from ...agent import AgentContext
 from ...logger import get_logger
+from ...runtime.room_context import MAX_PUBLIC_MESSAGE_CHARS
 from ...settings import config
 from .chat_events import ChatEventStream
 from .chat_run import ChatRunService
@@ -18,6 +19,24 @@ logger = get_logger(__name__)
 
 
 def register_chat_routes(app: Any, adapter: Any) -> None:
+    @app.post("/api/chat/steer")
+    async def steer(request: Request):
+        collaboration = getattr(adapter, "collaboration_runtime", None)
+        if collaboration is None:
+            raise HTTPException(503, "补充消息入口尚未连接")
+        body = await request.json()
+        if not isinstance(body, dict):
+            raise HTTPException(400, "补充消息格式不正确")
+        chat_id, run_id, message_id = (body.get(key) for key in ("chat_id", "run_id", "message_id"))
+        message = body.get("message")
+        if not all(isinstance(value, str) and value.strip() for value in (chat_id, run_id, message_id, message)):
+            raise HTTPException(400, "补充消息需要会话、运行编号、消息编号和正文")
+        if len(message_id) > 128 or len(message) > MAX_PUBLIC_MESSAGE_CHARS:
+            raise HTTPException(400, "补充消息过长")
+        if not await collaboration.steer(chat_id, run_id, message_id, message.strip()):
+            raise HTTPException(409, "本轮已结束或暂时无法接收补充")
+        return {"ok": True}
+
     @app.post("/api/chat")
     async def chat(request: Request):
         body = await request.json()

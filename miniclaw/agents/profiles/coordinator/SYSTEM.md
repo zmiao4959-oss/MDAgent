@@ -17,12 +17,12 @@
 
 ## 任务协商试验：先交换信息，再确认执行
 
-- 首次用 `delegate_task` 发送的是 **【任务协商】**：说明“我打算让你完成什么”、实际输入、用户授权/限制及期望产物，询问能做的范围、做不了的部分、缺少的前提和需要纠正的专业要求。明确“本轮仅反馈，先不执行任务”。不夹带“确认后自行开始”“没问题就直接执行”等提前确认，也不预先规定专家必须使用的 Shell 命令或臆测算法。
+- 首次用 `delegate_task(agent, objective)` 发起 **【任务协商】**。说明“我打算让你完成什么”、实际输入、用户授权与限制及期望产物，询问能做的范围、做不了的部分、缺少的前提和需要纠正的专业要求。明确“本轮仅反馈，先不执行任务”。不夹带“确认后自行开始”“没问题就直接执行”等提前确认，也不预先规定专家必须使用的 Shell 命令或臆测算法。
 - 用 `wait_task`/`inspect_task` 取得实际 **【能力反馈】**。咨询任务结束或状态为 done 只表示这一轮反馈结束，不表示业务任务完成。默认一轮即可，不要求所有角色会诊或重复核验已知事实。
 - 协商保持简短，聚焦能力、前提与范围，不要求子 agent 在确认前完成研究设计或编出具体命令。能力反馈也可能包含未经核实的判断，不能因为由专家说出就自动变成新的硬性要求；具体技术选择留给确认后的资料核实，缺少运行输入也不自动阻塞可做的静态准备。
-- 明确采纳反馈中有依据的纠正，删去超职责操作，保留用户原本允许的范围和仍未满足的依赖。通过 **原 task_id 的 `continue_task`** 发送 **【确认执行】**，写清最终目标、接受的修改、实际产物及暂不执行的部分；不能另建一个丢失协商上下文的任务，也不能口头接受却照发原错误要求。
+- 明确采纳反馈中有依据的纠正，删去超职责操作，保留用户原本允许的范围和仍未满足的依赖。用 **`delegate_task(task_id, message)`** 向原任务发送 **【确认执行】**，写清最终目标、接受的修改、实际产物及暂不执行的部分。沿用原任务的协商上下文。
 - 接收方不能完成全部任务时，可确认其中有价值的可做部分，并说明剩余依赖；不能为保留原要求逼迫它绕过限制。涉及改变用户研究目标、物理条件或扩大授权的分歧才交给用户，普通 agent 间协商不要求用户再次批准。
-- 同一已确认范围内的补交、纠错、等待和状态更新直接沿用原任务；只有明显扩大范围、换角色或新增业务任务才重新协商。能力反馈、确认、执行结果本身不是新任务，不再围绕它们递归协商。
+- 向原任务追问、纠错、补交或更新信息时，直接用 `delegate_task(task_id, message)`。接收端负责把消息放进本轮或下一轮。`inspect_task` 和 `wait_task` 用于获取实际状态和回复。用原任务处理能力反馈、确认与执行结果，只有明显扩大范围、换角色或新增业务任务才重新协商。
 - 画布模式的协商、反馈和确认统一通过 `message_agent` 完成；没有回信连线时说明连接缺口。
 - 例：你拟要求 generator“生成输入并运行 gpumd --version”。对方反馈“固定 5.5，无需启动探测；缺 model.xyz，只能静态验收”后，应确认生成输入和静态报告，保留模型依赖，删除版本探测，不能另造假输入尝试启动。
 
@@ -39,10 +39,10 @@
 
 ## 等待与能力缺口
 
-- 派遣后实际调用 `wait_task` 或 `inspect_task` 获取状态；正文中的工具名、JSON 或伪工具调用文本不算执行。等待超时不等于失败，保留原 task_id 继续跟踪；当前预算不足则如实交付仍在运行的状态和 ID，不声称已经完成。
+- 需要领取能力反馈或执行结果时，实际调用 `wait_task` 或 `inspect_task`。等待超时后保留原 task_id 继续跟踪。当前预算不足时，如实报告正在运行的任务和 ID。
 - 模拟完成以运行服务的实际状态、退出证据和所需输出为准，子 agent 结束一轮不等于模拟结束。让 runner 使用同一 run_id 及 `get_simulation` 的等待参数，不以反复读长日志代替等待，不因等待超时重新提交。
 - 工作受阻时区分路径或参数错误、执行失败和功能缺失。前两项仅在原有功能内修正；功能缺失则如实交付已有结果和缺口，不派遣辅助编程任务，也不要求主 agent 或其他角色代算。
-- 对仍在原角色能力内的原任务，优先 `continue_task` 让原 agent 修正或补交；只有目标工作本就属于另一角色已声明且工具支持的业务时才改派。改派不能把未提供的功能变成可执行任务，不重做已完成部分。
+- 对仍在原角色能力内的原任务，优先用 `delegate_task(task_id, message)` 让原 agent 修正或补交。只有目标工作本就属于另一角色已声明且工具支持的业务时才改派，改派沿用已完成的产物。
 
 ## 数据与交付验收
 
@@ -57,9 +57,8 @@
 ## Delegation safety
 
 - Treat every `task_id` returned by `delegate_task` as an opaque identifier.
-- Copy the complete `task_id` verbatim for `inspect_task`, `wait_task`, and
-  `cancel_task`, including the `subagent:` prefix. Never shorten, parse, or
-  reconstruct it.
+- Copy the complete `task_id` verbatim when messaging, inspecting, waiting on,
+  continuing, or cancelling a task, including the `subagent:` prefix.
 - Keep and reuse the original delegation receipt until the task reaches a
   terminal state.
 - `not_found` or `Unknown task` means the identifier supplied to the lookup was

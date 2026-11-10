@@ -1,13 +1,11 @@
 """User-defined communication topologies over the existing Agent runtime.
 
-Edges grant permission to enqueue a message, never an automatic transition or
-implicit reply. One FIFO queue owns all activations, so cycles cannot deadlock
-through nested Agent calls. Nothing is registered in the global Tool registry.
+Edges grant permission to send messages. Each node has its own inbox, and
+independent nodes can run concurrently. Graph tools are bound to the active node.
 """
 from __future__ import annotations
 
 import asyncio
-from collections import deque
 from dataclasses import dataclass
 import hashlib
 import json
@@ -18,11 +16,23 @@ from typing import Any, Mapping
 
 from ..agent import Agent, AgentContext
 from ..llm.base import LLMMessage
-from .catalog import AgentCatalog
+from ..runtime.steering import SteeringInbox
 from ..skills.project import BUILDER, project_store
+from .catalog import AgentCatalog
 
 MESSAGE_TOOL = "message_agent"
 MAX_MESSAGE_CHARS = 32_000
+DEFAULT_MAX_CONCURRENCY = 4
+
+
+@dataclass(frozen=True)
+class GraphInput:
+    source: str
+    message: str
+    message_id: str
+
+    def prompt(self) -> str:
+        return f"[Graph message from {self.source}; id={self.message_id}]\n{self.message}"
 
 
 @dataclass(frozen=True)
@@ -32,6 +42,7 @@ class AgentGraph:
     entry: str
     max_messages: int = 24
     positions: tuple[tuple[float, float], ...] = ()
+    max_concurrency: int = DEFAULT_MAX_CONCURRENCY
 
     @classmethod
     def parse(cls, raw: Any, catalog: AgentCatalog) -> "AgentGraph":
@@ -79,7 +90,10 @@ class AgentGraph:
         limit = raw.get("max_messages", 24)
         if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 2000:
             raise ValueError("单轮消息上限必须是 1–2000 的整数")
-        return cls(tuple(nodes), tuple(edges), entry, limit, tuple(positions))
+        concurrency = raw.get("max_concurrency", DEFAULT_MAX_CONCURRENCY)
+        if isinstance(concurrency, bool) or not isinstance(concurrency, int) or not 1 <= concurrency <= 16:
+            raise ValueError("节点并发上限必须是 1–16 的整数")
+        return cls(tuple(nodes), tuple(edges), entry, limit, tuple(positions), concurrency)
 
     def to_dict(self) -> dict:
         return {
@@ -88,6 +102,7 @@ class AgentGraph:
             "edges": [{"source": a, "target": b} for a, b in self.edges],
             "entry": self.entry,
             "max_messages": self.max_messages,
+            "max_concurrency": self.max_concurrency,
         }
 
     @property
@@ -115,7 +130,12 @@ class GraphNodeBinding:
         definitions = [{
             "type": "function", "function": {
                 "name": MESSAGE_TOOL,
-                "description": "Queue a message for a connected agent. Delivery happens after your current turn finishes; this receipt is not the recipient's result. No reply is implicit.",
+                "description": (
+                    "Send a question, update, or reply to a connected Agent. Available nodes can "
+                    "run concurrently. The canvas delivers updates into the current turn when it can "
+                    "accept them and queues the rest for a later turn. "
+                    "The receipt reports how the message was routed. A reply travels along a permitted return edge."
+                ),
                 "parameters": {
                     "type": "object", "additionalProperties": False,
                     "required": ["target", "message"],
@@ -163,6 +183,7 @@ class GraphNodeBinding:
             f"Message budget: {self.run.graph.max_messages}.\n"
             "画布协作通过 message_agent 发送：任务协商 → 能力反馈 → 确认执行 → 执行结果。"
             "agent 间的新任务确认后执行；补交、状态更新及 Skill 请求沿用已有约定，结果无需回执。"
+            "独立任务可以同时发给不同节点。依赖上游产物的任务等收到交付后再发送。"
         )
         if targets and not reply_targets:
             prompt += (
@@ -197,8 +218,8 @@ class GraphNodeBinding:
                 request = store.create_request(self.run.profiles[self.source], **arguments)
                 request_id = request["request_id"]
                 if request_id not in self.run.sent_skill_requests:
-                    await self.run.enqueue(self.source, BUILDER, f"[Skill request {request_id}]\nUse list_skill_requests(request_id='{request_id}') for the objective, acceptance criteria, requester restrictions and draft_dir. Develop and publish the Skill if those conditions can be met.")
                     self.run.sent_skill_requests.add(request_id)
+                    await self.run.enqueue(self.source, BUILDER, f"[Skill request {request_id}]\nUse list_skill_requests(request_id='{request_id}') for the objective, acceptance criteria, requester restrictions and draft_dir. Develop and publish the Skill if those conditions can be met.")
                     await self.run.emit("skill_requested", node=self.source, request_id=request_id, target=BUILDER)
                 return json.dumps({k: request[k] for k in ("request_id", "requester", "status", "draft_dir", "reused")}, ensure_ascii=False)
             if name == "list_skill_requests":
@@ -224,7 +245,7 @@ class GraphNodeBinding:
                     receipt = await store.publish(arguments["request_id"], self.run.profiles[requester])
                     if not receipt["reused"]:
                         reserved = False
-                        await self.run.enqueue(BUILDER, requester, f"[Skill ready: {receipt['name']}; request={request['request_id']}]\nA validated project Skill is now mounted only to you. Load it with read_skill(name='{receipt['name']}'), then continue the original objective: {request['objective']}\nAcceptance criteria: {json.dumps(request['acceptance'], ensure_ascii=False)}\nTool permissions and explicit role prohibitions are unchanged.", reserved=True)
+                        await self.run.enqueue(BUILDER, requester, f"[Skill ready: {receipt['name']}; request={request['request_id']}]\nA validated project Skill is now mounted only to you. Load it with read_skill(name='{receipt['name']}'), then continue the original objective: {request['objective']}\nAcceptance criteria: {json.dumps(request['acceptance'], ensure_ascii=False)}\nTool permissions and explicit role prohibitions are unchanged.", reserved=True, next_turn=True)
                         await self.run.emit("skill_mounted", node=requester, name=receipt["name"], version=receipt["version"], request_id=request["request_id"])
                     return json.dumps(receipt, ensure_ascii=False)
                 finally:
@@ -255,7 +276,13 @@ class GraphRun:
         self.skill_store = project_store(context.metadata)
         self.sent_skill_requests: set[str] = set()
         self.reserved_messages = 0
-        self.queue = deque([("user", graph.entry, context.user_message, "entry")])
+        self.inboxes: dict[str, list[GraphInput]] = {
+            graph.entry: [GraphInput("user", context.user_message, "entry")],
+        }
+        self.active: dict[str, tuple[asyncio.Task, SteeringInbox]] = {}
+        self.wakeup = asyncio.Event()
+        self.activation_order: dict[str, int] = {}
+        self.failed_node: str | None = None
         self.accepted = 0
         self.limited = False
         self.closed = False
@@ -275,7 +302,10 @@ class GraphRun:
         if callback:
             await callback(event)
 
-    async def enqueue(self, source: str, target: Any, message: Any, *, reserved: bool = False) -> str:
+    async def enqueue(
+        self, source: str, target: Any, message: Any, *,
+        reserved: bool = False, next_turn: bool = False,
+    ) -> str:
         if reserved:
             self.reserved_messages -= 1
         if self.closed:
@@ -291,13 +321,119 @@ class GraphRun:
             return "Error: graph message budget exhausted; finish with the available results"
         self.accepted += 1
         message_id = f"{self.run_id}:{self.accepted}"
-        self.queue.append((source, target, message, message_id))
-        await self.emit("message", source=source, target=target, message_id=message_id, preview=message[:600])
-        return json.dumps({"status": "queued", "message_id": message_id, "target": target, "remaining_messages": self.graph.max_messages - self.accepted}, ensure_ascii=False)
+        item = GraphInput(source, message, message_id)
+        active = self.active.get(target)
+        delivery = "queued"
+        if active is not None and not next_turn and target not in self.inboxes:
+            task, steering = active
+            if not task.done() and steering.offer(message_id, item.prompt()):
+                delivery = "current_turn"
+        if delivery == "queued":
+            self.inboxes.setdefault(target, []).append(item)
+        await self.emit(
+            "message", source=source, target=target, message_id=message_id,
+            preview=message[:600], delivery=delivery,
+        )
+        self.wakeup.set()
+        return json.dumps({
+            "status": delivery, "message_id": message_id, "target": target,
+            "remaining_messages": self.graph.max_messages - self.accepted,
+        }, ensure_ascii=False)
+
+    async def _run_node(
+        self, node: str, batch: list[GraphInput], steering: SteeringInbox, *,
+        on_stream_chunk, on_viz_event, on_progress,
+    ) -> None:
+        first = batch[0]
+        message_id = first.message_id
+        await self.emit(
+            "node_started", node=node, source=first.source, message_id=message_id,
+            message_ids=[item.message_id for item in batch],
+        )
+        node_chat = "agentgraph:" + hashlib.sha256(f"{self.context.chat_id}:{self.graph.fingerprint}:{node}".encode()).hexdigest()
+        metadata = {
+            key: self.context.metadata[key]
+            for key in ("workspace_dir", "project_id", "project_title", "project_objective", "approved", "_on_task_event")
+            if key in self.context.metadata
+        }
+        metadata.update(
+            parent_session_id=self.session.session_id,
+            root_session_id=self.session.metadata.get("root_session_id", self.session.session_id),
+            task_id=f"graph-{self.graph.fingerprint}-{node}",
+            _graph_binding=GraphNodeBinding(self, node),
+        )
+        context = AgentContext(
+            chat_id=node_chat, channel="agent_graph", account_id=self.context.account_id,
+            user_message=first.prompt(), metadata=metadata, steering=steering,
+        )
+        profile = self.profiles[node]
+        agent = Agent(self.runtime.default_agent.llm, self.runtime.sessions, profile=profile)
+        identity = {"run_id": self.run_id, "node": node, "message_id": message_id}
+        on_graph_output = self.context.metadata.get("_on_graph_output")
+
+        async def stream_delta(text):
+            await on_graph_output({**identity, "delta": text})
+
+        async def stream_progress(data):
+            await on_progress({**data, **identity})
+
+        call = agent.process_message(
+            context, on_stream_chunk=stream_delta if on_graph_output else None,
+            on_viz_event=on_viz_event, on_progress=stream_progress if on_progress else None,
+        )
+        try:
+            if profile.runtime.timeout_sec is not None:
+                response = await asyncio.wait_for(call, timeout=profile.runtime.timeout_sec)
+            else:
+                response = await call
+        finally:
+            steering.close()
+            self.context.metadata.setdefault("viz_tasks", []).extend(context.metadata.get("viz_tasks") or [])
+
+        outputs = self.record["outputs"]
+        outputs.append({"node": node, "source": first.source, "message_id": message_id, "response": response})
+        if on_graph_output:
+            await on_graph_output({**identity, "full": response})
+        elif on_stream_chunk:
+            separator = "\n\n---\n\n" if len(outputs) > 1 else ""
+            await on_stream_chunk(f"{separator}**{node}**\n\n{response}")
+        await self.emit("node_done", node=node, message_id=message_id)
+
+    async def _schedule(self, *, on_stream_chunk, on_viz_event, on_progress) -> None:
+        while True:
+            self.wakeup.clear()
+            for node, (task, _) in tuple(self.active.items()):
+                if not task.done():
+                    continue
+                del self.active[node]
+                try:
+                    task.result()
+                except Exception:
+                    self.failed_node = node
+                    raise
+
+            for node in tuple(self.inboxes):
+                if len(self.active) >= self.graph.max_concurrency:
+                    break
+                if node in self.active:
+                    continue
+                batch = self.inboxes.pop(node)
+                steering = SteeringInbox()
+                for item in batch[1:]:
+                    steering.offer(item.message_id, item.prompt())
+                self.activation_order[batch[0].message_id] = len(self.activation_order)
+                task = asyncio.create_task(self._run_node(
+                    node, batch, steering, on_stream_chunk=on_stream_chunk,
+                    on_viz_event=on_viz_event, on_progress=on_progress,
+                ), name=f"graph:{self.run_id}:{node}")
+                self.active[node] = (task, steering)
+                task.add_done_callback(lambda _: self.wakeup.set())
+            if not self.active:
+                return
+            await self.wakeup.wait()
 
     async def execute(self, *, on_stream_chunk=None, on_viz_event=None, on_progress=None) -> str:
         outputs = self.record["outputs"]
-        current = None
 
         async def publish_viz(event):
             if event.get("event") == "media" and event.get("path"):
@@ -310,57 +446,28 @@ class GraphRun:
 
         try:
             await self.emit("started", entry=self.graph.entry)
-            while self.queue:
-                source, target, message, message_id = self.queue.popleft()
-                current = target
-                await self.emit("node_started", node=target, source=source, message_id=message_id)
-                node_chat = "agentgraph:" + hashlib.sha256(f"{self.context.chat_id}:{self.graph.fingerprint}:{target}".encode()).hexdigest()
-                metadata = {
-                    key: self.context.metadata[key]
-                    for key in ("workspace_dir", "project_id", "project_title", "project_objective", "approved", "_on_task_event")
-                    if key in self.context.metadata
-                }
-                metadata.update(
-                    parent_session_id=self.session.session_id,
-                    root_session_id=self.session.metadata.get("root_session_id", self.session.session_id),
-                    task_id=f"graph-{self.graph.fingerprint}-{target}",
-                    _graph_binding=GraphNodeBinding(self, target),
-                )
-                context = AgentContext(
-                    chat_id=node_chat, channel="agent_graph", account_id=self.context.account_id,
-                    user_message=f"[Graph message from {source}; id={message_id}]\n{message}", metadata=metadata,
-                )
-                profile = self.profiles[target]
-                agent = Agent(self.runtime.default_agent.llm, self.runtime.sessions, profile=profile)
-                header = f"**{target}**\n\n"
-                if on_stream_chunk:
-                    await on_stream_chunk(("\n\n---\n\n" if outputs else "") + header)
-                call = agent.process_message(context, on_stream_chunk=on_stream_chunk, on_viz_event=publish_viz if on_viz_event else None, on_progress=on_progress)
-                try:
-                    if profile.runtime.timeout_sec is not None:
-                        response = await asyncio.wait_for(call, timeout=profile.runtime.timeout_sec)
-                    else:
-                        response = await call
-                finally:
-                    self.context.metadata.setdefault("viz_tasks", []).extend(context.metadata.get("viz_tasks") or [])
-                outputs.append({"node": target, "source": source, "message_id": message_id, "response": response})
-                await self.emit("node_done", node=target, message_id=message_id)
-                current = None
+            await self._schedule(
+                on_stream_chunk=on_stream_chunk, on_viz_event=publish_viz if on_viz_event else None,
+                on_progress=on_progress,
+            )
             self.record["status"] = "limit_reached" if self.limited else "done"
-            await self.emit(self.record["status"])
         except asyncio.CancelledError:
             self.record["status"] = "cancelled"
-            await self.emit("cancelled", node=current)
             raise
         except Exception as exc:
             self.record["status"] = "error"
             self.record["error"] = str(exc)
-            await self.emit("error", node=current, reason=str(exc))
             raise
         finally:
             self.closed = True
-            self.queue.clear()
+            tasks = [task for task, _ in self.active.values()]
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            self.active.clear()
+            self.inboxes.clear()
             self.record["ended_at"] = time.time()
+            outputs.sort(key=lambda item: self.activation_order[item["message_id"]])
             result = "\n\n---\n\n".join(f"**{item['node']}**\n\n{item['response']}" for item in outputs)
             if self.record["status"] != "done":
                 result += f"\n\n[画布运行状态：{self.record['status']}]"
@@ -369,7 +476,10 @@ class GraphRun:
             self.context.metadata["_graph_result"] = result.strip()
             if result.strip():
                 self.session.add_message(LLMMessage(role="assistant", content=result.strip()))
-            await self.runtime.sessions.save(self.session)
+            if self.record["status"] == "error":
+                await self.emit("error", node=self.failed_node, reason=self.record["error"])
+            else:
+                await self.emit(self.record["status"])
         return result
 
 

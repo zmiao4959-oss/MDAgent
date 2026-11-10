@@ -18,6 +18,7 @@ from .agents.catalog import AgentCatalog
 from .settings import WORKSPACE_DIR, MEMORY_FILE, active_workspace_dir
 from .memory.session import SessionManager
 from .logger import get_logger
+from .runtime.steering import SteeringInbox
 
 logger = get_logger(__name__)
 TaskEventCallback = Callable[[Dict], Awaitable[None]]
@@ -47,6 +48,9 @@ class SubAgentTask:
     sandbox_dir: Optional[str] = None  # 隔离工作区路径
     workspace_dir: Optional[str] = None
     collected_files: List[str] = field(default_factory=list)
+    _steering: Optional[SteeringInbox] = field(default=None, repr=False, compare=False)
+    _followups: List[Tuple[str, str]] = field(default_factory=list, repr=False, compare=False)
+    _message_deliveries: Dict[str, str] = field(default_factory=dict, repr=False, compare=False)
 
     def to_dict(self) -> Dict:
         return {
@@ -167,11 +171,11 @@ class SubAgentManager:
         if event_callback is not None:
             self._event_callbacks[task_id] = event_callback
 
-        await self._emit_event(task, event_callback)
-        coro = self._run_subagent(
-            task, parent_session_id, sandbox, seed_files, event_callback, task.workspace_dir
+        task._steering = SteeringInbox()
+        self._running[task_id] = asyncio.create_task(
+            self._run_subagent(task, parent_session_id, sandbox, seed_files, task.workspace_dir)
         )
-        self._running[task_id] = asyncio.create_task(coro)
+        await self._emit_event(task, event_callback)
 
         logger.info("Sub-agent spawned: %s (sandbox=%s, model=%s)", task_id, sandbox, model)
         return self._receipt(task, reused=False)
@@ -183,31 +187,81 @@ class SubAgentManager:
         """Append a turn to a finished task using its original session and workspace."""
         if not isinstance(instruction, str) or not instruction.strip():
             raise ValueError("instruction must be a non-empty string")
-        task = self._tasks.get(task_id)
+        task = self._require_owned_task(task_id, parent_session_id)
+        running = self._running.get(task_id)
+        if task.status not in {"done", "error"} or (running is not None and not running.done()):
+            raise ValueError("Task is still active; send a message with delegate_task and the same task_id")
+        self._start_continuation(task, instruction)
+        callback = event_callback or self._event_callbacks.get(task_id)
+        if callback is not None:
+            self._event_callbacks[task_id] = callback
+        await self._emit_event(task, callback)
+        return {**self._receipt(task, reused=True), "continued": True}
+
+    async def send_task_message(
+        self, task_id: str, message: str, *, parent_session_id: str,
+        event_callback: Optional[TaskEventCallback] = None,
+        idempotency_key: str = "",
+    ) -> Dict[str, Any]:
+        """Deliver to the active loop, or continue the original task when it is idle."""
+        if not isinstance(message, str) or not message.strip():
+            raise ValueError("message must be a non-empty string")
+        task = self._require_owned_task(task_id, parent_session_id)
+        key = idempotency_key.strip()
+        if key and key in task._message_deliveries:
+            return {
+                **self._receipt(task, reused=True),
+                "delivery": task._message_deliveries[key],
+                "deduplicated": True,
+            }
+
+        running = self._running.get(task_id)
+        active = running is not None and not running.done()
+        delivery = "next_turn"
+        if active:
+            if running.cancelling():
+                raise ValueError("Task is being cancelled")
+            message_id = uuid.uuid4().hex
+            if task._steering is not None and task._steering.offer(message_id, message):
+                delivery = "current_turn"
+            else:
+                # The loop sealed its input while the task was still finalizing.
+                task._followups.append((message_id, message))
+                if task.status in {"done", "error"}:
+                    task.status = "pending"
+                    task.result = None
+        else:
+            self._start_continuation(task, message)
+
+        if event_callback is not None:
+            self._event_callbacks[task_id] = event_callback
+        if key:
+            task._message_deliveries[key] = delivery
+        if not active:
+            await self._emit_event(task, self._event_callbacks.get(task_id))
+        return {**self._receipt(task, reused=True), "delivery": delivery}
+
+    def _require_owned_task(self, task_id: str, parent_session_id: str) -> SubAgentTask:
+        task = self._tasks.get(task_id) if isinstance(task_id, str) else None
         if task is None:
             raise ValueError("Unknown task; use list_tasks to check the original task_id")
         if task.parent_session_id != parent_session_id:
             raise ValueError("Task does not belong to the current parent conversation")
-        running = self._running.get(task_id)
-        if task.status not in {"done", "error"} or (running is not None and not running.done()):
-            raise ValueError("Task is still active; inspect or wait for it before continuing")
+        return task
+
+    def _start_continuation(self, task: SubAgentTask, instruction: str) -> None:
         workspace = task.sandbox_dir or task.workspace_dir
         if not workspace or not Path(workspace).is_dir():
             raise ValueError("Original workspace no longer exists; this task cannot be continued")
         self.catalog.refresh()
         self.catalog.require(task.agent_name)
-        callback = event_callback or self._event_callbacks.get(task_id)
-        if callback is not None:
-            self._event_callbacks[task_id] = callback
-        # Claim the next turn before yielding, so parallel continuation calls cannot overlap.
         task.status = "pending"
         task.result = None
-        self._running[task_id] = asyncio.create_task(self._run_subagent(
-            task, task.parent_session_id, bool(task.sandbox_dir), None, callback,
+        task._steering = SteeringInbox()
+        self._running[task.task_id] = asyncio.create_task(self._run_subagent(
+            task, task.parent_session_id, bool(task.sandbox_dir), None,
             task.workspace_dir, instruction=instruction,
         ))
-        await self._emit_event(task, callback)
-        return {**self._receipt(task, reused=True), "continued": True}
 
     @staticmethod
     def _delegation_key(
@@ -246,7 +300,8 @@ class SubAgentManager:
             "reused": reused,
             "instruction": (
                 "Treat task_id as opaque. Copy it verbatim, including the "
-                "'subagent:' prefix, for inspect_task, wait_task, continue_task, or cancel_task."
+                "'subagent:' prefix, for delegate_task messages, inspect_task, wait_task, "
+                "continue_task, or cancel_task."
             ),
         }
 
@@ -273,13 +328,53 @@ class SubAgentManager:
         parent_session_id: Optional[str],
         sandbox: bool,
         seed_files: Optional[List[str]],
-        event_callback: Optional[TaskEventCallback],
         workspace_dir: Optional[str],
         instruction: Optional[str] = None,
+    ) -> Optional[str]:
+        """Keep one worker responsible for the task's current and queued turns."""
+        try:
+            while True:
+                await self._run_turn(
+                    task, parent_session_id, sandbox, seed_files, workspace_dir, instruction,
+                )
+                if task._steering is not None:
+                    task._steering.close()
+                if not task._followups:
+                    await self._emit_event(task, self._event_callbacks.get(task.task_id))
+                if not task._followups:
+                    return task.result
+
+                followups, task._followups = task._followups, []
+                instruction = followups[0][1]
+                task._steering = SteeringInbox()
+                for message_id, message in followups[1:]:
+                    task._steering.offer(message_id, message)
+                task.status = "pending"
+                task.result = None
+                await self._emit_event(task, self._event_callbacks.get(task.task_id))
+        except asyncio.CancelledError:
+            if task.status in {"pending", "running"}:
+                task.status = "error"
+                task.result = "Task was cancelled"
+            raise
+        finally:
+            if task._steering is not None:
+                task._steering.close()
+                task._steering = None
+            task._followups.clear()
+
+    async def _run_turn(
+        self,
+        task: SubAgentTask,
+        parent_session_id: Optional[str],
+        sandbox: bool,
+        seed_files: Optional[List[str]],
+        workspace_dir: Optional[str],
+        instruction: Optional[str],
     ) -> None:
         """在独立上下文中执行子 Agent。"""
         task.status = "running"
-        await self._emit_event(task, event_callback)
+        await self._emit_event(task, self._event_callbacks.get(task.task_id))
         try:
             metadata: Dict = {
                 "parent_session": parent_session_id,
@@ -287,6 +382,9 @@ class SubAgentManager:
                 "task_id": task.task_id,
             }
             if instruction is not None:
+                original_workspace = task.sandbox_dir or task.workspace_dir
+                if not original_workspace or not Path(original_workspace).is_dir():
+                    raise ValueError("Original workspace no longer exists; this task cannot be continued")
                 previous = await self.sessions.resolve_session(f"subagent:{task.task_id}")
                 if previous is None:
                     raise ValueError("Original task session is unavailable; refusing to continue without its history")
@@ -320,6 +418,7 @@ class SubAgentManager:
                 account_id="system",
                 user_message=instruction if instruction is not None else task.task_prompt,
                 metadata=metadata,
+                steering=task._steering,
             )
 
             # 子 Agent 可使用不同的 LLM 配置（通过 metadata 传递）
@@ -337,15 +436,10 @@ class SubAgentManager:
                 self._collect_sandbox_files(task)
 
             logger.info("Sub-agent done: %s", task.task_id)
-            await self._emit_event(task, event_callback)
         except Exception as e:
             task.result = f"Error: {e}"
             task.status = "error"
             logger.error("Sub-agent error: %s: %s", task.task_id, e)
-            await self._emit_event(task, event_callback)
-        finally:
-            # 清理沙箱（保留结果文件的情况下可配置）
-            pass
 
     def _collect_sandbox_files(self, task: SubAgentTask) -> None:
         """收集沙箱中生成的新文件路径。"""
@@ -391,10 +485,11 @@ class SubAgentManager:
 
     async def wait(self, task_id: str, timeout: float = 300) -> Optional[str]:
         """等待一个子任务完成。"""
-        if task_id in self._running:
+        running = self._running.get(task_id)
+        if running is not None:
             try:
-                await asyncio.wait_for(
-                    asyncio.shield(self._running[task_id]),
+                result = await asyncio.wait_for(
+                    asyncio.shield(running),
                     timeout=timeout,
                 )
             except asyncio.TimeoutError:
@@ -404,6 +499,8 @@ class SubAgentManager:
                     if task is not None
                     else None
                 )
+            if self._running.get(task_id) is not running:
+                return result
         task = self._tasks.get(task_id)
         return task.result if task else None
 
@@ -413,6 +510,9 @@ class SubAgentManager:
             self._running[task_id].cancel()
         task = self._tasks.get(task_id)
         if task:
+            if task._steering is not None:
+                task._steering.close()
+            task._followups.clear()
             task.status = "error"
             task.result = "Task was cancelled"
             await self._cleanup_sandbox(task)

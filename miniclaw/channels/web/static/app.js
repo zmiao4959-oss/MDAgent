@@ -1,7 +1,7 @@
 import * as THREE from '/static/three.module.js';
 import { createEvolutionPanel } from '/static/evolution.js';
 import { createResearchCapsulePanel } from '/static/capsules.js';
-import { createAgentGraphPanel } from '/static/agent-graph.js?v=4';
+import { createAgentGraphPanel, createGraphReplies } from '/static/agent-graph.js?v=5';
 import { createCollaborationPanel } from '/static/collaboration.js';
 
   const CHAT_STORAGE_KEY = "miniclaw_webchat_chat_id";
@@ -83,11 +83,12 @@ import { createCollaborationPanel } from '/static/collaboration.js';
   let chatRunning = false;
   let planMode = false;
   const projectsById = new Map();
-  const runningProjectIds = new Set();
+  const activeChatStreams = new Map();
+  const steeringRequests = new Map();
   const agentGraphPanel = createAgentGraphPanel({
     getChatId: () => currentChatId,
     getProjectId: () => currentProjectId,
-    isRunning: () => Boolean(runningProjectIds.has(currentProjectId) || projectsById.get(currentProjectId)?.is_running),
+    isRunning: () => Boolean(activeChatStreams.has(currentProjectId) || projectsById.get(currentProjectId)?.is_running),
     onApplied: (enabled) => {
       if (enabled) { planMode = false; planModeCheckbox.checked = false; }
       planModeCheckbox.disabled = enabled;
@@ -99,7 +100,7 @@ import { createCollaborationPanel } from '/static/collaboration.js';
   const collaborationPanel = createCollaborationPanel({
     getChatId: () => currentChatId,
     getProjectId: () => currentProjectId,
-    isRunning: () => Boolean(chatRunning || runningProjectIds.has(currentProjectId) || projectsById.get(currentProjectId)?.is_running),
+    isRunning: () => Boolean(chatRunning || activeChatStreams.has(currentProjectId) || projectsById.get(currentProjectId)?.is_running),
     onApplied: mode => {
       const enabled = mode !== 'default';
       if (enabled) { planMode = false; planModeCheckbox.checked = false; }
@@ -156,7 +157,9 @@ import { createCollaborationPanel } from '/static/collaboration.js';
   const systemThemeQuery = window.matchMedia("(prefers-color-scheme: light)");
 
   function updateInputPlaceholder() {
-    if (planMode) {
+    if (steeringRunId(currentProjectId)) {
+      inp.placeholder = "补充本轮任务…";
+    } else if (planMode) {
       inp.placeholder = "描述你的目标，Agent 会先制定执行计划...";
     } else if (webchatSettings.enterToSend) {
       inp.placeholder = "输入消息... (Enter 发送, Shift+Enter 换行)";
@@ -611,7 +614,7 @@ import { createCollaborationPanel } from '/static/collaboration.js';
     });
   }
 
-  function addMsg(role, text) {
+  function addMsg(role, text, before = null) {
     const d = document.createElement("div");
     d.className = role;
     if (role === "agent" || role === "system") {
@@ -622,15 +625,34 @@ import { createCollaborationPanel } from '/static/collaboration.js';
     } else {
       d.textContent = text;
     }
-    msgs.appendChild(d);
+    msgs.insertBefore(d, before?.parentNode === msgs ? before : null);
     scrollMessagesToBottom();
   }
 
-  function setChatProgress(active, text, percent, projectId = currentProjectId) {
-    if (projectId) {
-      if (active) runningProjectIds.add(projectId);
-      else runningProjectIds.delete(projectId);
+  function steeringRunId(projectId) {
+    const stream = activeChatStreams.get(projectId);
+    if (stream) return stream.runId;
+    const project = projectsById.get(projectId);
+    return project?.is_running ? project.steering_run_id : null;
+  }
+
+  function updateSendControls() {
+    const project = projectsById.get(currentProjectId);
+    const locked = !project || ["paused", "completed", "archived"].includes(project.status);
+    inp.disabled = locked;
+    if (locked) {
+      sendBtn.disabled = true;
+      sendBtn.textContent = project?.status === "paused" ? "已暂停" : "不可发送";
+    } else {
+      const busy = activeChatStreams.has(currentProjectId) || project.is_running;
+      const steerable = Boolean(steeringRunId(currentProjectId));
+      sendBtn.disabled = (busy && !steerable) || Boolean(steeringRequests.get(currentProjectId)?.sending);
+      sendBtn.textContent = steerable ? "补充" : busy ? "运行中…" : "发送";
     }
+    updateInputPlaceholder();
+  }
+
+  function setChatProgress(active, text, percent, projectId = currentProjectId) {
     // A background project may still stream after the user switches tabs.
     // Keep its state, but never overwrite the newly selected project's UI.
     if (projectId && projectId !== currentProjectId) return;
@@ -650,8 +672,7 @@ import { createCollaborationPanel } from '/static/collaboration.js';
       chatProgress.style.width = "";
     }
     chatStatusText.textContent = text || (active ? "Agent 运行中…" : "就绪");
-    sendBtn.disabled = active;
-    sendBtn.textContent = active ? "运行中…" : "发送";
+    updateSendControls();
     agentGraphPanel.updateRunning();
     collaborationPanel.updateRunning();
   }
@@ -1612,16 +1633,7 @@ import { createCollaborationPanel } from '/static/collaboration.js';
       pauseButton.textContent = paused ? "▶ 恢复" : "Ⅱ 暂停";
       pauseButton.disabled = !project || ["completed", "archived"].includes(project.status);
     }
-    const locked = !project || ["paused", "completed", "archived"].includes(project.status);
-    if (locked) {
-      inp.disabled = true;
-      sendBtn.disabled = true;
-      sendBtn.textContent = project?.status === "paused" ? "已暂停" : "不可发送";
-    } else if (!chatRunning) {
-      inp.disabled = false;
-      sendBtn.disabled = false;
-      sendBtn.textContent = "发送";
-    }
+    updateSendControls();
     agentGraphPanel.updateRunning();
   }
 
@@ -1710,6 +1722,9 @@ import { createCollaborationPanel } from '/static/collaboration.js';
       convList.appendChild(btn);
     });
     setActiveInSidebar();
+    const running = Boolean(activeChatStreams.has(currentProjectId) || projectsById.get(currentProjectId)?.is_running);
+    if (running !== chatRunning) setChatProgress(running);
+    else updateSendControls();
     return list;
   }
 
@@ -1783,7 +1798,7 @@ import { createCollaborationPanel } from '/static/collaboration.js';
     localStorage.setItem(CHAT_STORAGE_KEY, currentChatId);
     updateCurrentChatLabel();
     setActiveInSidebar();
-    const running = Boolean(project.is_running || runningProjectIds.has(projectId));
+    const running = Boolean(project.is_running || activeChatStreams.has(projectId));
     setChatProgress(running, running ? "Agent 正在后台运行…" : "就绪", undefined, projectId);
     updateCurrentChatLabel();
     await restoreVizState();
@@ -1864,11 +1879,54 @@ import { createCollaborationPanel } from '/static/collaboration.js';
     renderAgentTasks();
   }
 
+  async function sendSteering(projectId, chatId, runId, text) {
+    let receipt = steeringRequests.get(projectId);
+    if (receipt?.runId !== runId || receipt.text !== text) {
+      const messageId = crypto.getRandomValues(new Uint32Array(4)).join("-");
+      receipt = { runId, text, messageId };
+      steeringRequests.set(projectId, receipt);
+    }
+    receipt.sending = true;
+    updateSendControls();
+    try {
+      const resp = await fetch("/api/chat/steer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, run_id: runId, message_id: receipt.messageId, message: text }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) {
+        if (resp.status === 409) await loadSidebar();
+        throw new Error(data.detail || "补充消息发送失败");
+      }
+      steeringRequests.delete(projectId);
+      if (projectId !== currentProjectId) return;
+      if (inp.value.trim() === text) {
+        inp.value = "";
+        inp.style.height = "auto";
+      }
+      const stream = activeChatStreams.get(projectId);
+      addMsg("user", text, stream?.reply);
+      if (steeringRunId(projectId) === runId) chatStatusText.textContent = "补充已发送，等待 Agent 处理…";
+      if (!stream && collaborationPanel.mode === "room") await collaborationPanel.refresh();
+    } catch (error) {
+      if (projectId === currentProjectId) chatStatusText.textContent = error.message;
+    } finally {
+      receipt.sending = false;
+      if (projectId === currentProjectId) updateSendControls();
+    }
+  }
+
   async function send() {
     const text = inp.value.trim();
     const projectId = currentProjectId;
     const chatId = currentChatId;
-    if (!text || !projectId || runningProjectIds.has(projectId)) return;
+    if (!text || !projectId || sendBtn.disabled) return;
+    const runId = steeringRunId(projectId);
+    if (runId) {
+      await sendSteering(projectId, chatId, runId, text);
+      return;
+    }
     agentTaskState.clear();
     renderAgentTasks();
     addMsg("user", text);
@@ -1883,17 +1941,19 @@ import { createCollaborationPanel } from '/static/collaboration.js';
     agDiv.appendChild(thinkingEl);
     msgs.appendChild(agDiv);
     scrollMessagesToBottom(true);
+    const stream = { reply: agDiv, runId: null };
+    activeChatStreams.set(projectId, stream);
     setChatProgress(true, "等待响应…", undefined, projectId);
 
     let rawContent = "";
     let firstContent = false;
     let receivedDone = false;
     let taskFailed = false;
+    const graphReplies = createGraphReplies(agDiv, renderMarkdown);
 
     // ── 统一渲染 agent 消息卡片 ──
     function finalizeAgentDiv(finalText) {
       if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
-      setChatProgress(false, undefined, undefined, projectId);
       if (finalText.trim()) {
         if (typeof marked !== "undefined") {
           agDiv.innerHTML = renderMarkdown(finalText);
@@ -1905,6 +1965,57 @@ import { createCollaborationPanel } from '/static/collaboration.js';
         agDiv.textContent = "（模型未返回文本）";
       }
       scrollMessagesToBottom();
+    }
+
+    function handlePayload(payload) {
+      const runId = payload.steering_run_id || (payload.room_event?.kind === "started" && payload.room_event.run_id);
+      if (runId) {
+        stream.runId = runId;
+        if (projectId === currentProjectId) updateSendControls();
+      }
+      if (payload.room_event) {
+        collaborationPanel.handleEvent(payload.room_event, chatId);
+      } else if (payload.graph_event) {
+        agentGraphPanel.handleEvent(payload.graph_event, chatId);
+        graphReplies.handleEvent(payload.graph_event);
+        if (payload.graph_event.kind === "node_started") {
+          setChatProgress(true, "画布运行中…", undefined, projectId);
+        }
+        if (graphReplies.visible) scrollMessagesToBottom();
+      } else if (payload.graph_output) {
+        graphReplies.handleOutput(payload.graph_output);
+        scrollMessagesToBottom();
+      } else if (payload.task_event) {
+        handleTaskEvent(payload.task_event);
+      } else if (payload.progress) {
+        const p = payload.progress;
+        const pct = p.total ? Math.round((p.current / p.total) * 100) : undefined;
+        const detail = p.total ? `Step ${p.current} / ${p.total} (${pct}%)` : `Step ${p.current}`;
+        if (!graphReplies.handleProgress(p.message_id, detail)) setChatProgress(true, detail, pct, projectId);
+      } else if (payload.viz) {
+        handleVizEvent(payload);
+      } else if (payload.delta) {
+        if (!firstContent) {
+          if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
+          firstContent = true;
+        }
+        rawContent += payload.delta;
+        if (typeof marked !== "undefined") {
+          agDiv.innerHTML = renderMarkdown(rawContent) + '<span class="streaming-cursor">▊</span>';
+        } else {
+          agDiv.textContent = rawContent;
+        }
+        scrollMessagesToBottom();
+      } else if (payload.done) {
+        receivedDone = true;
+        if (!graphReplies.visible) finalizeAgentDiv(payload.full || rawContent);
+        refreshFileList();
+        if (planMode) {
+          planMode = false;
+          planModeCheckbox.checked = false;
+          updateInputPlaceholder();
+        }
+      }
     }
 
     try {
@@ -1925,74 +2036,11 @@ import { createCollaborationPanel } from '/static/collaboration.js';
         const x = await reader.read();
         if (x.done) break;
         buffer += decoder.decode(x.value, { stream: true });
-        buffer = parseSseBuffer(buffer, (payload) => {
-          if (payload.room_event) {
-            collaborationPanel.handleEvent(payload.room_event, chatId);
-          } else if (payload.graph_event) {
-            agentGraphPanel.handleEvent(payload.graph_event, chatId);
-          } else if (payload.task_event) {
-            handleTaskEvent(payload.task_event);
-          } else if (payload.progress) {
-            const p = payload.progress;
-            if (p.total) {
-              const pct = Math.round((p.current / p.total) * 100);
-              setChatProgress(true, `Step ${p.current} / ${p.total} (${pct}%)`, pct, projectId);
-            } else {
-              setChatProgress(true, `Step ${p.current}`, undefined, projectId);
-            }
-          } else if (payload.viz) {
-            handleVizEvent(payload);
-          } else if (payload.delta) {
-            if (!firstContent) {
-              if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
-              firstContent = true;
-            }
-            rawContent += payload.delta;
-            // 流式渲染：使用 marked 增量渲染
-            if (typeof marked !== "undefined") {
-              agDiv.innerHTML = renderMarkdown(rawContent) +
-                '<span class="streaming-cursor">▊</span>';
-            } else {
-              agDiv.textContent = rawContent;
-            }
-            scrollMessagesToBottom();
-          } else if (payload.done) {
-            receivedDone = true;
-            // 服务端返回的 full 是权威完整结果，始终用它
-            finalizeAgentDiv(payload.full || rawContent);
-            refreshFileList();
-            if (planMode) {
-              planMode = false;
-              planModeCheckbox.checked = false;
-              updateInputPlaceholder();
-            }
-          }
-        });
+        buffer = parseSseBuffer(buffer, handlePayload);
       }
       // 兜底：处理 buffer 剩余数据（复用同一解析函数，避免遗漏 done 事件）
       if (buffer.trim()) {
-        parseSseBuffer(buffer + "\n", (payload) => {
-          if (payload.room_event) {
-            collaborationPanel.handleEvent(payload.room_event, chatId);
-          } else if (payload.graph_event) {
-            agentGraphPanel.handleEvent(payload.graph_event, chatId);
-          } else if (payload.task_event) {
-            handleTaskEvent(payload.task_event);
-          } else if (payload.progress) {
-            const p = payload.progress;
-            if (p.total) setChatProgress(true, `Step ${p.current} / ${p.total}`, Math.round((p.current / p.total) * 100), projectId);
-            else setChatProgress(true, `Step ${p.current}`, undefined, projectId);
-          } else if (payload.viz) {
-            handleVizEvent(payload);
-          } else if (payload.delta) {
-            if (!firstContent) { if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove(); firstContent = true; }
-            rawContent += payload.delta;
-          } else if (payload.done) {
-            receivedDone = true;
-            finalizeAgentDiv(payload.full || rawContent);
-            refreshFileList();
-          }
-        });
+        parseSseBuffer(buffer + "\n", handlePayload);
       }
       // 流正常结束但没收到 done → 用流式内容兜底渲染
       if (!receivedDone) {
@@ -2009,9 +2057,13 @@ import { createCollaborationPanel } from '/static/collaboration.js';
     } catch (e) {
       taskFailed = true;
       if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
-      if (!rawContent.trim()) {
+      if (graphReplies.visible) {
+        graphReplies.notice("连接中断 · " + e.message);
+      } else if (!rawContent.trim()) {
         agDiv.textContent = "Error: " + e.message;
       }
+    } finally {
+      activeChatStreams.delete(projectId);
       setChatProgress(false, undefined, undefined, projectId);
     }
 

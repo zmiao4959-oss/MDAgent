@@ -349,7 +349,7 @@ def test_only_builder_can_publish_and_repeated_publication_does_not_resume_twice
         assert second["reused"]
         assert run.accepted == 1
         assert run.reserved_messages == 0
-        assert len(run.queue) == 2  # initial user message plus exactly one resume
+        assert len(run.inboxes[owner.name]) == 2  # initial user message plus exactly one resume
 
     asyncio.run(execute())
 
@@ -410,7 +410,6 @@ def test_graph_builds_tests_mounts_and_resumes_requester_with_real_script_execut
     class LLM:
         def __init__(self):
             self.counts = {}
-            self.request = None
             self.execution = None
 
         async def chat(self, messages, tools=None, **kwargs):
@@ -424,7 +423,7 @@ def test_graph_builds_tests_mounts_and_resumes_requester_with_real_script_execut
                     assert "request_skill" in names
                     return tool("request_skill", objective="Count supplied structure labels", acceptance=["Known counts: fcc=.5, bcc=.25, unknown=.25", "Reject empty labels"])
                 if index == 1:
-                    self.request = json.loads(messages[-1].content)
+                    assert json.loads(messages[-1].content)["status"] == "requested"
                     return LLMResponse(content="Skill requested; waiting for the supplied implementation")
                 if index == 2:
                     assert NAME in system
@@ -440,14 +439,15 @@ def test_graph_builds_tests_mounts_and_resumes_requester_with_real_script_execut
                 assert '"fcc": 0.5' in self.execution
                 return LLMResponse(content="Verified fcc=.5, bcc=.25, unknown=.25")
             if index == 0:
-                return tool("list_skill_requests", request_id=self.request["request_id"])
+                self.builder_request_id = messages[-1].content.split("[Skill request ", 1)[1].split("]", 1)[0]
+                return tool("list_skill_requests", request_id=self.builder_request_id)
             if index == 1:
                 contract = json.loads(messages[-1].content)
                 assert contract["requester"] == "researcher"
                 assert "execute" in contract["allowed_tools"]
                 return LLMResponse(tool_calls=[{"id": f"write-{i}", "type": "function", "function": {"name": "write", "arguments": json.dumps({"path": str(Path(contract["draft_dir"]) / relative), "content": data})}} for i, (relative, data) in enumerate(package_files().items())], finish_reason="tool_calls")
             if index == 2:
-                return tool("publish_skill", request_id=self.request["request_id"])
+                return tool("publish_skill", request_id=self.builder_request_id)
             receipt = json.loads(messages[-1].content)
             assert receipt["status"] == "mounted"
             assert receipt["validation"]["tests_run"] == 3

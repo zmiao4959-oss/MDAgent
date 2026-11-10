@@ -30,7 +30,9 @@ class ChatRunService:
         self.result: Dict[str, Any] = {"response": None}
         self.context.metadata["_on_task_event"] = self.events.publish_task
         self.context.metadata["_on_graph_event"] = self.events.publish_graph
+        self.context.metadata["_on_graph_output"] = self.events.publish_graph_output
         self.context.metadata["_on_room_event"] = self.events.publish_room
+        self.context.metadata["_on_steering_ready"] = self.events.publish_steering_ready
 
     async def run(self) -> None:
         project = self.project

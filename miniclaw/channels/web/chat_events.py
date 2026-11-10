@@ -29,8 +29,14 @@ class ChatEventStream:
     async def publish_graph(self, data: Dict[str, Any]) -> None:
         await self._publish({"kind": "graph_event", "data": dict(data)})
 
+    async def publish_graph_output(self, data: Dict[str, Any]) -> None:
+        await self._publish({"kind": "graph_output", "data": dict(data)})
+
     async def publish_room(self, data: Dict[str, Any]) -> None:
         await self._publish({"kind": "room_event", "data": dict(data)})
+
+    async def publish_steering_ready(self, run_id: str) -> None:
+        await self._publish({"kind": "steering_ready", "run_id": run_id})
 
     async def _publish(self, event: Dict[str, Any]) -> None:
         if self.subscribed:
@@ -52,8 +58,10 @@ class ChatEventStream:
             return {"delta": event["text"]}
         if kind == "progress":
             return {"progress": event["data"]}
-        if kind in ("task_event", "graph_event", "room_event"):
+        if kind in ("task_event", "graph_event", "graph_output", "room_event"):
             return {kind: event["data"]}
+        if kind == "steering_ready":
+            return {"steering_run_id": event["run_id"]}
         if kind == "visualization":
             payload = dict(event)
             payload.pop("kind", None)

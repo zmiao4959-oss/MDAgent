@@ -34,7 +34,7 @@ def unregister_send_callback(channel: str):
         "function": {
             "name": "send_message",
             "description": (
-                "Send a text message to a target channel/chat. "
+                "Send a text message to a user-facing channel or chat. "
                 "Useful for proactive notifications, cron job results, "
                 "or cross-channel communication."
             ),

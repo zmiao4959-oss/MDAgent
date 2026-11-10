@@ -30,6 +30,7 @@ from .runtime import (
     AgentLoop,
     RequestPreparer,
 )
+from .runtime.steering import SteeringInbox
 
 if TYPE_CHECKING:
     from .agents.profile import AgentProfile
@@ -48,6 +49,7 @@ class AgentContext:
     account_id: str
     user_message: str = ""
     metadata: Dict[str, Any] = field(default_factory=dict)
+    steering: Optional[SteeringInbox] = None
 
 
 class Agent:
@@ -318,11 +320,9 @@ class Agent:
         system_prompt: str,
         on_stream_chunk: Optional[StreamChunkCallback],
     ) -> str:
-        """达到轮次上限且仍以 tool 消息结尾时，再请求一次纯文本收尾。"""
-        if not session.messages or session.messages[-1].role != "tool":
-            return ""
+        """达到轮次上限后，用已有结果和补充信息生成纯文本回复。"""
         logger.warning(
-            "Max tool rounds reached with pending tool results; requesting final reply"
+            "Max rounds reached with pending results or user input; requesting final reply"
         )
         messages = [
             LLMMessage(role="system", content=system_prompt),
@@ -361,6 +361,8 @@ class Agent:
                     on_progress=on_progress,
                 )
         finally:
+            if context.steering is not None:
+                context.steering.close()
             Agent._running_tasks.discard(task)
 
     async def _process_message(
@@ -408,7 +410,19 @@ class Agent:
             round_num = loop_result.rounds
             hit_max_rounds = loop_result.hit_max_rounds
 
-        except Exception as exc:
+        except (Exception, asyncio.CancelledError) as exc:
+            steering = context.steering
+            if steering is not None:
+                steering.close()
+                for message in steering.drain():
+                    session.add_message(message)
+            if isinstance(exc, asyncio.CancelledError):
+                if steering is not None:
+                    try:
+                        await self.sessions.save(session)
+                    except Exception:
+                        logger.exception("Could not save cancelled session %s", session.session_id)
+                raise
             logger.exception("Agent loop failed for chat_id=%s", context.chat_id)
             await self.run_lifecycle.fail(
                 run_state,

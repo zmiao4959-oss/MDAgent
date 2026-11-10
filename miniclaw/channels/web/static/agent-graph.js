@@ -148,7 +148,9 @@ export function createAgentGraphPanel({ getChatId, getProjectId, isRunning, onAp
     for (const event of (lastRun?.events || []).slice(-60)) {
       const row = document.createElement('div'); row.className = 'graph-event'; row.dataset.kind = event.kind;
       const route = event.target ? `${event.source} → ${event.target}` : event.node || event.entry || '';
-      row.textContent = `${labels[event.kind] || event.kind}${route ? ` · ${route}` : ''}${event.name ? ` · ${event.name}` : ''}${event.reason ? `\n${event.reason}` : ''}`;
+      const label = event.kind === 'message' && event.delivery === 'current_turn'
+        ? '已投递本轮' : labels[event.kind] || event.kind;
+      row.textContent = `${label}${route ? ` · ${route}` : ''}${event.name ? ` · ${event.name}` : ''}${event.reason ? `\n${event.reason}` : ''}`;
       row.title = event.preview || ''; box.appendChild(row);
     }
     if (!box.childElementCount) box.textContent = '保存画布后，在项目对话中发送任务。';
@@ -222,6 +224,7 @@ export function createAgentGraphPanel({ getChatId, getProjectId, isRunning, onAp
         for (const edge of config.edges) addEdge(edge.source, edge.target);
       } finally { loading = false; }
       el('entry').value = config.entry; el('limit').value = config.max_messages;
+      el('concurrency').value = config.max_concurrency ?? 4;
       el('mode').value = activeMode === 'graph' ? 'graph' : 'default';
       paintEntry(); updateLock();
       graph.resize(canvas.clientWidth, canvas.clientHeight);
@@ -233,7 +236,7 @@ export function createAgentGraphPanel({ getChatId, getProjectId, isRunning, onAp
   }
   function updateLock() {
     const locked = !editable();
-    for (const id of ['mode', 'entry', 'limit', 'save']) el(id).disabled = locked;
+    for (const id of ['mode', 'entry', 'concurrency', 'limit', 'save']) el(id).disabled = locked;
     el('pause').disabled = !isRunning();
     updateNodes(); select(selected);
     for (const button of el('skills').querySelectorAll('button')) button.disabled = locked;
@@ -278,6 +281,7 @@ export function createAgentGraphPanel({ getChatId, getProjectId, isRunning, onAp
       nodes: graph.getNodes().map((node) => ({ id: node.id, ...node.position() })),
       edges: graph.getEdges().map((edge) => ({ source: edge.getSourceCellId(), target: edge.getTargetCellId() })),
       entry: el('entry').value, max_messages: Number(el('limit').value),
+      max_concurrency: Number(el('concurrency').value),
     };
     saving = true; updateLock();
     try {
@@ -301,11 +305,97 @@ export function createAgentGraphPanel({ getChatId, getProjectId, isRunning, onAp
       lastRun.events.push(event);
       lastRun.events = lastRun.events.slice(-400);
       if (graph && !dialog.hidden) {
-        const node = graph.getCellById(event.node);
-        if (node?.isNode()) node.attr('body/fill', event.kind === 'node_started' ? '#244d51' : '#1c2d42');
+        if (['done', 'limit_reached', 'cancelled', 'error'].includes(event.kind)) {
+          for (const node of graph.getNodes()) node.attr('body/fill', '#1c2d42');
+        } else if (event.kind === 'node_started' || event.kind === 'node_done') {
+          const node = graph.getCellById(event.node);
+          if (node?.isNode()) node.attr('body/fill', event.kind === 'node_started' ? '#244d51' : '#1c2d42');
+        }
       }
       renderEvents(); updateLock();
     },
     get enabled() { return activeMode === 'graph'; },
+  };
+}
+
+export function createGraphReplies(container, renderMarkdown) {
+  const replies = new Map();
+
+  function setState(reply, state, label) {
+    reply.status.dataset.state = state;
+    reply.status.textContent = label;
+  }
+
+  function getReply(messageId, node) {
+    if (replies.has(messageId)) return replies.get(messageId);
+    container.querySelector('.agent-thinking')?.remove();
+    const card = document.createElement('section');
+    card.className = 'graph-reply';
+    card.dataset.node = node;
+    const header = document.createElement('div');
+    header.className = 'graph-reply-header';
+    const title = document.createElement('strong');
+    title.textContent = node;
+    const status = document.createElement('span');
+    status.className = 'graph-reply-status';
+    const body = document.createElement('div');
+    body.className = 'graph-reply-body';
+    header.append(title, status);
+    card.append(header, body);
+    container.append(card);
+    const reply = { card, status, body, raw: '' };
+    replies.set(messageId, reply);
+    return reply;
+  }
+
+  function notice(text) {
+    const element = document.createElement('div');
+    element.className = 'graph-run-notice';
+    element.textContent = text;
+    container.append(element);
+  }
+
+  return {
+    get visible() { return replies.size > 0; },
+    notice,
+    handleEvent(event) {
+      if (event.kind === 'message' && event.delivery === 'queued') {
+        setState(getReply(event.message_id, event.target), 'queued', '排队中');
+      } else if (event.kind === 'node_started' && Array.isArray(event.message_ids)) {
+        setState(getReply(event.message_id, event.node), 'running', '运行中');
+        for (const id of event.message_ids.slice(1)) {
+          replies.get(id)?.card.remove();
+          replies.delete(id);
+        }
+      } else if (event.kind === 'node_done') {
+        const reply = replies.get(event.message_id);
+        if (reply) setState(reply, 'done', '完成');
+      } else if (replies.size && ['error', 'cancelled', 'limit_reached'].includes(event.kind)) {
+        for (const reply of replies.values()) {
+          const state = reply.status.dataset.state;
+          if (state === 'done') continue;
+          const failed = event.kind === 'error' && state === 'running' && reply.card.dataset.node === event.node;
+          setState(reply, failed ? 'error' : 'stopped', failed ? '失败' : '已停止');
+          reply.body.querySelector('.streaming-cursor')?.remove();
+        }
+        const labels = { error: '画布运行失败', cancelled: '画布运行已停止', limit_reached: '画布已达到消息上限' };
+        notice(event.reason ? `${labels[event.kind]}\n${event.reason}` : labels[event.kind]);
+      }
+    },
+    handleOutput(output) {
+      const reply = getReply(output.message_id, output.node);
+      if (typeof output.full === 'string') {
+        reply.body.innerHTML = renderMarkdown(output.full);
+      } else {
+        reply.raw += output.delta;
+        reply.body.innerHTML = renderMarkdown(reply.raw) + '<span class="streaming-cursor">▊</span>';
+      }
+    },
+    handleProgress(messageId, label) {
+      const reply = replies.get(messageId);
+      if (!reply) return false;
+      if (reply.status.dataset.state === 'running') reply.status.textContent = label;
+      return true;
+    },
   };
 }

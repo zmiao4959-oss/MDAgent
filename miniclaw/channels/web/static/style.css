@@ -584,6 +584,23 @@ html, body {
   50% { opacity: 0; }
 }
 
+.graph-reply + .graph-reply {
+  border-top: 1px solid var(--border);
+  margin-top: 10px;
+  padding-top: 10px;
+}
+.graph-reply-header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.graph-reply-status { color: var(--muted); font-size: 0.85em; }
+.graph-reply-status[data-state="running"] { color: var(--accent); }
+.graph-reply-status[data-state="error"] { color: var(--error); }
+.graph-reply-body:empty { display: none; }
+.graph-run-notice { color: var(--muted); margin-top: 10px; }
+
 /* ── 消息增强 ── */
 .user {
   animation: slideInLeft 0.2s ease-out;

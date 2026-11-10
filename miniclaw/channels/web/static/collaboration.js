@@ -169,7 +169,8 @@ export function createCollaborationPanel({ getChatId, getProjectId, isRunning, o
       if (event.kind === 'message') {
         saved.channel ||= { messages: [] };
         if (!saved.channel.messages.some(item => item.message_id === event.message.message_id)) {
-          saved.channel.messages.push(event.message); saved.last_room_run.published += 1;
+          saved.channel.messages.push(event.message);
+          if (event.message.author !== 'user') saved.last_room_run.published += 1;
         }
       } else if (event.kind === 'member_started') saved.last_room_run.activations += 1;
       else if (statuses[event.kind]) saved.last_room_run.status = event.kind;

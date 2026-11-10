@@ -12,6 +12,7 @@ import uuid
 from ..agent import Agent, AgentContext
 from ..llm.base import LLMMessage
 from ..runtime.room_context import MAX_PUBLIC_MESSAGE_CHARS, PUBLISH_CONTEXT_KEY
+from ..runtime.steering import SteeringInbox
 
 
 @dataclass(frozen=True)
@@ -65,6 +66,11 @@ class RoomActor:
     chat_id: str
     inbox: list[dict] = field(default_factory=list)
     token: object | None = None
+    steering: SteeringInbox | None = None
+
+
+def _public_prompt(item: dict) -> str:
+    return f"[Public message #{item['sequence']} from {item['author']}; id={item['message_id']}]\n{item['content']}"
 
 
 class RoomRun:
@@ -80,6 +86,7 @@ class RoomRun:
         self.running: dict[asyncio.Task, RoomActor] = {}
         self.wakeup = asyncio.Event()
         self.publish_lock = asyncio.Lock()
+        self.steered_message_ids: set[str] = set()
         self.closed = False
         self.limited = False
         self.activation_limited = False
@@ -102,10 +109,27 @@ class RoomRun:
         del self.channel["messages"][:-200]
         self.record["messages"].append(item)
         for actor in self.actors:
-            if actor.name != author:
-                actor.inbox.append(item)
+            if actor.name == author:
+                continue
+            if actor.steering is not None:
+                if actor.steering.offer(item["message_id"], _public_prompt(item)):
+                    continue
+            actor.inbox.append(item)
         self.wakeup.set()
         return item
+
+    async def steer(self, message_id: str, text: str) -> bool:
+        async with self.publish_lock:
+            if message_id in self.steered_message_ids:
+                return True
+            if self.closed:
+                return False
+            item = self._append_message("user", text)
+            self.steered_message_ids.add(message_id)
+            self.session.add_message(LLMMessage(role="user", content=text))
+            await self.runtime.sessions.save(self.session)
+            await self.emit("message", message=item)
+            return True
 
     async def publish(self, actor, token, causes, message):
         async with self.publish_lock:
@@ -134,8 +158,8 @@ class RoomRun:
                         root_session_id=self.session.metadata.get("root_session_id", self.session.session_id),
                         task_id=f"room-{self.namespace}-{actor.name}",
                         **{PUBLISH_CONTEXT_KEY: partial(self.publish, actor, token, tuple(item["message_id"] for item in batch))})
-        content = "\n\n".join(f"[Public message #{item['sequence']} from {item['author']}; id={item['message_id']}]\n{item['content']}" for item in batch)
-        ctx = AgentContext(actor.chat_id, "agent_room", self.context.account_id, content, metadata)
+        content = "\n\n".join(_public_prompt(item) for item in batch)
+        ctx = AgentContext(actor.chat_id, "agent_room", self.context.account_id, content, metadata, steering=actor.steering)
         try:
             call = actor.agent.process_message(ctx)
             timeout = actor.agent.profile.runtime.timeout_sec
@@ -148,6 +172,7 @@ class RoomRun:
             await self.emit("member_error", member=actor.name, reason=str(exc))
             raise
         finally:
+            actor.steering = None
             actor.token = None
 
     async def schedule(self):
@@ -169,6 +194,7 @@ class RoomRun:
                 batch, actor.inbox = actor.inbox, []
                 token = object()
                 actor.token = token
+                actor.steering = SteeringInbox()
                 self.record["activations"] += 1
                 task = asyncio.create_task(self.activate(actor, token, batch), name=f"room:{self.namespace}:{actor.name}")
                 self.running[task] = actor
@@ -176,6 +202,7 @@ class RoomRun:
             if not self.running:
                 if any(actor.inbox for actor in self.actors) and not self.activation_limited:
                     continue
+                self.closed = True
                 return
             wake = asyncio.create_task(self.wakeup.wait())
             try:
@@ -219,6 +246,7 @@ class RoomRun:
             self.record["discarded_messages"] = sum(len(actor.inbox) for actor in self.actors)
             for actor in self.actors:
                 actor.inbox.clear()
+                actor.steering = None
                 actor.token = None
             self.record["ended_at"] = time.time()
             await self.emit(self.record["status"])
@@ -232,10 +260,22 @@ class RoomRuntime:
     def __init__(self, default_agent, catalog):
         self.default_agent, self.catalog = default_agent, catalog
         self.sessions = default_agent.sessions
-        self._active_chats: dict[str, RoomRun] = {}
+        self._active_chats: dict[str, RoomRun | None] = {}
 
     def is_running(self, chat_id):
         return chat_id in self._active_chats
+
+    def steering_run_id(self, chat_id: str) -> str | None:
+        run = self._active_chats.get(chat_id)
+        if run is not None and not run.closed:
+            return run.record["run_id"]
+        return None
+
+    async def steer(self, chat_id: str, run_id: str, message_id: str, text: str) -> bool:
+        run = self._active_chats.get(chat_id)
+        if run is None or run.record["run_id"] != run_id:
+            return False
+        return await run.steer(message_id, text)
 
     def validate(self, value):
         self.catalog.refresh()

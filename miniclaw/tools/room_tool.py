@@ -13,7 +13,11 @@ from .registry import tool_registry
         "type": "function",
         "function": {
             "name": "publish_message",
-            "description": "Publish new evidence, a question, or a proposal to all other members of your public room. Your ordinary final response is private. Do not publish acknowledgements or repeated information.",
+            "description": (
+                "Publish new evidence, a question, a proposal, or a reply to the other room "
+                "members. The room routes it to each member's current turn or inbox as "
+                "appropriate. Publish directly. Use your ordinary final response for private notes."
+            ),
             "parameters": {
                 "type": "object", "additionalProperties": False, "required": ["message"],
                 "properties": {"message": {"type": "string", "minLength": 1, "maxLength": 32_000}},

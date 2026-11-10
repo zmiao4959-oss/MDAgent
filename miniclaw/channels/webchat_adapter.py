@@ -162,7 +162,10 @@ class WebChatAdapter(BaseChannelAdapter):
         await self.project_workspaces.ensure_projects()
 
     async def _project_payload(self, project: Project) -> Dict[str, Any]:
-        return await self.project_workspaces.payload(project, self._project_runs)
+        payload = await self.project_workspaces.payload(project, self._project_runs)
+        if self.collaboration_runtime is not None:
+            payload["steering_run_id"] = self.collaboration_runtime.steering_run_id(project.chat_id)
+        return payload
 
     def _project_artifacts(
         self,

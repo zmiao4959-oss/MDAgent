@@ -1,11 +1,13 @@
 import asyncio
+from ast import literal_eval
+import json
 from pathlib import Path
 
 import pytest
 
-from miniclaw.agent import Agent
+from miniclaw.agent import Agent, AgentContext
 from miniclaw.agents import AgentCatalog
-from miniclaw.llm.base import LLMResponse
+from miniclaw.llm.base import LLMMessage, LLMResponse
 from miniclaw.memory.session import SessionManager
 from miniclaw.memory.session_store import SessionStore
 from miniclaw.settings import active_workspace_dir, config
@@ -164,5 +166,137 @@ def test_missing_history_never_starts_a_fresh_conversation(manager, tmp_path):
         await delegation_tool.continue_task_tool(task_id, "next", _context={"chat_id": "parent"})
         assert "without its history" in await manager.wait(task_id)
         assert len(llm.calls) == 1
+
+    asyncio.run(run())
+
+
+def test_delegate_task_messages_active_and_idle_child(manager, tmp_path, monkeypatch):
+    manager, llm = manager
+
+    async def run():
+        executing, release = asyncio.Event(), asyncio.Event()
+        chat = llm.chat
+
+        async def chat_with_tool(*args, **kwargs):
+            response = await chat(*args, **kwargs)
+            if len(llm.calls) == 1:
+                return LLMResponse(tool_calls=[{
+                    "id": "read-1", "type": "function",
+                    "function": {"name": "read", "arguments": "{}"},
+                }])
+            return response
+
+        async def execute_tools(self, calls, context):
+            executing.set()
+            await release.wait()
+            return [LLMMessage(role="tool", tool_call_id=calls[0]["id"], content="read result")]
+
+        monkeypatch.setattr(llm, "chat", chat_with_tool)
+        monkeypatch.setattr(Agent, "_handle_tool_calls", execute_tools)
+        parent = {"chat_id": "parent", "workspace_dir": str(tmp_path)}
+        started = await delegation_tool.delegate_task_tool("general-worker", "first", _context=parent)
+        task_id = started["task_id"]
+        original_worker = manager._running[task_id]
+        await asyncio.wait_for(executing.wait(), 3)
+
+        foreign = await delegation_tool.delegate_task_tool(
+            task_id=task_id, message="unrelated", _context={"chat_id": "other"},
+        )
+        assert foreign["status"] == "error"
+        args = {"task_id": task_id, "message": "update during tool", "idempotency_key": "update-1"}
+        result = await manager.agent.tool_executor.execute_one({
+            "id": "delegate-message-1",
+            "function": {"name": "delegate_task", "arguments": json.dumps(args)},
+        }, AgentContext("parent", "webchat", "test"))
+        receipt = literal_eval(result.content)
+        retry = await delegation_tool.delegate_task_tool(**args, _context=parent)
+        assert receipt["task_id"] == task_id and receipt["delivery"] == "current_turn"
+        assert retry["deduplicated"] is True and manager._running[task_id] is original_worker
+        release.set()
+        assert await manager.wait(task_id, timeout=3) == "reply-2"
+        assert llm.calls[1][0][-2:] == [("tool", "read result"), ("user", args["message"])]
+        assert (await delegation_tool.delegate_task_tool(**args, _context=parent))["deduplicated"]
+        assert len(llm.calls) == 2
+
+        follow_up = await delegation_tool.delegate_task_tool(
+            task_id=task_id, message="follow-up when idle", _context=parent,
+        )
+        assert follow_up["task_id"] == task_id and follow_up["delivery"] == "next_turn"
+        assert await manager.wait(task_id, timeout=3) == "reply-3"
+        assert llm.calls[2][0][-2:] == [("assistant", "reply-2"), ("user", "follow-up when idle")]
+        assert all(workspace == tmp_path for _, workspace in llm.calls)
+        assert len(manager.list_all()) == 1
+
+    asyncio.run(run())
+
+
+def test_delegate_task_messages_during_finalization_run_next_in_order(manager, tmp_path):
+    manager, llm = manager
+
+    async def run():
+        finalizing, release = asyncio.Event(), asyncio.Event()
+
+        async def callback(event):
+            if event["status"] == "done" and not finalizing.is_set():
+                finalizing.set()
+                await release.wait()
+
+        task_id = await manager.spawn(
+            "first", parent_session_id="parent", sandbox=False,
+            workspace_dir=str(tmp_path), event_callback=callback,
+        )
+        worker = manager._running[task_id]
+        await asyncio.wait_for(finalizing.wait(), 3)
+        for text in ("next one", "next two"):
+            receipt = await delegation_tool.delegate_task_tool(
+                task_id=task_id, message=text, _context={"chat_id": "parent"},
+            )
+            assert receipt["delivery"] == "next_turn" and receipt["status"] == "pending"
+        assert manager._running[task_id] is worker and len(llm.calls) == 1
+        release.set()
+        assert await manager.wait(task_id, timeout=3) == "reply-2"
+        assert llm.calls[1][0][-3:] == [
+            ("assistant", "reply-1"), ("user", "next one"), ("user", "next two"),
+        ]
+
+    asyncio.run(run())
+
+
+def test_wait_returns_reply_from_worker_it_observed(manager, tmp_path, monkeypatch):
+    manager, llm = manager
+
+    async def run():
+        first_entered, first_release = asyncio.Event(), asyncio.Event()
+        second_release = asyncio.Event()
+        chat = llm.chat
+
+        async def gated_chat(*args, **kwargs):
+            if not llm.calls:
+                first_entered.set()
+                await first_release.wait()
+            return await chat(*args, **kwargs)
+
+        monkeypatch.setattr(llm, "chat", gated_chat)
+        llm.release = second_release
+        task_id = await manager.spawn(
+            "first", parent_session_id="parent", sandbox=False, workspace_dir=str(tmp_path),
+        )
+        worker = manager._running[task_id]
+        await asyncio.wait_for(first_entered.wait(), 3)
+        follow_up = asyncio.get_running_loop().create_future()
+
+        async def send_follow_up():
+            receipt = await manager.send_task_message(task_id, "next", parent_session_id="parent")
+            follow_up.set_result(receipt)
+
+        worker.add_done_callback(lambda _: asyncio.create_task(send_follow_up()))
+        waiter = asyncio.create_task(manager.wait(task_id, timeout=3))
+        await asyncio.sleep(0)
+        first_release.set()
+        receipt = await asyncio.wait_for(follow_up, 3)
+        assert receipt["delivery"] == "next_turn"
+        assert await waiter == "reply-1"
+        second_release.set()
+        assert await manager.wait(task_id, timeout=3) == "reply-2"
 
     asyncio.run(run())

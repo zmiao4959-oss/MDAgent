@@ -108,8 +108,42 @@ def test_reopening_canvas_does_not_accumulate_node_or_edge_views(browser, canvas
             assert sorted(node_ids) == sorted(expected_nodes), f"opening {opening + 1}: {node_ids}"
             assert page.locator("#agent-graph-canvas .x6-edge").count() == expected_edges
             assert page.locator("#agent-graph-entry option").count() == len(expected_nodes)
+            assert page.locator("#agent-graph-concurrency").input_value() == "4"
             page.locator("#agent-graph-close").click()
         assert not errors
+    finally:
+        page.close()
+
+
+def test_parallel_replies_keep_each_nodes_output_separate(browser, canvas_url):
+    page = browser.new_page()
+    try:
+        page.goto(canvas_url)
+        page.wait_for_function("window.canvasReady === true")
+        page.evaluate("""async () => {
+          const {createGraphReplies} = await import('/static/agent-graph.js');
+          const container = document.createElement('div');
+          container.id = 'test-replies';
+          document.body.append(container);
+          window.replies = createGraphReplies(container, text => text);
+          for (const node of ['worker', 'researcher']) {
+            window.replies.handleEvent({kind: 'message', delivery: 'queued', target: node, message_id: node});
+          }
+        }""")
+        cards = page.locator("#test-replies .graph-reply")
+        assert cards.locator(".graph-reply-status").all_text_contents() == ["排队中", "排队中"]
+        page.evaluate("""() => {
+          for (const node of ['worker', 'researcher']) {
+            window.replies.handleEvent({kind: 'node_started', node, message_id: node, message_ids: [node]});
+          }
+          window.replies.handleOutput({node: 'worker', message_id: 'worker', delta: 'work '});
+          window.replies.handleOutput({node: 'researcher', message_id: 'researcher', delta: 'research'});
+          window.replies.handleOutput({node: 'worker', message_id: 'worker', delta: 'in progress'});
+          window.replies.handleOutput({node: 'researcher', message_id: 'researcher', full: 'research complete'});
+          window.replies.handleEvent({kind: 'node_done', node: 'researcher', message_id: 'researcher'});
+        }""")
+        assert cards.locator(".graph-reply-status").all_text_contents() == ["运行中", "完成"]
+        assert cards.locator(".graph-reply-body").all_text_contents() == ["work in progress▊", "research complete"]
     finally:
         page.close()
 
