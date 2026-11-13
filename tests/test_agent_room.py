@@ -2,6 +2,7 @@
 import asyncio
 import inspect
 import json
+from pathlib import Path
 
 import httpx
 import pytest
@@ -52,7 +53,7 @@ def room_setup(tmp_path, monkeypatch):
     monkeypatch.setattr("miniclaw.agent.WORKSPACE_DIR", tmp_path)
     monkeypatch.setattr(SessionManager, "_get_store", lambda _: None)
     profiles = tmp_path / "profiles"
-    for name, tools in [("a", ["read", "delegate_task", "send_message"]), ("b", ["read"]), ("c", [])]:
+    for name, tools in [("a", ["read", "delegate_task", "send_message"]), ("b", ["read"]), ("c", []), ("coordinator", ["read"])]:
         folder = profiles / name
         folder.mkdir(parents=True)
         (folder / "agent.yaml").write_text(json.dumps({"name": name, "description": name, "tools": tools, "skills": [], "runtime": {"max_tool_rounds": 6}}), encoding="utf-8")
@@ -139,15 +140,19 @@ def test_model_cannot_replace_runtime_publisher_or_enable_other_tools(room_setup
     assert value.public_message == ["real a"]
 
 
-def test_publish_hidden_and_blocked_outside_room(room_setup):
+@pytest.mark.parametrize(("name", "arguments"), [
+    ("publish_message", {"message": "forged"}),
+    ("finish_discussion", {"summary": "forged", "reason": "complete"}),
+])
+def test_room_tool_hidden_and_blocked_outside_room(room_setup, name, arguments):
     make, catalog, sessions, _ = room_setup
     value, llm = make()
     agent = Agent(llm, sessions, profile=catalog.require("a"))
     ctx = AgentContext(chat_id="default", channel="webchat", account_id="test", user_message="input")
     async def run():
         prepared = await agent.request_preparer.prepare(ctx)
-        assert "publish_message" not in {tool["function"]["name"] for tool in prepared.tools}
-        result = await agent.tool_executor.execute_one(call("publish_message", message="forged").tool_calls[0], ctx)
+        assert name not in {tool["function"]["name"] for tool in prepared.tools}
+        result = await agent.tool_executor.execute_one(call(name, **arguments).tool_calls[0], ctx)
         assert "unavailable" in result.content
     asyncio.run(run())
     assert value.public_message == []
@@ -163,6 +168,72 @@ def room_context(chat="webchat:room-test", members=None, **settings):
     return AgentContext(chat, "webchat", "test", "investigate", {
         "collaboration_mode": "room", "agent_room": {"version": 1, "members": members or ["a", "b"], **settings},
     })
+
+
+def test_packaged_role_prompts_match_collaboration_tools(room_setup, monkeypatch):
+    _, _, sessions, workspace = room_setup
+    skills = workspace / "skills"
+    atomsk = skills / "atomsk"
+    atomsk.mkdir(parents=True)
+    (atomsk / "SKILL.md").write_text("---\nname: atomsk\ndescription: Test skill\n---\n", encoding="utf-8")
+    monkeypatch.setattr("miniclaw.skills.loader.skill_roots", lambda: [skills])
+
+    profiles = Path(__file__).resolve().parents[1] / "miniclaw" / "agents" / "profiles"
+    catalog = AgentCatalog([profiles])
+
+    def script(node, index, messages, tools):
+        if node == "coordinator" and index == 0 and "## Agent graph" in messages[0].content:
+            return call("message_agent", target="model-worker", message="An existing model is ready for inspection.")
+        return LLMResponse(content="checked")
+
+    llm = ScriptedLLM(script)
+    coordinator = Agent(llm, sessions, profile=catalog.require("coordinator"))
+    runtime = CollaborationRuntime(coordinator, catalog)
+    graph = {
+        "nodes": [{"id": "coordinator"}, {"id": "model-worker"}],
+        "edges": [{"source": "coordinator", "target": "model-worker"}],
+        "entry": "coordinator",
+    }
+    mode_configs = {
+        "default": {},
+        "graph": {"agent_graph": graph},
+        "room": {"agent_room": {"members": ["coordinator", "model-worker"]}},
+    }
+    headers = {"default": "## Default delegation", "graph": "## Agent graph", "room": "## Public channel"}
+    delegation_tools = {"list_agents", "delegate_task", "wait_task", "inspect_task"}
+    communication_tools = delegation_tools | {"message_agent", "publish_message"}
+    expected_tools = {
+        "default": {"default": delegation_tools},
+        "graph": {"coordinator": {"message_agent"}, "model-worker": set()},
+        "room": {"coordinator": {"publish_message"}, "model-worker": {"publish_message"}},
+    }
+
+    async def run():
+        for mode, metadata in mode_configs.items():
+            llm.calls.clear()
+            context = AgentContext(
+                chat_id=f"webchat:prompt-{mode}",
+                channel="webchat",
+                account_id="test",
+                user_message="Check the model handoff.",
+                metadata={"collaboration_mode": mode, **metadata},
+            )
+            await runtime.process_message(context)
+            assert {node for node, *_ in llm.calls} == set(expected_tools[mode])
+            for node, messages, tools in llm.calls:
+                prompt = messages[0].content
+                role = "coordinator" if node == "default" else node
+                assert catalog.require(role).system_prompt in prompt
+                assert {key for key, header in headers.items() if header in prompt} == {mode}
+                names = {tool["function"]["name"] for tool in tools}
+                assert names & communication_tools == expected_tools[mode][node]
+                assert {name for name in communication_tools if name in prompt} == expected_tools[mode][node]
+                assert ("【确认执行】" in prompt) == (mode != "room")
+                if role == "model-worker":
+                    expected_heading = "画布中的建模交接" if mode == "graph" else "公共频道中的建模协作"
+                    assert expected_heading in prompt
+
+    asyncio.run(run())
 
 
 def test_runtime_broadcast_is_delivered_once_and_final_stays_private(room_setup):
@@ -285,6 +356,138 @@ def test_concurrent_last_message_slot_and_cycle_stop(room_setup):
     assert record["published"] == 1 and len(record["messages"]) == 2
     assert record["status"] == "limit_reached"
     assert not runtime.is_running(ctx.chat_id)
+
+
+@pytest.mark.parametrize("reason", ["complete", "stalled"])
+def test_coordinator_concludes_once_and_stops_active_and_queued_peers(room_setup, reason):
+    async def run():
+        peer_contributed, peer_cancelled = asyncio.Event(), asyncio.Event()
+        summary = "Final discussion summary"
+
+        async def script(node, index, messages, tools):
+            names = {item["function"]["name"] for item in tools}
+            assert ("finish_discussion" in names) == (node == "coordinator")
+            if node == "coordinator" and index == 0:
+                await peer_contributed.wait()
+                return call("finish_discussion", summary=summary, reason=reason)
+            if node == "b" and index == 0:
+                return call("finish_discussion", summary="forged peer summary", reason="complete")
+            if node == "b" and index == 1:
+                assert "unavailable" in messages[-1].content
+                return call("publish_message", message="peer evidence")
+            if node == "b" and index == 2:
+                assert json.loads(messages[-1].content)["status"] == "published"
+                peer_contributed.set()
+                try:
+                    await asyncio.Event().wait()
+                finally:
+                    peer_cancelled.set()
+            if node != "coordinator":
+                pytest.fail(f"Unexpected activation for {node}")
+            return LLMResponse(content="private final")
+
+        runtime, llm = runtime_for(room_setup, script)
+        ctx = room_context(members=["coordinator", "b", "c"], max_concurrency=2, max_activations=2)
+        chunks = []
+
+        async def collect(chunk):
+            chunks.append(chunk)
+
+        output = await asyncio.wait_for(runtime.process_message(ctx, on_stream_chunk=collect), 3)
+        restored = SessionManager(runtime.sessions.save_dir)
+        root = await restored.resolve_session(ctx.chat_id)
+        record = root.metadata["last_room_run"]
+        assert record["status"] == "concluded" and record["conclusion_reason"] == reason
+        assert record["published"] == 2
+        assert [(m["author"], m["content"]) for m in record["messages"]] == [
+            ("user", ctx.user_message), ("b", "peer evidence"), ("coordinator", summary),
+        ]
+        channel = root.metadata["room_channels"][RoomConfig.parse(record["config"], runtime.catalog).fingerprint]
+        assert sum(item["content"] == summary for item in channel["messages"]) == 1
+        assert output.count(summary) == "".join(chunks).count(summary) == 1
+        assert peer_cancelled.is_set() and llm.counts["b"] == 3 and "c" not in llm.counts
+        assert not runtime.is_running(ctx.chat_id)
+
+    asyncio.run(run())
+
+
+def test_coordinator_waits_for_first_round_and_gets_one_idle_closeout(room_setup):
+    def script(node, index, messages, tools):
+        if node != "coordinator":
+            return LLMResponse(content="private specialist response")
+        if index == 0:
+            assert "首轮机会仍待完成的成员" in messages[0].content
+            return call("finish_discussion", summary="premature", reason="complete")
+        if index == 1:
+            assert "waiting for first-round opportunity for: b, c" in messages[-1].content
+        if "频道已经空闲，本次唤醒用于收束" in messages[0].content:
+            return call("finish_discussion", summary="idle summary", reason="stalled")
+        return LLMResponse(content="private final")
+
+    runtime, llm = runtime_for(room_setup, script)
+    ctx = room_context(members=["coordinator", "b", "c"], max_concurrency=1)
+    output = asyncio.run(asyncio.wait_for(runtime.process_message(ctx), 3))
+    record = runtime.sessions.get_session_by_chat_id(ctx.chat_id).metadata["last_room_run"]
+    assert record["status"] == "concluded" and record["conclusion_reason"] == "stalled"
+    assert [event["member"] for event in record["events"] if event["kind"] == "member_started"] == [
+        "coordinator", "b", "c", "coordinator",
+    ]
+    assert record["published"] == 1 and output.count("idle summary") == 1
+    assert "premature" not in output and llm.counts["b"] == llm.counts["c"] == 1
+
+
+@pytest.mark.parametrize("moderated", [True, False])
+def test_public_contributor_failure_can_be_isolated_in_moderated_room(room_setup, moderated):
+    def script(node, index, messages, tools):
+        if node == "b" and index == 0:
+            return call("publish_message", message="available specialist evidence")
+        if node == "b" and index == 1:
+            raise ConnectionError("upstream disconnected")
+        if node == "coordinator" and "本轮后续不可用的成员" in messages[0].content:
+            assert any("available specialist evidence" in item.content for item in messages[1:])
+            return call("finish_discussion", summary="summary based on retained evidence", reason="complete")
+        return LLMResponse(content="private final")
+
+    runtime, llm = runtime_for(room_setup, script)
+    ctx = room_context(members=["coordinator", "b"] if moderated else ["b"], max_concurrency=1)
+    if moderated:
+        output = asyncio.run(asyncio.wait_for(runtime.process_message(ctx), 3))
+        assert "summary based on retained evidence" in output
+    else:
+        with pytest.raises(ConnectionError, match="upstream disconnected"):
+            asyncio.run(asyncio.wait_for(runtime.process_message(ctx), 3))
+    record = runtime.sessions.get_session_by_chat_id(ctx.chat_id).metadata["last_room_run"]
+    errors = [event for event in record["events"] if event["kind"] == "member_error"]
+    assert len(errors) == 1 and errors[0]["member"] == "b"
+    assert errors[0].get("isolated", False) == moderated
+    assert record["status"] == ("concluded" if moderated else "error")
+    expected_posts = ["available specialist evidence"]
+    if moderated:
+        assert record["conclusion_reason"] == "complete"
+        expected_posts.append("summary based on retained evidence")
+    assert [item["content"] for item in record["messages"][1:]] == expected_posts
+    assert llm.counts["b"] == 2 and not runtime.is_running(ctx.chat_id)
+
+
+def test_coordinator_reserves_final_summary_within_public_message_budget(room_setup):
+    def script(node, index, messages, tools):
+        if index == 0:
+            return call("publish_message", message="first proposal")
+        if index == 1:
+            assert json.loads(messages[-1].content)["discussion_remaining"] == 0
+            return call("publish_message", message="exceeds discussion allowance")
+        if index == 2:
+            assert messages[-1].content.startswith("Error")
+            return call("finish_discussion", summary="closing summary", reason="complete")
+        return LLMResponse(content="private final")
+
+    runtime, _ = runtime_for(room_setup, script)
+    ctx = room_context(members=["coordinator"], max_messages=2)
+    output = asyncio.run(asyncio.wait_for(runtime.process_message(ctx), 3))
+    record = runtime.sessions.get_session_by_chat_id(ctx.chat_id).metadata["last_room_run"]
+    assert record["status"] == "concluded" and record["published"] == 2
+    assert [message["content"] for message in record["messages"][1:]] == ["first proposal", "closing summary"]
+    assert "exceeds discussion allowance" not in output
 
 
 @pytest.mark.parametrize("outcome", ["cancel", "error"])

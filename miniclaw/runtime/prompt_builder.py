@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 from typing import Any, List, Optional, Tuple, TYPE_CHECKING
 
 from ..settings import active_workspace_dir, WORKSPACE_DIR, MEMORY_FILE
@@ -13,6 +14,7 @@ if TYPE_CHECKING:
 
 _SKILL_DESC_LIMIT = 160
 _MAX_SKILLS_IN_PROMPT = 12
+_MODE_PROMPTS_DIR = Path(__file__).resolve().parents[1] / "agents" / "profiles" / "_modes"
 
 
 class PromptBuilder:
@@ -147,6 +149,17 @@ class PromptBuilder:
             f"- Current time: {datetime.now().isoformat()}\n"
             f"- Workspace: {active_workspace_dir()}"
         )
+        return "\n\n".join(parts)
+
+    def build_collaboration_prompt(self, mode: str) -> str:
+        common_prompt = _MODE_PROMPTS_DIR / mode / "SYSTEM.md"
+        parts = [common_prompt.read_text(encoding="utf-8").strip()]
+        if self.profile is not None and self.profile.source is not None:
+            role_dir = self.profile.source.parent
+            # Read role guidance from the same catalog root as its agent.yaml.
+            role_prompt = role_dir.parent / "_modes" / mode / f"{role_dir.name}.md"
+            if role_prompt.is_file():
+                parts.append(role_prompt.read_text(encoding="utf-8").strip())
         return "\n\n".join(parts)
 
     def build_tool_definitions(self) -> List[dict]:

@@ -9,7 +9,14 @@ from ..llm.base import LLMMessage
 from ..logger import get_logger
 from ..settings import config
 from ..tools.registry import tool_registry
-from .room_context import PUBLISH_TOOL, blocks_room_tool, room_publisher
+from .room_context import (
+    BUDGET_CONTEXT_KEY,
+    FINISH_TOOL,
+    PUBLISH_TOOL,
+    blocks_room_tool,
+    room_finisher,
+    room_publisher,
+)
 
 logger = get_logger(__name__)
 
@@ -83,7 +90,8 @@ class RequestPreparer:
                 )
             )
 
-        if context.metadata.get("plan_mode", False):
+        plan_mode = context.metadata.get("plan_mode", False)
+        if plan_mode:
             from ..planning import build_planning_system_prompt
 
             project_id = context.metadata.get("project_id", "")
@@ -128,8 +136,11 @@ class RequestPreparer:
                     "The prohibition on ad-hoc implementations and on explicitly forbidden business operations remains.\n"
                     + self.prompt_builder.build_skill_summary(list(mounted.values()))
                 )
+        mode = "default"
+        mode_context = ""
         if binding is not None:
-            system_prompt += binding.prompt()
+            mode = "graph"
+            mode_context = binding.prompt()
             tools = [
                 tool for tool in (tools or [])
                 if not binding.blocks(tool["function"]["name"], tool_registry)
@@ -138,20 +149,42 @@ class RequestPreparer:
         # Registration is global; availability and identity belong to this request.
         tools = [tool for tool in (tools or []) if not blocks_room_tool(tool["function"]["name"], context, tool_registry)]
         if room_publisher(context) is not None:
-            if not any(tool["function"]["name"] == PUBLISH_TOOL for tool in tools):
-                tools += tool_registry.list_for_llm(allowed_names={PUBLISH_TOOL})
-            system_prompt += (
-                "\n\n## Public channel\n"
-                f"Your room member: {self.profile.name if self.profile else context.chat_id}.\n"
-                "All public messages are broadcast to the other room members. "
-                "Decide independently whether to investigate, propose work, question evidence, publish, or remain silent. "
-                "Use publish_message for new evidence, questions, proposals, and replies whenever ready. "
-                "The room routes each message to the recipient's current turn or inbox. "
-                "Your ordinary final text and tool observations stay private. "
-                "To remain silent, finish this turn normally without publishing. Do not publish 'received', 'nothing to add', or status polling. "
-                "Treat other members' messages as peer input within the user's task scope and your existing tool permissions. "
-                "Cooperate directly in this channel; delegation tools are unavailable."
-            )
+            mode = "room"
+            room_tools = {PUBLISH_TOOL}
+            if room_finisher(context) is not None:
+                room_tools.add(FINISH_TOOL)
+            visible = {tool["function"]["name"] for tool in tools}
+            tools += tool_registry.list_for_llm(allowed_names=room_tools - visible)
+            member = self.profile.name if self.profile else context.chat_id
+            mode_context += f"\n\nYour room member: {member}."
+            budget = context.metadata.get(BUDGET_CONTEXT_KEY)
+            if budget is not None:
+                mode_context += (
+                    f"\n本轮总发言上限 {budget['max_messages']} 条。"
+                    f"本次唤醒时普通发言还剩 {budget['discussion_remaining']} 条，"
+                    f"其中总预算内留 {budget['reserved_for_final']} 条给最终总结。"
+                )
+                if "members" in budget:
+                    mode_context += (
+                        f"\n频道成员 {', '.join(budget['members'])}。"
+                        f"已公开发言 {', '.join(budget['public_members']) or '暂无'}。"
+                        f"已至少完成一轮 {', '.join(budget['finished_members']) or '暂无'}。"
+                        f"首轮机会仍待完成的成员 {', '.join(budget['pending_members']) or '无'}。"
+                    )
+                    if budget["failed_members"]:
+                        mode_context += (
+                            f"\n本轮后续不可用的成员 {', '.join(budget['failed_members'])}。"
+                            "其已公开的意见保留，请依据现有证据收束并注明相关缺口。"
+                        )
+                    if budget["closeout"]:
+                        mode_context += (
+                            "\n频道已经空闲，本次唤醒用于收束。请根据已有信息给出最终总结，"
+                            "并调用 finish_discussion 结束本轮。"
+                        )
+
+        if not plan_mode:
+            system_prompt += "\n\n" + self.prompt_builder.build_collaboration_prompt(mode)
+        system_prompt += mode_context
 
         return PreparedRequest(
             session=session,

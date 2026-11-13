@@ -29,16 +29,26 @@ class SlurmTarget(SshTarget):
         self.ntasks_per_node = positive(raw.get("ntasks_per_node", 4), "ntasks_per_node")
         self.cpus_per_task = positive(raw.get("cpus_per_task", 8), "cpus_per_task")
         self.gpus = positive(raw.get("gpus", 4), "gpus", minimum=0)
+        self.launcher = raw.get("launcher", "srun")
+        if self.launcher not in ("srun", "direct"):
+            raise ValueError("Slurm launcher must be srun or direct")
+        if self.launcher == "direct" and (self.engine != "gpumd" or self.nodes != 1
+                                          or self.ntasks_per_node != 1 or self.mpi):
+            raise ValueError("direct Slurm launch requires GPUMD with one node, one task, and no MPI")
 
     def render_script(self, *, run_id: str, entry: str) -> str:
         directory = self.remote_dir(run_id)
         job_name = f"mc-{run_id}"
+        task_request = (
+            "--ntasks=1" if self.launcher == "direct"
+            else f"--ntasks-per-node={self.ntasks_per_node}"
+        )
         lines = [
             "#!/bin/bash",
             f"#SBATCH --job-name={job_name}",
             f"#SBATCH --partition={self.partition}",
             f"#SBATCH --nodes={self.nodes}",
-            f"#SBATCH --ntasks-per-node={self.ntasks_per_node}",
+            f"#SBATCH {task_request}",
             f"#SBATCH --cpus-per-task={self.cpus_per_task}",
             f"#SBATCH --time={self.walltime}",
             "#SBATCH --output=%j.out",
@@ -54,7 +64,8 @@ class SlurmTarget(SshTarget):
         if self.engine == "gpumd":
             if entry != "run.in":
                 raise ValueError("GPUMD entry must be run.in at the project root")
-            lines.append(f"{srun} {shlex.quote(self.executable)}")
+            executable = shlex.quote(self.executable)
+            lines.append(executable if self.launcher == "direct" else f"{srun} {executable}")
         else:
             lines.append(f"{srun} {shlex.quote(self.executable)} -i {shlex.quote(entry)}")
         lines.append("")

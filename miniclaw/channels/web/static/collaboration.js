@@ -4,7 +4,7 @@ export function createCollaborationPanel({ getChatId, getProjectId, isRunning, o
   const launcher = document.getElementById('btn-collaboration');
   const dialog = el('dialog');
   const labels = { default: '默认委派', graph: '智能体画布', room: '公共频道' };
-  const statuses = { running: '讨论进行中', idle: '暂时空闲', limit_reached: '已到本轮上限', cancelled: '已停止', interrupted: '运行已中断', timed_out: '已超时', error: '运行失败' };
+  const statuses = { running: '讨论进行中', idle: '暂时空闲', concluded: '协调者已结束讨论', limit_reached: '已到本轮上限', cancelled: '已停止', interrupted: '运行已中断', timed_out: '已超时', error: '运行失败' };
   let saved = null, loadedChat = null, sequence = 0, saving = false, profiles = [];
 
   async function json(url, options) {

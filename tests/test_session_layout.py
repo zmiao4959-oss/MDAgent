@@ -129,7 +129,11 @@ def test_request_preparer_persists_only_session_relationship_metadata(sessions, 
     monkeypatch.setattr(request_preparer.hook_system, "fire", fire)
     preparer = RequestPreparer(
         sessions=sessions, lifecycle=SimpleNamespace(start=lambda ctx: None),
-        prompt_builder=SimpleNamespace(build_system_prompt=lambda: "", build_tool_definitions=lambda: []),
+        prompt_builder=SimpleNamespace(
+            build_system_prompt=lambda: "",
+            build_collaboration_prompt=lambda mode: "",
+            build_tool_definitions=lambda: [],
+        ),
         memory_prefix=lambda _: "", experience_prefix=lambda *_: "",
     )
     context = AgentContext(chat_id="child", channel="subagent", account_id="system", metadata={

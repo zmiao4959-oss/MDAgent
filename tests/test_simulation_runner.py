@@ -1,4 +1,5 @@
 import json
+import subprocess
 import sys
 import tarfile
 import time
@@ -63,6 +64,40 @@ def test_prepare_freezes_inputs_and_script_without_remote_calls(tmp_path, monkey
         assert set(bundle.getnames()) == {"in.cuni", "data.cuni", "simulation.yaml", "job.slurm"}
     record = service.store.get(prepared["run_id"])
     assert record["expected_outputs"] == ["log.lammps"]
+
+
+def test_prepare_hzw_gpumd_uses_direct_batch_launch(tmp_path):
+    project, service, config = setup(tmp_path)
+    config.targets["hzw"] = {
+        "scheduler": "slurm",
+        "engine": "gpumd",
+        "ssh_alias": "hzw",
+        "remote_base": "/remote/hzw/simulations",
+        "partition": "tx4090",
+        "executable": "/remote/GPUMD-5.6/src/gpumd",
+        "launcher": "direct",
+        "nodes": 1,
+        "ntasks_per_node": 1,
+        "cpus_per_task": 4,
+        "gpus": 1,
+    }
+    (project / "simulation.yaml").write_text(
+        "engine: gpumd\nentry: run.in\ninputs: [model.xyz, nep.txt]\n",
+        encoding="utf-8",
+    )
+    for name in ("run.in", "model.xyz", "nep.txt"):
+        (project / name).write_text("fixture\n", encoding="utf-8")
+
+    prepared = service.prepare(".", "hzw", workspace=project)
+    script = prepared["submit_script"].splitlines()
+    assert prepared["status"] == "PREPARED"
+    assert "#SBATCH --partition=tx4090" in script
+    assert "#SBATCH --ntasks=1" in script
+    assert "#SBATCH --gres=gpu:1" in script
+    assert script[-1] == "/remote/GPUMD-5.6/src/gpumd"
+    assert {item["path"] for item in prepared["files"]} == {
+        "run.in", "model.xyz", "nep.txt", "simulation.yaml",
+    }
 
 
 def test_submit_is_idempotent_and_status_survives_restart(tmp_path, monkeypatch):
@@ -148,6 +183,17 @@ def test_slurm_status_uses_accounting_when_job_leaves_queue(monkeypatch):
     assert target.status("12345") == {
         "source": "sacct", "scheduler_state": "COMPLETED", "exit_code": "0:0"
     }
+
+
+def test_remote_ssh_sends_utf8_script_with_posix_line_endings(monkeypatch):
+    def run(args, *, input, **kwargs):
+        assert args[-4:] == ["testhost", "bash", "-l", "-s"]
+        assert input == "set -eu\nprintf '完成\\n'\n".encode("utf-8")
+        assert "text" not in kwargs
+        return subprocess.CompletedProcess(args, 0, "完成\n".encode("utf-8"), b"")
+
+    monkeypatch.setattr("miniclaw.simulation.remote.subprocess.run", run)
+    assert SlurmTarget("sugon", TARGET)._ssh("set -eu\nprintf '完成\\n'\n") == "完成"
 
 
 def test_staging_failure_can_retry_same_prepared_run(tmp_path, monkeypatch):

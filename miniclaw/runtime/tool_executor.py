@@ -16,7 +16,7 @@ from ..stats import RunStats
 from ..tools.registry import ToolRegistry, tool_registry
 from ..tools.lammps_execution import find_lammps_input
 from ..skills.project import BUILDER, project_store
-from .room_context import blocks_room_tool, room_allowed_tools, room_publisher
+from .room_context import blocks_room_tool, room_allowed_tools, room_finisher, room_publisher
 
 logger = get_logger(__name__)
 
@@ -132,6 +132,7 @@ class ToolExecutor:
             ),
             "task_event_callback": context.metadata.get("_on_task_event"),
             "room_publish": room_publisher(context),
+            "room_finish": room_finisher(context),
         }
 
     @staticmethod

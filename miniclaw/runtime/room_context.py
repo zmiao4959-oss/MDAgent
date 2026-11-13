@@ -5,6 +5,9 @@ from typing import Any
 
 PUBLISH_TOOL = "publish_message"
 PUBLISH_CONTEXT_KEY = "_room_publish"
+FINISH_TOOL = "finish_discussion"
+FINISH_CONTEXT_KEY = "_room_finish"
+BUDGET_CONTEXT_KEY = "_room_public_budget"
 MAX_PUBLIC_MESSAGE_CHARS = 32_000
 
 
@@ -13,10 +16,17 @@ def room_publisher(context: Any):
     return value if context.channel == "agent_room" and callable(value) else None
 
 
+def room_finisher(context: Any):
+    value = context.metadata.get(FINISH_CONTEXT_KEY)
+    return value if room_publisher(context) is not None and callable(value) else None
+
+
 def blocks_room_tool(name: str, context: Any, registry: Any) -> bool:
     active = room_publisher(context) is not None
     if name == PUBLISH_TOOL:
         return not active
+    if name == FINISH_TOOL:
+        return room_finisher(context) is None
     tool = registry.get(name)
     return bool(active and tool and {"coordination", "communication"}.intersection(tool.tags))
 
@@ -26,4 +36,6 @@ def room_allowed_tools(profile: Any, context: Any, registry: Any):
     if room_publisher(context) is not None and allowed is not None and "*" not in allowed:
         allowed = [name for name in allowed if not blocks_room_tool(name, context, registry)]
         allowed.append(PUBLISH_TOOL)
+        if room_finisher(context) is not None:
+            allowed.append(FINISH_TOOL)
     return allowed

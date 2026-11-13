@@ -177,18 +177,15 @@ class GraphNodeBinding:
         targets = self.run.graph.targets(self.source)
         reply_targets = [target for target in targets if self.source in self.run.graph.targets(target)]
         prompt = (
-            "\n\n## Agent graph\n"
+            "\n\n## Current canvas node\n"
             f"Your node: {self.source}. Permitted recipients: {', '.join(targets) or '(none)'}.\n"
             f"Recipients with a direct reply edge to you: {', '.join(reply_targets) or '(none)'}.\n"
             f"Message budget: {self.run.graph.max_messages}.\n"
-            "画布协作通过 message_agent 发送：任务协商 → 能力反馈 → 确认执行 → 执行结果。"
-            "agent 间的新任务确认后执行；补交、状态更新及 Skill 请求沿用已有约定，结果无需回执。"
-            "独立任务可以同时发给不同节点。依赖上游产物的任务等收到交付后再发送。"
         )
-        if targets and not reply_targets:
-            prompt += (
-                "\n当前接收者均无回信边，跨节点协商需要补充反向连线。"
-            )
+        if targets:
+            prompt += "\nUse `message_agent` to send to the permitted recipients."
+            if not reply_targets:
+                prompt += "\n当前接收者均无回信边，跨节点协商需要补充反向连线。"
         if self._can_request() and self.run.skill_store is not None:
             prompt += (
                 "\n职责内缺少可复用能力时，可通过 request_skill 向 skill-builder 请求项目 Skill。"

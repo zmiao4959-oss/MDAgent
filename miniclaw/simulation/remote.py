@@ -55,14 +55,16 @@ class SshTarget:
         try:
             result = subprocess.run(
                 ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", self.alias, "bash", "-l", "-s"],
-                input=script, text=True, encoding="utf-8", errors="replace",
+                # Keep LF on Windows when sending a script to remote Bash.
+                input=script.encode("utf-8"),
                 capture_output=True, timeout=timeout, check=False,
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise RemoteError(f"SSH call failed: {exc}") from exc
         if result.returncode:
-            raise RemoteError(f"SSH exit {result.returncode}: {result.stderr[-1200:].strip()}")
-        return result.stdout.strip()
+            detail = result.stderr.decode("utf-8", errors="replace")[-1200:]
+            raise RemoteError(f"SSH exit {result.returncode}: {detail.strip()}")
+        return result.stdout.decode("utf-8", errors="replace").strip()
 
     def stage(self, remote_dir: str, archive: Path) -> None:
         qdir = shlex.quote(remote_dir)

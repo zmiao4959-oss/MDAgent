@@ -37,3 +37,35 @@ async def publish_message_tool(message: str, _context=None, **kwargs) -> str:
     if inspect.isawaitable(result):
         result = await result
     return result if isinstance(result, str) else json.dumps(result or {"status": "published"}, ensure_ascii=False)
+
+
+@tool_registry.register(
+    name="finish_discussion",
+    schema={
+        "type": "function",
+        "function": {
+            "name": "finish_discussion",
+            "description": (
+                "Publish the coordinator's final public summary and end this discussion. "
+                "Use complete for a plan ready to present and stalled for unresolved discussion."
+            ),
+            "parameters": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["summary", "reason"],
+                "properties": {
+                    "summary": {"type": "string", "minLength": 1, "maxLength": 32_000},
+                    "reason": {"type": "string", "enum": ["complete", "stalled"]},
+                },
+            },
+        },
+    },
+    tags=["communication", "coordination"],
+)
+async def finish_discussion_tool(summary: str, reason: str, _context=None, **kwargs) -> str:
+    context = _context or {}
+    finish = context.get("room_finish")
+    if context.get("channel") != "agent_room" or not callable(finish):
+        return "Error: only the active room coordinator can finish the discussion"
+    result = await finish(summary, reason)
+    return result if isinstance(result, str) else json.dumps(result, ensure_ascii=False)

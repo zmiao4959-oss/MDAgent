@@ -11,7 +11,12 @@ import uuid
 
 from ..agent import Agent, AgentContext
 from ..llm.base import LLMMessage
-from ..runtime.room_context import MAX_PUBLIC_MESSAGE_CHARS, PUBLISH_CONTEXT_KEY
+from ..runtime.room_context import (
+    BUDGET_CONTEXT_KEY,
+    FINISH_CONTEXT_KEY,
+    MAX_PUBLIC_MESSAGE_CHARS,
+    PUBLISH_CONTEXT_KEY,
+)
 from ..runtime.steering import SteeringInbox
 
 
@@ -91,6 +96,11 @@ class RoomRun:
         self.limited = False
         self.activation_limited = False
         self.cursor = 0
+        self.coordinator = next((actor for actor in self.actors if actor.name == "coordinator"), None)
+        self.reserved_for_final = int(self.coordinator is not None)
+        self.finished_members: set[str] = set()
+        self.failed_members: set[str] = set()
+        self.closeout_offered = False
 
     async def emit(self, kind, **data):
         event = {"run_id": self.record["run_id"], "event_id": len(self.record["events"]) + 1, "kind": kind, "time": time.time(), **data}
@@ -99,7 +109,7 @@ class RoomRun:
         if callback:
             await callback(event)
 
-    def _append_message(self, author, content, causes=()):
+    def _append_message(self, author, content, causes=(), *, broadcast=True):
         self.channel["sequence"] += 1
         seq = self.channel["sequence"]
         item = {"message_id": f"{self.namespace}:{seq}", "sequence": seq, "author": author, "content": content,
@@ -108,8 +118,10 @@ class RoomRun:
         # Keep a bounded recent transcript; monotonically increasing IDs survive pruning.
         del self.channel["messages"][:-200]
         self.record["messages"].append(item)
+        if not broadcast:
+            return item
         for actor in self.actors:
-            if actor.name == author:
+            if actor.name == author or actor.name in self.failed_members:
                 continue
             if actor.steering is not None:
                 if actor.steering.offer(item["message_id"], _public_prompt(item)):
@@ -131,33 +143,98 @@ class RoomRun:
             await self.emit("message", message=item)
             return True
 
+    def public_budget(self):
+        remaining = self.settings.max_messages - self.record["published"]
+        return {
+            "max_messages": self.settings.max_messages,
+            "remaining": remaining,
+            "discussion_remaining": max(0, remaining - self.reserved_for_final),
+            "reserved_for_final": self.reserved_for_final,
+        }
+
+    def public_members(self):
+        return {item["author"] for item in self.record["messages"] if item["author"] != "user"}
+
+    def pending_first_round(self):
+        seen = self.finished_members | self.public_members()
+        can_activate = self.record["activations"] < self.settings.max_activations
+        return [
+            actor.name for actor in self.actors
+            if actor is not self.coordinator and actor.name not in seen
+            and (actor.token is not None or can_activate)
+        ]
+
+    async def _announce(self, item):
+        await self.runtime.sessions.save(self.session)
+        await self.emit("message", message=item)
+        stream = self.callbacks.get("on_stream_chunk")
+        if stream:
+            await stream(f"**{item['author']}**\n\n{item['content']}\n\n---\n\n")
+
     async def publish(self, actor, token, causes, message):
         async with self.publish_lock:
             if self.closed or actor.token is not token:
                 return "Error: this room turn has ended"
             if not isinstance(message, str) or not message.strip() or len(message) > MAX_PUBLIC_MESSAGE_CHARS:
                 return "Error: invalid public message"
-            if self.record["published"] >= self.settings.max_messages:
+            if self.public_budget()["discussion_remaining"] <= 0:
                 if not self.limited:
                     await self.emit("limit", reason="公开消息预算已耗尽")
                 self.limited = True
+                if self.reserved_for_final:
+                    return "Error: ordinary message budget exhausted; the final slot is reserved for finish_discussion"
                 return "Error: public message budget exhausted; finish this turn"
             self.record["published"] += 1
             item = self._append_message(actor.name, message, causes)
-            await self.runtime.sessions.save(self.session)
-            await self.emit("message", message=item)
-            stream = self.callbacks.get("on_stream_chunk")
-            if stream:
-                await stream(f"**{actor.name}**\n\n{message}\n\n---\n\n")
-            return {"status": "published", "message_id": item["message_id"], "remaining": self.settings.max_messages - self.record["published"]}
+            await self._announce(item)
+            return {"status": "published", "message_id": item["message_id"], **self.public_budget()}
 
-    async def activate(self, actor, token, batch):
+    async def finish(self, actor, token, causes, summary, reason):
+        async with self.publish_lock:
+            if self.closed or actor.name != "coordinator" or actor.token is not token:
+                return "Error: only the active room coordinator can finish the discussion"
+            if not isinstance(summary, str) or not summary.strip() or len(summary) > MAX_PUBLIC_MESSAGE_CHARS:
+                return "Error: final summary must be a non-blank string of at most 32000 characters"
+            if reason not in ("complete", "stalled"):
+                return "Error: discussion reason must be complete or stalled"
+            if self.record["published"] >= self.settings.max_messages:
+                return "Error: public message budget exhausted"
+            pending = self.pending_first_round()
+            if pending:
+                return (
+                    f"Error: waiting for first-round opportunity for: {', '.join(pending)}. "
+                    "End this activation silently now so peers can use the slot. "
+                    "Reconsider conclusion on a later activation."
+                )
+            self.closed = True
+            self.record.update(status="concluded", conclusion_reason=reason)
+            self.record["published"] += 1
+            item = self._append_message(actor.name, summary, causes, broadcast=False)
+            try:
+                await self._announce(item)
+            finally:
+                self.wakeup.set()
+            return {"status": "concluded", "message_id": item["message_id"], "reason": reason}
+
+    async def activate(self, actor, token, batch, *, closeout=False):
         await self.emit("member_started", member=actor.name, messages=[item["message_id"] for item in batch])
         metadata = {key: self.context.metadata[key] for key in ("workspace_dir", "project_id", "project_title", "project_objective", "approved", "_on_task_event") if key in self.context.metadata}
+        causes = tuple(item["message_id"] for item in batch)
         metadata.update(parent_session_id=self.session.session_id,
                         root_session_id=self.session.metadata.get("root_session_id", self.session.session_id),
                         task_id=f"room-{self.namespace}-{actor.name}",
-                        **{PUBLISH_CONTEXT_KEY: partial(self.publish, actor, token, tuple(item["message_id"] for item in batch))})
+                        **{PUBLISH_CONTEXT_KEY: partial(self.publish, actor, token, causes),
+                           BUDGET_CONTEXT_KEY: self.public_budget()})
+        if actor is self.coordinator:
+            metadata[FINISH_CONTEXT_KEY] = partial(self.finish, actor, token, causes)
+            metadata[BUDGET_CONTEXT_KEY].update(
+                members=self.settings.members,
+                finished_members=sorted(self.finished_members),
+                public_members=sorted(self.public_members()),
+                pending_members=self.pending_first_round(),
+                failed_members=sorted(self.failed_members),
+                closeout=closeout,
+            )
         content = "\n\n".join(_public_prompt(item) for item in batch)
         ctx = AgentContext(actor.chat_id, "agent_room", self.context.account_id, content, metadata, steering=actor.steering)
         try:
@@ -167,16 +244,39 @@ class RoomRun:
                 await asyncio.wait_for(call, timeout)
             else:
                 await call
+            self.finished_members.add(actor.name)
             await self.emit("member_finished", member=actor.name)
         except Exception as exc:
-            await self.emit("member_error", member=actor.name, reason=str(exc))
-            raise
+            isolated = (
+                self.coordinator is not None and actor is not self.coordinator
+                and actor.name in self.public_members()
+            )
+            if isolated:
+                self.failed_members.add(actor.name)
+                actor.inbox.clear()
+            await self.emit("member_error", member=actor.name, reason=str(exc), isolated=isolated)
+            if not isolated:
+                raise
         finally:
             actor.steering = None
             actor.token = None
 
+    def start_actor(self, actor, *, closeout=False):
+        batch, actor.inbox = actor.inbox, []
+        token = object()
+        actor.token = token
+        actor.steering = SteeringInbox()
+        self.record["activations"] += 1
+        task = asyncio.create_task(self.activate(actor, token, batch, closeout=closeout),
+                                   name=f"room:{self.namespace}:{actor.name}")
+        self.running[task] = actor
+
     async def schedule(self):
         while True:
+            if self.closed:
+                # Let the final publication finish persisting and streaming before cancelling its author.
+                async with self.publish_lock:
+                    return
             self.wakeup.clear()
             count = len(self.actors)
             start = self.cursor
@@ -191,25 +291,28 @@ class RoomRun:
                         self.activation_limited = True
                         await self.emit("limit", reason="成员激活预算已耗尽")
                     continue
-                batch, actor.inbox = actor.inbox, []
-                token = object()
-                actor.token = token
-                actor.steering = SteeringInbox()
-                self.record["activations"] += 1
-                task = asyncio.create_task(self.activate(actor, token, batch), name=f"room:{self.namespace}:{actor.name}")
-                self.running[task] = actor
+                self.start_actor(actor)
                 self.cursor = (index + 1) % count
+            if self.closed:
+                continue
             if not self.running:
                 if any(actor.inbox for actor in self.actors) and not self.activation_limited:
                     continue
-                self.closed = True
-                return
+                if (self.coordinator is not None and not self.closeout_offered
+                        and self.record["activations"] < self.settings.max_activations):
+                    self.closeout_offered = True
+                    self.start_actor(self.coordinator, closeout=True)
+                else:
+                    self.closed = True
+                    return
             wake = asyncio.create_task(self.wakeup.wait())
             try:
                 done, _ = await asyncio.wait([*self.running, wake], return_when=asyncio.FIRST_COMPLETED)
             finally:
                 wake.cancel()
                 await asyncio.gather(wake, return_exceptions=True)
+            if self.closed:
+                continue
             for task in done:
                 if task in self.running:
                     self.running.pop(task)
@@ -218,7 +321,7 @@ class RoomRun:
     def public_result(self):
         posts = [item for item in self.record["messages"] if item["author"] != "user"]
         text = "\n\n---\n\n".join(f"**{item['author']}**\n\n{item['content']}" for item in posts)
-        label = {"idle": "频道暂时空闲，不代表任务已完成", "limit_reached": "已达到运行预算", "cancelled": "频道已停止", "timed_out": "频道运行超时", "error": "频道运行失败"}.get(self.record["status"], self.record["status"])
+        label = {"idle": "频道暂时空闲，不代表任务已完成", "concluded": "协调者已结束讨论", "limit_reached": "已达到运行预算", "cancelled": "频道已停止", "timed_out": "频道运行超时", "error": "频道运行失败"}.get(self.record["status"], self.record["status"])
         return (text + f"\n\n[公共频道：{label}]").strip()
 
     async def execute(self):
@@ -227,10 +330,12 @@ class RoomRun:
             await self.runtime.sessions.save(self.session)
             await self.emit("started", members=list(self.settings.members))
             await asyncio.wait_for(self.schedule(), self.settings.timeout_sec)
-            self.record["status"] = "limit_reached" if self.limited else "idle"
+            if self.record["status"] == "running":
+                self.record["status"] = "limit_reached" if self.limited else "idle"
         except asyncio.TimeoutError:
-            self.record["status"] = "timed_out"
-            raise
+            if self.record["status"] != "concluded":
+                self.record["status"] = "timed_out"
+                raise
         except asyncio.CancelledError:
             self.record["status"] = "cancelled"
             raise

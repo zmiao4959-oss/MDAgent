@@ -95,6 +95,20 @@ simulation:
       cpus_per_task: 4
       gpus: 1
       walltime: "24:00:00"
+    hzw:
+      enabled: false  # Fill in the HZW account paths in the user configuration.
+      engine: gpumd
+      scheduler: slurm
+      ssh_alias: hzw
+      remote_base: ""
+      partition: tx4090
+      executable: ""
+      launcher: direct
+      nodes: 1
+      ntasks_per_node: 1
+      cpus_per_task: 4
+      gpus: 1
+      walltime: "24:00:00"
 
 # GPUMD 等内部知识库使用的远程向量接口。
 # 密钥请放在 MINICLAW_EMBEDDING_API_KEY 或 ARK_API_KEY 环境变量中。

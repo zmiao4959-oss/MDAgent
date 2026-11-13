@@ -220,9 +220,10 @@ def test_coordinator_exposes_delegation_but_not_execution_tools(tmp_path: Path):
     } <= names
     assert "execute" not in names
     assert "write" not in names
-    assert "opaque identifier" in profile.system_prompt
-    assert "call `list_tasks`" in profile.system_prompt
-    assert "Never call `delegate_task` again" in profile.system_prompt
+    default_prompt = agent.prompt_builder.build_collaboration_prompt("default")
+    assert "opaque identifier" in default_prompt
+    assert "call `list_tasks`" in default_prompt
+    assert "Never call `delegate_task` again" in default_prompt
 
     by_name = {
         definition["function"]["name"]: definition["function"]

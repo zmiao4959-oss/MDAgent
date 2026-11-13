@@ -15,6 +15,20 @@ independently in `simulation.targets`:
 | `local-gpumd` | GPUMD | Detached WSL worker | Enabled |
 | `hpc` | LAMMPS | SSH + LSF | Disabled until paths and queue are confirmed |
 | `sugon` | GPUMD | SSH + Slurm | Disabled until GPUMD path and SSH access are confirmed |
+| `hzw` | GPUMD | SSH + Slurm | Set the account paths and enable in the user configuration |
+
+For HZW, use the `hzw` SSH alias, the `tx4090` partition, one node, one task,
+and one GPU. Set `remote_base` to an absolute writable path on HZW and
+`executable` to the absolute path to the installed GPUMD binary. Set
+`launcher: direct` to start GPUMD in the batch allocation. Slurm targets use
+`srun` by default.
+
+Use `sinfo -p tx4090` to inspect the partition, `sbatch --parsable job.slurm`
+to submit from the staged directory, and `squeue -j <job_id>` to check active
+jobs. Query the recorded exit status with
+`sacct -n -X -P -j <job_id> -o JobIDRaw,State,ExitCode`. MiniClaw exposes
+these operations through its simulation tools and stores the job logs as
+`<job_id>.out` and `<job_id>.err` in the remote run directory.
 
 The runner executes the provided inputs without shortening scripts, estimating
 duration, or asking for another confirmation after a run request. Script
